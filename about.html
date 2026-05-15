@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="HJH 的个人简介页，介绍项目方向、工作方式和联系入口。"
+      content="HJH 的个人简介页，介绍通向 general physical intelligence 的目标、机器人指令、sim-to-real 泛化和具身智能思考。"
     />
     <meta name="theme-color" content="#faf7f2" />
     <meta property="og:title" content="About HJH | dreamkeeperhu" />
     <meta
       property="og:description"
-      content="了解 HJH 的项目方向：油猴脚本、课程工具、调度优化和个人主页设计。"
+      content="On the way to general physical intelligence. Better instructing robotics and promoting sim-to-real robotics generalization."
     />
     <title>About HJH | dreamkeeperhu</title>
     <link rel="stylesheet" href="styles.css" />
@@ -44,49 +44,49 @@
         </div>
         <div class="profile-copy">
           <p>
-            我在 GitHub 上以 <strong>dreamkeeperhu</strong> 记录项目。现在主要做三类东西：把网页里的重复操作做轻、把课程和学习流程整理成工具、把算法实验变成可复现的工程。
+            我的个人目标是 <strong>On the way to general physical intelligence</strong>。我关心智能如何从语言、工具和仿真走向真实物理世界，最终能更可靠地理解任务、采取行动，并在环境变化中泛化。
           </p>
           <p>
-            我喜欢清楚的界面、克制的动效和可以直接使用的原型。一个好项目不只要能跑，还应该让后来的人看得懂、改得动、继续接得上。
+            当前目标是 better instructing robotics and promoting sim-to-real robotics generalization。另一条线索是 discovering the next diagram for embodied intelligence，也就是寻找能组织感知、动作、学习和泛化的新图谱。
           </p>
         </div>
       </section>
 
       <section class="profile-band" aria-label="简介摘要">
+        <a href="mailto:dreamkeeperhu@gmail.com">
+          <span>Email</span>
+          <strong>dreamkeeperhu@gmail.com</strong>
+        </a>
+        <a href="index.html#works">
+          <span>Long-term Direction</span>
+          <strong>General physical intelligence</strong>
+        </a>
         <a href="https://github.com/dreamkeeperhu" target="_blank" rel="noreferrer">
           <span>GitHub</span>
           <strong>@dreamkeeperhu</strong>
-        </a>
-        <a href="index.html#works">
-          <span>Featured Work</span>
-          <strong>Userscripts + Optimization</strong>
-        </a>
-        <a href="https://dreamkeeperhu.github.io/" target="_blank" rel="noreferrer">
-          <span>Current Site</span>
-          <strong>GitHub Pages</strong>
         </a>
       </section>
 
       <section class="about-section" aria-label="项目方向">
         <div class="section-head compact-head">
-          <h2>What I Build</h2>
-          <p>项目先解决具体问题，再慢慢沉淀成可复用的工具和方法。</p>
+          <h2>What I Explore</h2>
+          <p>当前公开项目仍在打地基，研究方向会逐步聚焦到具身智能和机器人泛化。</p>
         </div>
         <div class="about-panel-grid">
           <article>
             <span>01</span>
-            <h3>Userscripts</h3>
-            <p>用轻量脚本补齐网页工作流里的缺口，例如 WeLearn 自动填充和北航课程辅助。</p>
+            <h3>Robotics Instruction</h3>
+            <p>探索如何让机器人更好理解任务、约束和人类意图，让 instruction 成为可靠行动的起点。</p>
           </article>
           <article>
             <span>02</span>
-            <h3>Optimization</h3>
-            <p>围绕 Cloud-Edge-Device 任务调度做元启发式优化实验，关注可复现和参数可控。</p>
+            <h3>Sim-to-real Generalization</h3>
+            <p>关注从仿真到真实机器人的迁移，让策略、数据和评估更能跨环境稳定工作。</p>
           </article>
           <article>
             <span>03</span>
-            <h3>Interface</h3>
-            <p>把项目整理成能被访问、能被理解的界面，比如这个复刻 MiMo 气质的个人主页。</p>
+            <h3>Embodied Intelligence Diagram</h3>
+            <p>寻找下一张具身智能图谱，用来组织感知、控制、记忆、世界模型和泛化能力。</p>
           </article>
         </div>
       </section>
@@ -94,14 +94,14 @@
       <section class="split-section" aria-label="工作方式">
         <div class="section-head compact-head">
           <h2>How I Work</h2>
-          <p>从需求到页面，从脚本到实验，我更在意过程是否清楚、结果是否能被继续使用。</p>
+          <p>我会从小工具和可复现实验开始，把问题拆清楚，再把它们逐步连接到更大的机器人智能目标。</p>
         </div>
         <div class="row-list">
           <a class="list-row" href="https://github.com/dreamkeeperhu/welearn-answer-filler" target="_blank" rel="noreferrer">
             <span class="row-index">01</span>
             <span class="row-copy">
-              <strong>Start from friction</strong>
-              <small>先找重复、低效、容易出错的地方，再用最小工具把它变顺。</small>
+              <strong>Start from concrete friction</strong>
+              <small>先解决明确的低效和不稳定，再让工具和实验服务更长期的问题。</small>
             </span>
             <span class="row-arrow">→</span>
           </a>
@@ -109,15 +109,15 @@
             <span class="row-index">02</span>
             <span class="row-copy">
               <strong>Keep experiments reproducible</strong>
-              <small>算法和工程实验尽量留下参数、数据入口和命令行说明。</small>
+              <small>让参数、数据入口和评估方式尽量清楚，方便后续扩展到机器人场景。</small>
             </span>
             <span class="row-arrow">→</span>
           </a>
           <a class="list-row" href="https://github.com/dreamkeeperhu/dreamkeeperhu.github.io" target="_blank" rel="noreferrer">
             <span class="row-index">03</span>
             <span class="row-copy">
-              <strong>Make work visible</strong>
-              <small>把项目、链接和说明整理到一个入口，让作品不只停在仓库列表里。</small>
+              <strong>Seek the next diagram</strong>
+              <small>把项目、问题和想法整理成结构，慢慢逼近 embodied intelligence 的下一张图。</small>
             </span>
             <span class="row-arrow">→</span>
           </a>
@@ -127,10 +127,10 @@
       <section class="contact-section">
         <div>
           <h2>Keep In Touch</h2>
-          <p>继续了解我的项目，或者从 GitHub 进入全部仓库。</p>
+          <p>如果你也关心机器人指令、sim-to-real 泛化或具身智能，可以直接邮件联系我。</p>
         </div>
-        <a class="contact-link" href="https://github.com/dreamkeeperhu" target="_blank" rel="noreferrer">
-          GitHub @dreamkeeperhu
+        <a class="contact-link" href="mailto:dreamkeeperhu@gmail.com">
+          dreamkeeperhu@gmail.com
           <span>→</span>
         </a>
       </section>
