@@ -264,6 +264,34 @@ img {
   letter-spacing: 0.02em;
 }
 
+.hero-strip {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(250, 247, 242, 0.58);
+  backdrop-filter: blur(10px);
+}
+
+.hero-strip span {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 36px;
+  color: rgba(0, 0, 0, 0.56);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.hero-strip span + span {
+  border-left: 1px solid rgba(0, 0, 0, 0.18);
+}
+
 .alt-layer {
   position: absolute;
   inset: 0;
@@ -367,6 +395,54 @@ img {
   grid-template-columns: repeat(3, 1fr);
   border-left: 1px solid var(--hairline);
   border-right: 1px solid var(--hairline);
+}
+
+.signal-band {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-left: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.signal-band a {
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 36px;
+  background: var(--paper);
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.signal-band a + a {
+  border-left: 1px solid var(--hairline);
+}
+
+.signal-band span {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.2;
+  transition: color 180ms ease;
+}
+
+.signal-band strong {
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.signal-band a:hover,
+.signal-band a:focus-visible {
+  color: white;
+  background: var(--ink);
+}
+
+.signal-band a:hover span,
+.signal-band a:focus-visible span {
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .showcase-card {
@@ -520,6 +596,7 @@ img {
   font-size: 28px;
   line-height: 1.25;
   font-weight: 800;
+  word-break: break-word;
 }
 
 .row-copy small {
@@ -755,6 +832,24 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .signal-band {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-band a {
+    min-height: 84px;
+    padding: 20px 24px;
+  }
+
+  .signal-band a + a {
+    border-top: 1px solid var(--hairline);
+    border-left: 0;
+  }
+
+  .signal-band strong {
+    font-size: 22px;
+  }
+
   .showcase-card {
     min-height: 210px;
   }
@@ -859,6 +954,21 @@ img {
   .about-copy p {
     font-size: 14px;
     line-height: 1.82;
+  }
+
+  .hero-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-strip span {
+    min-height: 34px;
+    padding: 0 20px;
+    font-size: 11px;
+  }
+
+  .hero-strip span + span {
+    border-top: 1px solid rgba(0, 0, 0, 0.14);
+    border-left: 0;
   }
 
   .showcase-card {
