@@ -6,6 +6,8 @@ const aboutTrigger = document.querySelector(".about-trigger");
 const backClose = document.querySelector(".back-close");
 const navToggle = document.querySelector(".nav-toggle");
 const navLinks = document.querySelectorAll(".nav-links a");
+const prefersHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)").matches;
 
 function buildPattern(container) {
   const rows = 11;
@@ -42,8 +44,10 @@ function hideReveal(event) {
   altLayer.style.clipPath = `circle(0 at ${x}px ${y}px)`;
 }
 
-heroTitle.addEventListener("pointermove", setReveal);
-heroTitle.addEventListener("pointerleave", hideReveal);
+if (prefersHover) {
+  heroTitle.addEventListener("pointermove", setReveal);
+  heroTitle.addEventListener("pointerleave", hideReveal);
+}
 
 aboutTrigger.addEventListener("click", () => {
   flipShell.classList.add("is-flipped");
@@ -78,5 +82,15 @@ const revealObserver = new IntersectionObserver(
 document.querySelectorAll(".reveal").forEach((element) => {
   revealObserver.observe(element);
 });
+
+if (coarsePointer) {
+  document
+    .querySelectorAll("a, button, .hero-title, .showcase, .split-section, .contact-section")
+    .forEach((element) => {
+      element.addEventListener("contextmenu", (event) => event.preventDefault());
+      element.addEventListener("selectstart", (event) => event.preventDefault());
+      element.addEventListener("dragstart", (event) => event.preventDefault());
+    });
+}
 
 hideReveal();

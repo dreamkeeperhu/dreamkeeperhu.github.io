@@ -49,6 +49,7 @@ button {
 img {
   display: block;
   max-width: 100%;
+  -webkit-user-drag: none;
 }
 
 ::selection {
@@ -902,6 +903,24 @@ img {
 
   .row-copy strong {
     font-size: 17px;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .site-nav,
+  .site-main,
+  .site-footer,
+  .site-nav *,
+  .site-main *,
+  .site-footer * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  a,
+  button {
+    touch-action: manipulation;
   }
 }
 
