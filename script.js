@@ -31,6 +31,10 @@ function buildPattern(container) {
 patternContainers.forEach(buildPattern);
 
 function setReveal(event) {
+  if (!heroTitle || !altLayer) {
+    return;
+  }
+
   const rect = heroTitle.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
@@ -38,28 +42,38 @@ function setReveal(event) {
 }
 
 function hideReveal(event) {
+  if (!heroTitle || !altLayer) {
+    return;
+  }
+
   const rect = heroTitle.getBoundingClientRect();
   const x = event ? event.clientX - rect.left : rect.width / 2;
   const y = event ? event.clientY - rect.top : rect.height / 2;
   altLayer.style.clipPath = `circle(0 at ${x}px ${y}px)`;
 }
 
-if (prefersHover) {
+if (prefersHover && heroTitle) {
   heroTitle.addEventListener("pointermove", setReveal);
   heroTitle.addEventListener("pointerleave", hideReveal);
 }
 
-aboutTrigger.addEventListener("click", () => {
-  flipShell.classList.add("is-flipped");
-});
+if (aboutTrigger && flipShell) {
+  aboutTrigger.addEventListener("click", () => {
+    flipShell.classList.add("is-flipped");
+  });
+}
 
-backClose.addEventListener("click", () => {
-  flipShell.classList.remove("is-flipped");
-});
+if (backClose && flipShell) {
+  backClose.addEventListener("click", () => {
+    flipShell.classList.remove("is-flipped");
+  });
+}
 
-navToggle.addEventListener("click", () => {
-  document.body.classList.toggle("nav-open");
-});
+if (navToggle) {
+  navToggle.addEventListener("click", () => {
+    document.body.classList.toggle("nav-open");
+  });
+}
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
@@ -85,7 +99,7 @@ document.querySelectorAll(".reveal").forEach((element) => {
 
 if (coarsePointer) {
   document
-    .querySelectorAll("a, button, .hero-title, .showcase, .split-section, .contact-section")
+    .querySelectorAll("a, button, .site-main, .site-footer")
     .forEach((element) => {
       element.addEventListener("contextmenu", (event) => event.preventDefault());
       element.addEventListener("selectstart", (event) => event.preventDefault());

@@ -9,6 +9,7 @@
 ## 内容编辑
 
 - 页面文案在 `index.html`
+- 个人简介页在 `about.html`
 - 样式和响应式规则在 `styles.css`
 - 首屏交互和滚动显现在 `script.js`
 - 三张视觉图在 `assets/`
