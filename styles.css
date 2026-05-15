@@ -529,6 +529,16 @@ img {
   transition: color 180ms ease;
 }
 
+.row-meta {
+  display: inline-flex;
+  margin-top: 16px;
+  color: rgba(0, 0, 0, 0.46);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: color 180ms ease;
+}
+
 .row-arrow {
   justify-content: center;
   border-left: 1px solid var(--hairline);
@@ -547,7 +557,9 @@ img {
 }
 
 .list-row:hover .row-copy small,
-.list-row:focus-visible .row-copy small {
+.list-row:focus-visible .row-copy small,
+.list-row:hover .row-meta,
+.list-row:focus-visible .row-meta {
   color: rgba(255, 255, 255, 0.68);
 }
 
@@ -794,6 +806,10 @@ img {
 
   .row-copy small {
     font-size: 14px;
+  }
+
+  .row-meta {
+    font-size: 12px;
   }
 
   .row-arrow {
