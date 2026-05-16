@@ -1,0 +1,77 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { profile, publicCv } from "../data/profile";
+
+const education = [
+  "Beihang University, Shi'e College, B.Eng. student, 2025 - present",
+  "Intended direction: School of Automation Science and Electrical Engineering",
+  "CET-4: 619",
+];
+
+const research = [
+  "CCHIHH: Cooperative coevolution and contextual bandit based heterogeneous-island hyper-heuristic for Cloud-Edge-Device collaborative scheduling.",
+  "Independently completed the main research and manuscript drafting, including theoretical derivation and experimental design.",
+  "Preparing submission to a CAS Q1 journal and using the work for Beihang's Fengru Cup science and technology competition.",
+];
+
+const skills = [
+  "C/C++, Python",
+  "LaTeX, Git, Linux, SSH and remote development",
+  "Data structures, graph algorithms, dynamic programming, evolutionary algorithms",
+  "English academic reading and writing",
+];
+---
+
+<BaseLayout current="CV" title="CV | Jianheng Hu">
+  <section class="content-hero cv-hero">
+    <span class="eyebrow">CV / Resume</span>
+    <h1>Jianheng Hu</h1>
+    <p>Public resume for research contact, internships, and collaboration. The downloadable version omits private phone contact and uses the public email address.</p>
+    <div class="hero-actions">
+      <a class="button-primary" href={publicCv.file} download>Download PDF</a>
+      <a class="button-secondary" href={`mailto:${profile.email}`}>{profile.email}</a>
+    </div>
+  </section>
+
+  <section class="cv-layout">
+    <article class="cv-document">
+      <header>
+        <span>{publicCv.updated}</span>
+        <h2>Jianheng Hu / 胡健恒</h2>
+        <p>Freshman at Beihang University · Robotics, sim-to-real, embodied intelligence, and intelligent optimization.</p>
+      </header>
+
+      <section>
+        <h3>Education</h3>
+        <ul>{education.map((item) => <li>{item}</li>)}</ul>
+      </section>
+
+      <section>
+        <h3>Research</h3>
+        <ul>{research.map((item) => <li>{item}</li>)}</ul>
+      </section>
+
+      <section>
+        <h3>Competitions & Activities</h3>
+        <ul>
+          <li>Lanqiao Cup programming track, preparing in 2026.</li>
+          <li>Informatics competition training during high school, 2021 - 2024.</li>
+          <li>Social practice visits to Segway-Ninebot, Empyrean, Yaskawa Shougang Robotics, and related companies.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Skills</h3>
+        <ul>{skills.map((item) => <li>{item}</li>)}</ul>
+      </section>
+    </article>
+
+    <aside class="pdf-preview">
+      <div class="panel-kicker">PDF Preview</div>
+      <p class="pdf-mobile-note"><a href={publicCv.file}>Open the resume PDF</a>. The HTML resume above is the mobile preview.</p>
+      <object data={publicCv.file} type="application/pdf">
+        <p>PDF preview is not available in this browser. <a href={publicCv.file}>Open the resume PDF.</a></p>
+      </object>
+    </aside>
+  </section>
+</BaseLayout>

@@ -1,0 +1,39 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const papers = (await getCollection("papers")).sort((a, b) => b.data.year - a.data.year);
+---
+
+<BaseLayout current="Research" title="Research | HJH">
+  <section class="content-hero">
+    <span class="eyebrow">Research</span>
+    <h1>Papers & Research Progress</h1>
+    <p>Work in scheduling, adaptive systems, and robotics-adjacent questions. Status labels are intentionally explicit: under review, preprint, published, or in preparation.</p>
+  </section>
+
+  <section class="paper-list">
+    {papers.map((paper, index) => (
+      <article class="paper-item">
+        <div class="paper-index">{String(index + 1).padStart(2, "0")}</div>
+        <div>
+          <div class="paper-meta">
+            <span>{paper.data.status}</span>
+            <span>{paper.data.year}</span>
+            {paper.data.venue && <span>{paper.data.venue}</span>}
+          </div>
+          <h2>{paper.data.title}</h2>
+          <p class="paper-authors">{paper.data.authors.join(", ")}</p>
+          <p>{paper.data.abstract}</p>
+          <div class="tag-row">
+            {paper.data.tags.map((tag) => <span>{tag}</span>)}
+          </div>
+          <div class="paper-actions">
+            {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}
+            {paper.data.code && <a href={paper.data.code} target="_blank" rel="noreferrer">Code</a>}
+          </div>
+        </div>
+      </article>
+    ))}
+  </section>
+</BaseLayout>

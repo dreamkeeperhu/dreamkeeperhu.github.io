@@ -1,0 +1,194 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import GitHubPanel from "../components/GitHubPanel.astro";
+import SubscribeForm from "../components/SubscribeForm.astro";
+import { profile, publicCv } from "../data/profile";
+import { asset } from "../utils/cdn";
+
+const rows = Array.from({ length: 11 });
+const copies = Array.from({ length: 18 });
+---
+
+<BaseLayout current="Home" title="HJH | dreamkeeperhu">
+  <section class="hero-section" aria-label="Personal poster">
+    <div class="flip-shell">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <div class="hero-title" data-reveal-zone>
+            <div class="hero-pattern pattern-base" aria-hidden="true">
+              {rows.map(() => (
+                <div class="pattern-row">{copies.map(() => <span>H J H</span>)}</div>
+              ))}
+            </div>
+            <h1>HELLO, I'M HJH</h1>
+            <div class="hero-strip" aria-label="Homepage summary">
+              <span>{profile.tagline}</span>
+              <span>Robotics instruction / Sim-to-real / New robotics paradigm</span>
+              <span>{profile.email}</span>
+            </div>
+            <div class="alt-layer" aria-hidden="true">
+              <div class="hero-pattern pattern-invert">
+                {rows.map(() => (
+                  <div class="pattern-row">{copies.map(() => <span>H J H</span>)}</div>
+                ))}
+              </div>
+              <h2>你好，我是 HJH</h2>
+              <span class="about-label">About Me</span>
+            </div>
+            <button class="about-trigger" type="button" aria-label="Open about card"></button>
+          </div>
+        </div>
+
+        <div class="flip-back" aria-label="About me">
+          <div class="back-content">
+            <div class="about-copy">
+              <p>我长期想做的事，是把智能带向 general physical intelligence：让它不只会回答问题，也能在真实物理世界里理解任务、采取行动，并可靠泛化。</p>
+              <p>现在我更具体地关注两件事：让机器人更容易被清楚地指令，以及让仿真中学到的能力更稳地迁移到真实机器人上。</p>
+              <p>这里会持续收纳我的工具、算法实验、界面原型，以及我对下一代机器人范式的思考。</p>
+              <p><strong>HJH</strong></p>
+            </div>
+          </div>
+          <button class="back-close" type="button" aria-label="Return to title"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="showcase" aria-label="Selected directions">
+    <a class="showcase-card" href="/research">
+      <img src={asset("/assets/interface-field.png")} alt="Interface structure and flowing curves" />
+      <span class="showcase-overlay"></span>
+      <span class="showcase-info">
+        <strong>Robotics Instruction</strong>
+        <small>让机器人更好理解任务与意图</small>
+      </span>
+    </a>
+    <a class="showcase-card" href="/research">
+      <img src={asset("/assets/agent-map.png")} alt="Node network and automation workflow" />
+      <span class="showcase-overlay"></span>
+      <span class="showcase-info">
+        <strong>Sim-to-real</strong>
+        <small>让仿真经验更稳地迁移到真实世界</small>
+      </span>
+    </a>
+    <a class="showcase-card" href="/notes">
+      <img src={asset("/assets/signal-wave.png")} alt="Waveform and signal record" />
+      <span class="showcase-overlay"></span>
+      <span class="showcase-info">
+        <strong>New Robotics Paradigm</strong>
+        <small>探索下一代机器人范式</small>
+      </span>
+    </a>
+  </section>
+
+  <section class="signal-band" aria-label="Profile summary">
+    <a href={`mailto:${profile.email}`}>
+      <span>Email</span>
+      <strong>{profile.email}</strong>
+    </a>
+    <a href="/cv">
+      <span>CV</span>
+      <strong>Resume PDF & Preview</strong>
+    </a>
+    <a href="/research">
+      <span>Current Focus</span>
+      <strong>Sim-to-real robotics</strong>
+    </a>
+  </section>
+
+  <section class="split-section">
+    <div class="section-head">
+      <h2>Field Notes</h2>
+      <p>这个站点现在会收纳简历、论文进展、Markdown notes、当前状态和公开项目。静态优先，但该动态的地方会动态。</p>
+    </div>
+    <div class="row-list">
+      <a class="list-row" href="/about">
+        <span class="row-index">01</span>
+        <span class="row-copy">
+          <strong>Detailed About</strong>
+          <small>More natural biography, research direction, and what I am trying to build.</small>
+        </span>
+        <span class="row-arrow">→</span>
+      </a>
+      <a class="list-row" href={publicCv.file}>
+        <span class="row-index">02</span>
+        <span class="row-copy">
+          <strong>Download CV</strong>
+          <small>Public PDF resume with education, research, skills, and selected activities.</small>
+        </span>
+        <span class="row-arrow">→</span>
+      </a>
+      <a class="list-row" href="/notes">
+        <span class="row-index">03</span>
+        <span class="row-copy">
+          <strong>Blog / Notes</strong>
+          <small>Markdown-written posts with RSS and client-side search.</small>
+        </span>
+        <span class="row-arrow">→</span>
+      </a>
+      <a class="list-row" href="/now">
+        <span class="row-index">04</span>
+        <span class="row-copy">
+          <strong>Now</strong>
+          <small>A manually updated page for what I am doing, reading, and thinking about.</small>
+        </span>
+        <span class="row-arrow">→</span>
+      </a>
+    </div>
+  </section>
+
+  <GitHubPanel />
+
+  <section id="contact" class="contact-section reveal">
+    <div>
+      <h2>Let's Talk Robotics</h2>
+      <p>关于机器人指令、sim-to-real 泛化、新的机器人范式或合作，可以直接邮件联系我。</p>
+    </div>
+    <a class="contact-link" href={`mailto:${profile.email}`}>
+      {profile.email}
+      <span>→</span>
+    </a>
+  </section>
+
+  <section class="subscribe-section reveal">
+    <div class="section-head compact-head">
+      <h2>Notes Updates</h2>
+      <p>邮件订阅入口已经预留。没接入服务商时，它会用邮件请求订阅；接入 Buttondown、ConvertKit 或自托管服务后会自动改为表单提交。</p>
+    </div>
+    <SubscribeForm />
+  </section>
+
+  <script is:inline>
+    const flipShell = document.querySelector(".flip-shell");
+    const heroTitle = document.querySelector(".hero-title");
+    const altLayer = document.querySelector(".alt-layer");
+    const aboutTrigger = document.querySelector(".about-trigger");
+    const backClose = document.querySelector(".back-close");
+    const prefersHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+    function setReveal(event) {
+      if (!heroTitle || !altLayer) return;
+      const rect = heroTitle.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      altLayer.style.clipPath = `circle(150px at ${x}px ${y}px)`;
+    }
+
+    function hideReveal(event) {
+      if (!heroTitle || !altLayer) return;
+      const rect = heroTitle.getBoundingClientRect();
+      const x = event ? event.clientX - rect.left : rect.width / 2;
+      const y = event ? event.clientY - rect.top : rect.height / 2;
+      altLayer.style.clipPath = `circle(0 at ${x}px ${y}px)`;
+    }
+
+    if (prefersHover && heroTitle) {
+      heroTitle.addEventListener("pointermove", setReveal);
+      heroTitle.addEventListener("pointerleave", hideReveal);
+    }
+
+    aboutTrigger?.addEventListener("click", () => flipShell?.classList.add("is-flipped"));
+    backClose?.addEventListener("click", () => flipShell?.classList.remove("is-flipped"));
+    hideReveal();
+  </script>
+</BaseLayout>

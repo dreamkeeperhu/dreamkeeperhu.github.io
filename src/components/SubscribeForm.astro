@@ -1,0 +1,49 @@
+---
+import { profile } from "../data/profile";
+
+const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "";
+---
+
+<form class="subscribe-form" data-subscribe-form data-action={action}>
+  <label for="subscribe-email">Subscribe to notes</label>
+  <div>
+    <input id="subscribe-email" name="email" type="email" inputmode="email" placeholder="you@example.com" required />
+    <button type="submit">Notify me</button>
+  </div>
+  <p data-subscribe-message>
+    New notes are occasional. No tracking-heavy newsletter stack is enabled until a provider is configured.
+  </p>
+</form>
+
+<script is:inline define:vars={{ action, email: profile.email }}>
+  const form = document.querySelector("[data-subscribe-form]");
+  const message = document.querySelector("[data-subscribe-message]");
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const address = String(formData.get("email") || "").trim();
+    if (!address) return;
+
+    if (!action) {
+      const subject = encodeURIComponent("Subscribe to HJH Notes");
+      const body = encodeURIComponent(`Please add ${address} to the notes update list.`);
+      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+      if (message) message.textContent = "Opening your email client to finish the subscription request.";
+      return;
+    }
+
+    try {
+      const response = await fetch(action, {
+        method: "POST",
+        body: formData,
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Subscription failed");
+      if (message) message.textContent = "Subscribed. I will only send updates when there is something worth reading.";
+      form.reset();
+    } catch {
+      if (message) message.textContent = "Subscription endpoint is not responding. Email me directly and I will add you manually.";
+    }
+  });
+</script>

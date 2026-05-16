@@ -1,0 +1,22 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { friends } from "../data/friends";
+---
+
+<BaseLayout current="Friends" title="Friends | HJH">
+  <section class="content-hero">
+    <span class="eyebrow">Friends</span>
+    <h1>Links Worth Keeping Nearby</h1>
+    <p>A small page for people, labs, projects, and references that matter. It can grow as the research circle grows.</p>
+  </section>
+
+  <section class="friends-list">
+    {friends.map((friend, index) => (
+      <a href={friend.href} target="_blank" rel="noreferrer">
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <strong>{friend.name}</strong>
+        <p>{friend.description}</p>
+      </a>
+    ))}
+  </section>
+</BaseLayout>

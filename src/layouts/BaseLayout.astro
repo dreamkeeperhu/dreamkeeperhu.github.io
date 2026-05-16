@@ -1,0 +1,132 @@
+---
+import "../styles/global.css";
+import { profile } from "../data/profile";
+import Analytics from "../components/Analytics.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: string;
+}
+
+const {
+  title = "HJH | dreamkeeperhu",
+  description = "Jianheng Hu's personal homepage: robotics, sim-to-real generalization, research notes, projects, and the next robotics paradigm.",
+  current = "",
+} = Astro.props;
+
+const navItems = [
+  ["Home", "/"],
+  ["About", "/about"],
+  ["CV", "/cv"],
+  ["Research", "/research"],
+  ["Notes", "/notes"],
+  ["Now", "/now"],
+  ["Friends", "/friends"],
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#faf7f2" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={new URL(Astro.url.pathname, profile.site).toString()} />
+    <meta property="og:type" content="website" />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="alternate" type="application/rss+xml" title="HJH Notes" href="/rss.xml" />
+    <Analytics />
+    <script is:inline>
+      const savedTheme = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = savedTheme || (prefersDark ? "dark" : "light");
+    </script>
+  </head>
+  <body>
+    <header class="site-nav" aria-label="Main navigation">
+      <div class="nav-inner">
+        <a class="wordmark" href="/" aria-label="HJH home">
+          <span>HJH</span>
+        </a>
+        <nav class="nav-links" aria-label="Pages">
+          {navItems.map(([label, href]) => (
+            <a href={href} aria-current={current === label ? "page" : undefined}>{label}</a>
+          ))}
+        </nav>
+        <div class="nav-actions">
+          <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+            <span class="theme-sun" aria-hidden="true"></span>
+            <span class="theme-moon" aria-hidden="true"></span>
+          </button>
+          <button class="nav-toggle" type="button" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="site-main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <span>© 2026 HJH. Built with Astro, GitHub Pages, and Cloudflare.</span>
+      <a href="/rss.xml">RSS</a>
+    </footer>
+
+    <script is:inline>
+      const navToggle = document.querySelector(".nav-toggle");
+      const navLinks = document.querySelectorAll(".nav-links a");
+      const themeToggle = document.querySelector(".theme-toggle");
+      const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+
+      navToggle?.addEventListener("click", () => {
+        document.body.classList.toggle("nav-open");
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener("click", () => document.body.classList.remove("nav-open"));
+      });
+
+      themeToggle?.addEventListener("click", () => {
+        const current = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = current;
+        localStorage.setItem("theme", current);
+      });
+
+      if (coarsePointer) {
+        document
+          .querySelectorAll("a, button, .site-main, .site-footer")
+          .forEach((element) => {
+            element.addEventListener("contextmenu", (event) => event.preventDefault());
+            element.addEventListener("selectstart", (event) => event.preventDefault());
+            element.addEventListener("dragstart", (event) => event.preventDefault());
+          });
+      }
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.14 }
+      );
+
+      document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
+    </script>
+  </body>
+</html>

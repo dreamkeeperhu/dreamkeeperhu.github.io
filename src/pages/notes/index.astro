@@ -1,0 +1,53 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import SubscribeForm from "../../components/SubscribeForm.astro";
+
+const notes = (await getCollection("notes"))
+  .filter((note) => !note.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<BaseLayout current="Notes" title="Notes | HJH">
+  <section class="content-hero">
+    <span class="eyebrow">Blog / Notes</span>
+    <h1>Notes from the Workbench</h1>
+    <p>Markdown-written notes on robotics, sim-to-real, tools, scheduling, and the small things worth remembering.</p>
+  </section>
+
+  <section class="notes-tools">
+    <label for="note-search">Search articles</label>
+    <input id="note-search" type="search" placeholder="Search title, tag, or description" data-note-search />
+  </section>
+
+  <section class="notes-list" data-notes-list>
+    {notes.map((note) => (
+      <a
+        class="note-row"
+        href={`/notes/${note.id}`}
+        data-title={`${note.data.title} ${note.data.description} ${note.data.tags.join(" ")}`.toLowerCase()}
+      >
+        <span>{note.data.pubDate.toISOString().slice(0, 10)}</span>
+        <strong>{note.data.title}</strong>
+        <p>{note.data.description}</p>
+        <em>{note.data.tags.join(" · ")}</em>
+      </a>
+    ))}
+  </section>
+
+  <section class="subscribe-section">
+    <SubscribeForm />
+  </section>
+
+  <script is:inline>
+    const search = document.querySelector("[data-note-search]");
+    const rows = [...document.querySelectorAll("[data-notes-list] .note-row")];
+
+    search?.addEventListener("input", () => {
+      const query = search.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        row.hidden = query && !row.dataset.title.includes(query);
+      });
+    });
+  </script>
+</BaseLayout>

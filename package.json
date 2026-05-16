@@ -1,0 +1,16 @@
+{
+  "name": "dreamkeeperhu-homepage",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/rss": "^4.0.18",
+    "astro": "^6.3.3",
+    "typescript": "^5.9.3"
+  }
+}

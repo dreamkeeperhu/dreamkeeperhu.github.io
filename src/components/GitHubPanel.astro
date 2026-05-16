@@ -1,0 +1,88 @@
+---
+const username = "dreamkeeperhu";
+---
+
+<section id="github" class="split-section reveal">
+  <div class="section-head">
+    <h2>GitHub Live</h2>
+    <p>Projects and contribution activity are pulled from GitHub at page load, so the site stays fresh without hand editing the project list.</p>
+  </div>
+
+  <div class="github-grid">
+    <article class="github-live-panel">
+      <div class="panel-kicker">Contributions</div>
+      <div class="contrib-summary" data-contrib-summary>Loading contribution graph...</div>
+      <div class="contrib-graph" data-contrib-graph aria-label="GitHub contribution graph"></div>
+    </article>
+
+    <article class="github-live-panel">
+      <div class="panel-kicker">Latest repositories</div>
+      <div class="repo-list" data-github-repos>
+        <p class="muted">Loading repositories from GitHub...</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<script is:inline define:vars={{ username }}>
+  const repoTarget = document.querySelector("[data-github-repos]");
+  const graphTarget = document.querySelector("[data-contrib-graph]");
+  const summaryTarget = document.querySelector("[data-contrib-summary]");
+
+  const escapeHtml = (value) =>
+    String(value || "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    }[char]));
+
+  async function loadRepos() {
+    if (!repoTarget) return;
+    try {
+      const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=8`, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
+      if (!response.ok) throw new Error("GitHub API unavailable");
+      const repos = (await response.json()).filter((repo) => !repo.fork).slice(0, 6);
+      repoTarget.innerHTML = repos.map((repo, index) => `
+        <a class="repo-row" href="${repo.html_url}" target="_blank" rel="noreferrer">
+          <span>${String(index + 1).padStart(2, "0")}</span>
+          <strong>${escapeHtml(repo.name)}</strong>
+          <small>${escapeHtml(repo.description || "No description yet.")}</small>
+          <em>${escapeHtml(repo.language || "Code")} · ${repo.stargazers_count} stars · ${new Date(repo.updated_at).toISOString().slice(0, 10)}</em>
+        </a>
+      `).join("");
+    } catch {
+      repoTarget.innerHTML = `
+        <a class="repo-row" href="https://github.com/${username}?tab=repositories" target="_blank" rel="noreferrer">
+          <span>→</span>
+          <strong>Open GitHub repositories</strong>
+          <small>The live API is temporarily unavailable. The repository list is still available on GitHub.</small>
+          <em>@${username}</em>
+        </a>
+      `;
+    }
+  }
+
+  async function loadContributions() {
+    if (!graphTarget || !summaryTarget) return;
+    try {
+      const response = await fetch(`https://github-contributions-api.jogruber.de/v4/${username}?y=last`);
+      if (!response.ok) throw new Error("Contribution API unavailable");
+      const data = await response.json();
+      const days = data.contributions || [];
+      summaryTarget.textContent = `${data.total?.lastYear ?? 0} contributions in the last year`;
+      graphTarget.innerHTML = days.map((day) => `
+        <span class="contrib-cell level-${day.level}" title="${day.date}: ${day.count} contributions"></span>
+      `).join("");
+    } catch {
+      summaryTarget.textContent = "Contribution graph is temporarily unavailable";
+      graphTarget.innerHTML = "";
+    }
+  }
+
+  loadRepos();
+  loadContributions();
+</script>
