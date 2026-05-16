@@ -7,32 +7,86 @@ const root = process.cwd();
 await loadDotEnv(".env.local");
 await loadDotEnv(".env");
 
+const sourceMode = process.env.OBSIDIAN_SOURCE || (process.env.R2_ACCESS_KEY_ID ? "r2" : "local");
 const vaultPath = process.env.OBSIDIAN_VAULT_PATH;
 const notesDir = process.env.OBSIDIAN_NOTES_DIR || "Notes";
 const papersDir = process.env.OBSIDIAN_PAPERS_DIR || "Papers";
 const syncDrafts = process.env.OBSIDIAN_SYNC_DRAFTS === "true";
 const cleanSync = process.env.OBSIDIAN_CLEAN_SYNC !== "false";
 
-if (!vaultPath) {
-  console.log("[obsidian] Sync skipped: set OBSIDIAN_VAULT_PATH to enable vault import.");
-  process.exit(0);
+if (sourceMode === "r2") {
+  await syncR2Source();
+} else {
+  await syncLocalVault();
 }
 
-const absoluteVault = path.resolve(vaultPath);
+async function syncLocalVault() {
+  if (!vaultPath) {
+    console.log("[obsidian] Sync skipped: set OBSIDIAN_VAULT_PATH to enable vault import.");
+    return;
+  }
 
-await syncCollection({
-  label: "notes",
-  sourceDir: path.join(absoluteVault, notesDir),
-  outDir: path.join(root, "src/content/notes/obsidian"),
-  map: mapNote,
-});
+  const absoluteVault = path.resolve(vaultPath);
 
-await syncCollection({
-  label: "papers",
-  sourceDir: path.join(absoluteVault, papersDir),
-  outDir: path.join(root, "src/content/papers/obsidian"),
-  map: mapPaper,
-});
+  await syncLocalCollection({
+    label: "notes",
+    sourceDir: path.join(absoluteVault, notesDir),
+    outDir: path.join(root, "src/content/notes/obsidian"),
+    map: mapNote,
+    sourcePath: (file) => path.relative(absoluteVault, file).split(path.sep).join("/"),
+  });
+
+  await syncLocalCollection({
+    label: "papers",
+    sourceDir: path.join(absoluteVault, papersDir),
+    outDir: path.join(root, "src/content/papers/obsidian"),
+    map: mapPaper,
+    sourcePath: (file) => path.relative(absoluteVault, file).split(path.sep).join("/"),
+  });
+}
+
+async function syncR2Source() {
+  const accountId = process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucket = process.env.OBSIDIAN_R2_BUCKET || process.env.R2_BUCKET || "obsidian-sync";
+  const endpoint = process.env.OBSIDIAN_R2_ENDPOINT || process.env.R2_ENDPOINT || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : "");
+  const requireR2 = process.env.OBSIDIAN_R2_REQUIRED === "true";
+
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
+    const message = "[obsidian-r2] Sync skipped: set R2_ACCOUNT_ID/CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY.";
+    if (requireR2) throw new Error(message);
+    console.log(message);
+    return;
+  }
+
+  const { S3Client, ListObjectsV2Command, GetObjectCommand } = await import("@aws-sdk/client-s3");
+  const client = new S3Client({
+    region: "auto",
+    endpoint,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+
+  await syncR2Collection({
+    client,
+    bucket,
+    label: "notes",
+    prefix: ensureTrailingSlash(process.env.OBSIDIAN_R2_NOTES_PREFIX || process.env.R2_NOTES_PREFIX || "Homepage/Notes/"),
+    outDir: path.join(root, "src/content/notes/obsidian"),
+    map: mapNote,
+    commands: { ListObjectsV2Command, GetObjectCommand },
+  });
+
+  await syncR2Collection({
+    client,
+    bucket,
+    label: "papers",
+    prefix: ensureTrailingSlash(process.env.OBSIDIAN_R2_PAPERS_PREFIX || process.env.R2_PAPERS_PREFIX || "Homepage/Papers/"),
+    outDir: path.join(root, "src/content/papers/obsidian"),
+    map: mapPaper,
+    commands: { ListObjectsV2Command, GetObjectCommand },
+  });
+}
 
 async function loadDotEnv(file) {
   try {
@@ -49,7 +103,7 @@ async function loadDotEnv(file) {
   }
 }
 
-async function syncCollection({ label, sourceDir, outDir, map }) {
+async function syncLocalCollection({ label, sourceDir, outDir, map, sourcePath }) {
   if (!(await exists(sourceDir))) {
     console.log(`[obsidian] ${label} skipped: ${sourceDir} does not exist.`);
     return;
@@ -66,7 +120,13 @@ async function syncCollection({ label, sourceDir, outDir, map }) {
   for (const file of files) {
     const raw = await fs.readFile(file, "utf8");
     const parsed = parseFrontmatter(raw);
-    const mapped = map({ file, sourceDir, frontmatter: parsed.data, body: parsed.body });
+    const sourceRelative = path.relative(sourceDir, file);
+    const mapped = map({
+      frontmatter: parsed.data,
+      body: parsed.body,
+      slugPath: sourceRelative,
+      sourcePath: sourcePath(file),
+    });
     if (!mapped || (mapped.data.draft && !syncDrafts)) continue;
 
     const target = path.join(outDir, `${mapped.slug}.md`);
@@ -78,11 +138,65 @@ async function syncCollection({ label, sourceDir, outDir, map }) {
   console.log(`[obsidian] Synced ${written} ${label} from ${sourceDir}.`);
 }
 
-function mapNote({ file, sourceDir, frontmatter: fm, body }) {
-  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(file);
+async function syncR2Collection({ client, bucket, label, prefix, outDir, map, commands }) {
+  if (cleanSync) {
+    await fs.rm(outDir, { recursive: true, force: true });
+  }
+  await fs.mkdir(outDir, { recursive: true });
+
+  const objects = await listR2Objects({ client, bucket, prefix, command: commands.ListObjectsV2Command });
+  let written = 0;
+
+  for (const object of objects) {
+    const key = object.Key;
+    if (!key || !key.endsWith(".md") || path.basename(key).startsWith(".")) continue;
+
+    const raw = await getR2Text({ client, bucket, key, command: commands.GetObjectCommand });
+    const parsed = parseFrontmatter(raw);
+    const mapped = map({
+      frontmatter: parsed.data,
+      body: parsed.body,
+      slugPath: key.slice(prefix.length),
+      sourcePath: key,
+    });
+    if (!mapped || (mapped.data.draft && !syncDrafts)) continue;
+
+    const target = path.join(outDir, `${mapped.slug}.md`);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, `${frontmatter(mapped.data)}\n${normalizeBody(parsed.body)}\n`, "utf8");
+    written += 1;
+  }
+
+  console.log(`[obsidian-r2] Synced ${written} ${label} from r2://${bucket}/${prefix}.`);
+}
+
+async function listR2Objects({ client, bucket, prefix, command }) {
+  const objects = [];
+  let ContinuationToken;
+
+  do {
+    const response = await client.send(new command({
+      Bucket: bucket,
+      Prefix: prefix,
+      ContinuationToken,
+    }));
+    objects.push(...(response.Contents || []));
+    ContinuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (ContinuationToken);
+
+  return objects;
+}
+
+async function getR2Text({ client, bucket, key, command }) {
+  const response = await client.send(new command({ Bucket: bucket, Key: key }));
+  return response.Body.transformToString();
+}
+
+function mapNote({ frontmatter: fm, body, slugPath, sourcePath }) {
+  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
   const tags = tagList(fm.tags ?? fm.tag);
   return {
-    slug: slugFrom(file, sourceDir, fm.slug),
+    slug: slugFrom(slugPath, fm.slug),
     data: {
       title,
       description: stringValue(fm.description) || stringValue(fm.summary) || excerpt(body),
@@ -91,17 +205,17 @@ function mapNote({ file, sourceDir, frontmatter: fm, body }) {
       tags,
       draft: shouldKeepPrivate(fm),
       source: "obsidian",
-      obsidianPath: relativeVaultPath(file),
+      obsidianPath: sourcePath,
     },
   };
 }
 
-function mapPaper({ file, sourceDir, frontmatter: fm, body }) {
-  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(file);
+function mapPaper({ frontmatter: fm, body, slugPath, sourcePath }) {
+  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
   const status = normalizeStatus(stringValue(fm.status) || "in preparation");
   const year = numberValue(fm.year) || Number((dateValue(fm.date) || today()).slice(0, 4));
   return {
-    slug: slugFrom(file, sourceDir, fm.slug),
+    slug: slugFrom(slugPath, fm.slug),
     data: {
       title,
       authors: listValue(fm.authors) || ["Jianheng Hu"],
@@ -114,7 +228,7 @@ function mapPaper({ file, sourceDir, frontmatter: fm, body }) {
       tags: tagList(fm.tags ?? fm.tag),
       draft: shouldKeepPrivate(fm),
       source: "obsidian",
-      obsidianPath: relativeVaultPath(file),
+      obsidianPath: sourcePath,
     },
   };
 }
@@ -280,9 +394,8 @@ function excerpt(body) {
     .slice(0, 180) || "Imported from Obsidian.";
 }
 
-function slugFrom(file, sourceDir, preferred) {
-  const relative = path.relative(sourceDir, file).replace(/\.md$/, "");
-  return slugify(preferred || relative);
+function slugFrom(slugPath, preferred) {
+  return slugify(preferred || String(slugPath).replace(/\.md$/, ""));
 }
 
 function slugify(value) {
@@ -295,8 +408,8 @@ function slugify(value) {
     .slice(0, 80) || "obsidian-note";
 }
 
-function relativeVaultPath(file) {
-  return path.relative(absoluteVault, file).split(path.sep).join("/");
+function ensureTrailingSlash(value) {
+  return value.endsWith("/") ? value : `${value}/`;
 }
 
 function normalizeStatus(status) {

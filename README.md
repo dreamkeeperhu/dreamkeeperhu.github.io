@@ -110,6 +110,6 @@ Cloudflare Pages:
 - Output directory: `dist`
 - `wrangler.toml` also declares `pages_build_output_dir = "dist"`.
 
-GitHub Pages:
+## Automatic Deployment
 
-- `.github/workflows/deploy.yml` builds the Astro site and deploys `dist`.
+GitHub Actions deploys the site to Cloudflare Pages on push, manually, by repository dispatch, and every 12 hours. During CI, the build pulls public Obsidian Markdown from R2 before rendering Astro. See `docs/auto-deploy.md`.
