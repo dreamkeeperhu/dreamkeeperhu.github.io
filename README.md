@@ -83,7 +83,7 @@ draft: false
 ---
 ```
 
-Draft notes are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`.
+Draft notes are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`. Obsidian notes are private by default; a file is published only when its frontmatter explicitly contains `draft: false`, `publish: true`, `public: true`, or `status: public`.
 
 This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/Notes` and `/Users/hu/Documents/Obsidian Vault/Homepage/Papers`. See `docs/obsidian-publishing.md` for the exact local workflow.
 

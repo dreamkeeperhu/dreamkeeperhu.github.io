@@ -54,3 +54,5 @@ Status must be one of:
 - `in preparation`
 
 Drafts are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`.
+
+Notes are private by default. A file is published only when its frontmatter explicitly contains `draft: false`, `publish: true`, `public: true`, or `status: public`.

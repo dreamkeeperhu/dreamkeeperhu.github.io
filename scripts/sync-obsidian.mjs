@@ -89,7 +89,7 @@ function mapNote({ file, sourceDir, frontmatter: fm, body }) {
       pubDate: dateValue(fm.pubDate || fm.date || fm.created) || today(),
       updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
       tags,
-      draft: boolValue(fm.draft) || stringValue(fm.status).toLowerCase() === "draft",
+      draft: shouldKeepPrivate(fm),
       source: "obsidian",
       obsidianPath: relativeVaultPath(file),
     },
@@ -112,6 +112,7 @@ function mapPaper({ file, sourceDir, frontmatter: fm, body }) {
       pdf: stringValue(fm.pdf) || undefined,
       code: stringValue(fm.code || fm.repository) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
+      draft: shouldKeepPrivate(fm),
       source: "obsidian",
       obsidianPath: relativeVaultPath(file),
     },
@@ -227,6 +228,18 @@ function numberValue(value) {
 
 function boolValue(value) {
   return value === true || String(value).toLowerCase() === "true";
+}
+
+function shouldKeepPrivate(fm) {
+  const status = stringValue(fm.status).toLowerCase();
+  if (boolValue(fm.draft) || status === "draft" || status === "private") return true;
+  return !isExplicitlyPublic(fm);
+}
+
+function isExplicitlyPublic(fm) {
+  if (Object.hasOwn(fm, "draft") && String(fm.draft).toLowerCase() === "false") return true;
+  if (boolValue(fm.publish) || boolValue(fm.public)) return true;
+  return stringValue(fm.status).toLowerCase() === "public";
 }
 
 function listValue(value) {
