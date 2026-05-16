@@ -1,7 +1,7 @@
 import type { CollectionEntry } from "astro:content";
 
 export function noteSlug(note: CollectionEntry<"notes">) {
-  return note.id.replace(/^obsidian\//, "");
+  return note.id.replace(/^(notion|obsidian)\//, "");
 }
 
 export function noteHref(note: CollectionEntry<"notes">) {

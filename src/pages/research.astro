@@ -2,7 +2,9 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-const papers = (await getCollection("papers")).sort((a, b) => b.data.year - a.data.year);
+const papers = (await getCollection("papers"))
+  .filter((paper) => !paper.data.draft)
+  .sort((a, b) => b.data.year - a.data.year);
 ---
 
 <BaseLayout current="Research" title="Research | HJH">

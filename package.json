@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
+    "notion:sync": "node scripts/sync-notion.mjs",
     "obsidian:sync": "node scripts/sync-obsidian.mjs",
-    "prebuild": "node scripts/sync-obsidian.mjs",
+    "content:sync": "node scripts/sync-notion.mjs",
+    "content:sync:all": "node scripts/sync-notion.mjs && node scripts/sync-obsidian.mjs",
+    "prebuild": "node scripts/sync-notion.mjs",
     "build": "astro build",
     "preview": "astro preview"
   },
@@ -14,5 +17,8 @@
     "@astrojs/rss": "^4.0.18",
     "astro": "^6.3.3",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@notionhq/client": "^5.21.0"
   }
 }

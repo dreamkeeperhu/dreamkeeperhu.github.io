@@ -520,6 +520,86 @@ img {
   color: rgba(255, 255, 255, 0.68);
 }
 
+.direction-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  border-left: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.032) 1px, transparent 1px),
+    var(--paper);
+  background-size: 96px 96px;
+}
+
+.direction-copy {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 72px 80px;
+}
+
+.direction-copy h2 {
+  max-width: 900px;
+  margin: 24px 0 0;
+  font-size: clamp(42px, 7vw, 92px);
+  line-height: 0.94;
+  font-weight: 850;
+}
+
+.direction-copy p {
+  max-width: 720px;
+  margin: 30px 0 0;
+  color: var(--muted);
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-size: 21px;
+  line-height: 1.8;
+}
+
+.direction-steps {
+  border-left: 1px solid var(--hairline);
+}
+
+.direction-steps a {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 34px 44px;
+  border-top: 1px solid var(--hairline);
+  transition: color 180ms ease, background 180ms ease;
+}
+
+.direction-steps a:first-child {
+  border-top: 0;
+}
+
+.direction-steps span {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  transition: color 180ms ease;
+}
+
+.direction-steps strong {
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.08;
+}
+
+.direction-steps a:hover,
+.direction-steps a:focus-visible {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.direction-steps a:hover span,
+.direction-steps a:focus-visible span {
+  color: color-mix(in srgb, var(--paper) 68%, transparent);
+}
+
 .split-section,
 .contact-section {
   border: 1px solid var(--hairline);
@@ -1378,7 +1458,9 @@ html[data-theme="dark"] .theme-moon {
 
 html[data-theme="dark"] .content-hero,
 html[data-theme="dark"] .profile-title,
-html[data-theme="dark"] .profile-copy {
+html[data-theme="dark"] .profile-copy,
+html[data-theme="dark"] .direction-board,
+html[data-theme="dark"] .notion-hero {
   background:
     linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
@@ -1829,6 +1911,147 @@ html[data-theme="dark"] .profile-copy {
   min-height: 160px;
 }
 
+.notion-hero {
+  background:
+    radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 28%),
+    linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+    var(--paper);
+  background-size: auto, 120px 120px, 120px 120px, auto;
+}
+
+.notion-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-left: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.notion-flow article {
+  min-height: 320px;
+  padding: 34px;
+}
+
+.notion-flow article + article {
+  border-left: 1px solid var(--hairline);
+}
+
+.notion-flow span,
+.schema-grid span,
+.notion-alt span {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.notion-flow h2,
+.schema-grid h3,
+.notion-env h2 {
+  margin: 42px 0 16px;
+  font-size: clamp(28px, 4vw, 46px);
+  line-height: 1.04;
+}
+
+.notion-flow p,
+.notion-env p,
+.schema-grid li,
+.notion-alt p {
+  color: var(--muted);
+}
+
+.notion-schema,
+.notion-env,
+.notion-alt {
+  border-left: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.schema-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.schema-grid article {
+  min-height: 300px;
+  padding: 36px;
+  border-top: 1px solid var(--hairline);
+}
+
+.schema-grid article + article {
+  border-left: 1px solid var(--hairline);
+}
+
+.schema-grid ul {
+  margin: 20px 0 0;
+  padding-left: 18px;
+}
+
+.schema-grid li + li {
+  margin-top: 8px;
+}
+
+.notion-env {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.72fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  padding: 54px 80px;
+}
+
+.notion-env h2 {
+  margin-top: 24px;
+}
+
+.notion-env pre {
+  margin: 0;
+  padding: 28px;
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  background: var(--paper-soft);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.notion-env code,
+.schema-grid code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+}
+
+.notion-env h2 code {
+  font-size: 0.78em;
+}
+
+.notion-alt a {
+  min-height: 164px;
+  display: grid;
+  grid-template-columns: 170px minmax(260px, 0.6fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  padding: 32px 80px;
+  transition: color 180ms ease, background 180ms ease;
+}
+
+.notion-alt strong {
+  font-size: clamp(26px, 4vw, 48px);
+  line-height: 1.04;
+}
+
+.notion-alt a:hover,
+.notion-alt a:focus-visible {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.notion-alt a:hover span,
+.notion-alt a:hover p,
+.notion-alt a:focus-visible span,
+.notion-alt a:focus-visible p {
+  color: color-mix(in srgb, var(--paper) 68%, transparent);
+}
+
 .writing-grid article {
   min-height: 330px;
 }
@@ -1836,20 +2059,24 @@ html[data-theme="dark"] .profile-copy {
 @media (max-width: 1024px) {
   .github-grid,
   .cv-layout,
-  .now-grid {
+  .now-grid,
+  .direction-board,
+  .notion-env {
     grid-template-columns: 1fr;
   }
 
   .github-live-panel + .github-live-panel,
   .cv-document,
-  .now-grid article:nth-child(2n) {
+  .now-grid article:nth-child(2n),
+  .direction-steps {
     border-left: 0;
     border-right: 0;
   }
 
   .github-live-panel + .github-live-panel,
   .pdf-preview,
-  .now-grid article {
+  .now-grid article,
+  .direction-steps {
     border-top: 1px solid var(--hairline);
   }
 
@@ -1859,6 +2086,20 @@ html[data-theme="dark"] .profile-copy {
 
   .now-grid article:first-child {
     border-top: 0;
+  }
+
+  .notion-flow,
+  .schema-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .notion-flow article:nth-child(odd),
+  .schema-grid article:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .notion-flow article:nth-child(n + 3) {
+    border-top: 1px solid var(--hairline);
   }
 }
 
@@ -1876,7 +2117,11 @@ html[data-theme="dark"] .profile-copy {
   .paper-item > div:last-child,
   .cv-document,
   .pdf-preview,
-  .now-grid article {
+  .now-grid article,
+  .direction-copy,
+  .direction-steps a,
+  .notion-flow article,
+  .schema-grid article {
     padding: 28px 24px;
   }
 
@@ -1924,6 +2169,35 @@ html[data-theme="dark"] .profile-copy {
 
   .pdf-mobile-note {
     display: block;
+  }
+
+  .direction-copy {
+    min-height: 360px;
+  }
+
+  .direction-copy p {
+    font-size: 17px;
+  }
+
+  .notion-flow,
+  .schema-grid,
+  .notion-alt a {
+    grid-template-columns: 1fr;
+  }
+
+  .notion-flow article + article,
+  .schema-grid article + article {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .notion-env {
+    padding: 34px 24px;
+  }
+
+  .notion-alt a {
+    gap: 12px;
+    padding: 28px 24px;
   }
 }
 

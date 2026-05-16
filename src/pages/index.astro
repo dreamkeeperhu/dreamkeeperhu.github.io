@@ -23,7 +23,7 @@ const copies = Array.from({ length: 18 });
             <h1>HELLO, I'M HJH</h1>
             <div class="hero-strip" aria-label="Homepage summary">
               <span>{profile.tagline}</span>
-              <span>Robotics instruction / Sim-to-real / New robotics paradigm</span>
+              <span>Robotics instruction / Sim-to-real / Notion publishing</span>
               <span>{profile.email}</span>
             </div>
             <div class="alt-layer" aria-hidden="true">
@@ -90,16 +90,38 @@ const copies = Array.from({ length: 18 });
       <span>CV</span>
       <strong>Resume PDF & Preview</strong>
     </a>
-    <a href="/research">
-      <span>Current Focus</span>
-      <strong>Sim-to-real robotics</strong>
+    <a href="/notion">
+      <span>Writing Source</span>
+      <strong>Notion → Astro</strong>
     </a>
+  </section>
+
+  <section class="direction-board reveal" aria-label="Homepage direction board">
+    <div class="direction-copy">
+      <span class="eyebrow">Current Operating System</span>
+      <h2>Research, tools, and notes should feel like one live surface.</h2>
+      <p>My homepage now treats Notion as the source of public writing, Astro as the static renderer, GitHub as the project trace, and Cloudflare as the fast edge.</p>
+    </div>
+    <div class="direction-steps">
+      <a href="/research">
+        <span>Research</span>
+        <strong>Sim-to-real robotics and adaptive scheduling</strong>
+      </a>
+      <a href="/notion">
+        <span>Writing</span>
+        <strong>Public notes pulled from Notion at build time</strong>
+      </a>
+      <a href="#github">
+        <span>Projects</span>
+        <strong>GitHub repos and contribution activity stay live</strong>
+      </a>
+    </div>
   </section>
 
   <section class="split-section">
     <div class="section-head">
       <h2>Field Notes</h2>
-      <p>这个站点现在会收纳简历、论文进展、Markdown notes、当前状态和公开项目。静态优先，但该动态的地方会动态。</p>
+      <p>这个站点现在会收纳简历、论文进展、Notion notes、当前状态和公开项目。它保持静态优先，但写作和 GitHub 会在构建或访问时自动更新。</p>
     </div>
     <div class="row-list">
       <a class="list-row" href="/about">
@@ -122,15 +144,23 @@ const copies = Array.from({ length: 18 });
         <span class="row-index">03</span>
         <span class="row-copy">
           <strong>Blog / Notes</strong>
-          <small>Markdown posts from Astro or Obsidian, with tags, RSS, and client-side search.</small>
+          <small>Public writing synced from Notion, rendered as Markdown pages with tags, RSS, and client-side search.</small>
         </span>
         <span class="row-arrow">→</span>
       </a>
-      <a class="list-row" href="/writing">
+      <a class="list-row" href="/notion">
         <span class="row-index">04</span>
         <span class="row-copy">
-          <strong>Obsidian Writing System</strong>
-          <small>Write in a local vault, sync selected notes into the public site, and keep drafts private.</small>
+          <strong>Notion Publishing System</strong>
+          <small>Use Notion as the default CMS, pull public database items at build time, and keep drafts private.</small>
+        </span>
+        <span class="row-arrow">→</span>
+      </a>
+      <a class="list-row" href="/obsidian">
+        <span class="row-index">05</span>
+        <span class="row-copy">
+          <strong>Obsidian Fallback</strong>
+          <small>Local vault sync remains available when a private, file-first workflow is useful.</small>
         </span>
         <span class="row-arrow">→</span>
       </a>

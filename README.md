@@ -1,6 +1,6 @@
 # HJH Personal Homepage
 
-Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research, notes, Now, friends, dynamic GitHub data, RSS, dark mode, and privacy-friendly analytics hooks.
+Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research, notes, Now, friends, Notion-backed publishing, dynamic GitHub data, RSS, dark mode, and privacy-friendly analytics hooks.
 
 ## Local Development
 
@@ -19,16 +19,59 @@ The generated site is in `dist/`.
 
 ## Content
 
-- Notes: `src/content/notes/*.md`, or synced from Obsidian into `src/content/notes/obsidian/`
-- Papers: `src/content/papers/*.md`
+- Notes: `src/content/notes/*.md`, or synced from Notion into `src/content/notes/notion/`
+- Papers: `src/content/papers/*.md`, or synced from Notion into `src/content/papers/notion/`
 - Pages: `src/pages/`
 - Shared layout: `src/layouts/BaseLayout.astro`
 - Public CV PDF: `public/cv/jianheng-hu-cv.pdf`
 - Paper PDFs: `public/papers/`
 
-This is Obsidian + Git friendly: write Markdown directly in `src/content/notes`, or set `OBSIDIAN_VAULT_PATH` and sync selected folders from a local vault.
+Notion is the default writing source. You can still write Markdown directly in `src/content/notes`, and Obsidian remains available as a local fallback.
+
+## Notion Sync
+
+Create `.env.local` from `.env.example`:
+
+```bash
+NOTION_API_KEY=secret_xxx
+NOTION_NOTES_DATA_SOURCE_ID=your_notes_data_source_id
+NOTION_PAPERS_DATA_SOURCE_ID=your_papers_data_source_id
+NOTION_SYNC_DRAFTS=false
+```
+
+You can also use `NOTION_NOTES_DATABASE_ID` and `NOTION_PAPERS_DATABASE_ID`; the script will retrieve the first data source under each database.
+
+Then run:
+
+```bash
+npm run notion:sync
+```
+
+Builds run Notion sync automatically before Astro:
+
+```bash
+npm run build
+```
+
+Suggested Notes database properties:
+
+```text
+Name / Title: title
+Description / Summary: text
+Date / Published: date
+Tags: multi-select
+Status: status or select
+Draft: checkbox
+Slug: text, optional
+```
+
+Suggested Papers database properties: `Name`, `Authors`, `Status`, `Year`, `Venue`, `Abstract`, `PDF`, `Code`, and `Tags`.
+
+Draft notes are skipped unless `NOTION_SYNC_DRAFTS=true`.
 
 ## Obsidian Sync
+
+Obsidian is optional now. Use it when you prefer a private local vault.
 
 Create `.env.local` from `.env.example`:
 
@@ -70,6 +113,7 @@ Draft notes are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`.
 
 - GitHub repositories: fetched client-side from the GitHub REST API.
 - GitHub contribution graph: fetched client-side from a public contribution API.
+- Notion publishing: fetched server-side at build time from the Notion API.
 - Article search: client-side filtering on `/notes`.
 - Global search: generated at `/search.json` and used by `/search`.
 - Tags: generated from note frontmatter at `/tags`.

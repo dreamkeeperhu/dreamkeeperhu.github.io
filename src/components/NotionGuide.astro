@@ -1,0 +1,102 @@
+---
+const commands = [
+  "npm run notion:sync",
+  "npm run build",
+];
+---
+
+<section class="content-hero notion-hero">
+  <span class="eyebrow">Default Writing System</span>
+  <h1>Notion as the publishing cockpit</h1>
+  <p>Write in Notion, mark what is public, and let the build pull clean Markdown into Astro. The API key stays in the build environment and never ships to the browser.</p>
+  <div class="hero-actions">
+    <a class="button-primary" href="/notes">Read notes</a>
+    <a class="button-secondary" href="/search">Search site</a>
+  </div>
+</section>
+
+<section class="notion-flow" aria-label="Notion publishing workflow">
+  <article>
+    <span>01</span>
+    <h2>Create an internal integration</h2>
+    <p>在 Notion 开发者面板创建 internal integration，复制 API secret，并确保它有 read content 权限。</p>
+  </article>
+  <article>
+    <span>02</span>
+    <h2>Share your databases</h2>
+    <p>把 Notes 和 Papers 数据库通过 Add connections 分享给这个 integration。没有分享时，Notion API 会返回 404。</p>
+  </article>
+  <article>
+    <span>03</span>
+    <h2>Set environment variables</h2>
+    <p>在本地或 Cloudflare Pages 里设置 Notion secret 和 data source ID。也可以填 database ID，脚本会自动读取第一个 data source。</p>
+  </article>
+  <article>
+    <span>04</span>
+    <h2>Build static pages</h2>
+    <p>构建时同步公开内容，生成 Notes、Research、RSS、Search 和 Tags。草稿默认不会发布。</p>
+  </article>
+</section>
+
+<section class="notion-schema">
+  <div class="section-head compact-head">
+    <h2>Database Shape</h2>
+    <p>字段名不需要完全固定，脚本会识别常见英文和中文命名。最少只需要一个标题字段；其余字段用于更好的摘要、标签、日期和发布控制。</p>
+  </div>
+
+  <div class="schema-grid">
+    <article>
+      <span>Notes</span>
+      <h3>建议字段</h3>
+      <ul>
+        <li>Name / Title: title</li>
+        <li>Description / Summary: text</li>
+        <li>Date / Published: date</li>
+        <li>Tags: multi-select</li>
+        <li>Status: status or select</li>
+        <li>Draft: checkbox</li>
+        <li>Slug: text, optional</li>
+      </ul>
+    </article>
+    <article>
+      <span>Papers</span>
+      <h3>建议字段</h3>
+      <ul>
+        <li>Name / Title: title</li>
+        <li>Authors: text or multi-select</li>
+        <li>Status: under review / preprint / published / in preparation</li>
+        <li>Year, Venue, Abstract</li>
+        <li>PDF and Code links</li>
+        <li>Tags: multi-select</li>
+      </ul>
+    </article>
+    <article>
+      <span>Commands</span>
+      <h3>同步命令</h3>
+      <ul>
+        {commands.map((command) => <li><code>{command}</code></li>)}
+      </ul>
+    </article>
+  </div>
+</section>
+
+<section class="notion-env">
+  <div>
+    <span class="eyebrow">Environment</span>
+    <h2>Paste this into <code>.env.local</code></h2>
+    <p>线上部署时，把同样的变量加到 Cloudflare Pages 的 Environment variables。不要把真实 secret 提交进 Git。</p>
+  </div>
+  <pre><code>NOTION_API_KEY=secret_xxx
+NOTION_NOTES_DATA_SOURCE_ID=your_notes_data_source_id
+NOTION_PAPERS_DATA_SOURCE_ID=your_papers_data_source_id
+NOTION_SYNC_DRAFTS=false
+NOTION_CLEAN_SYNC=true</code></pre>
+</section>
+
+<section class="notion-alt">
+  <a href="/obsidian">
+    <span>Local fallback</span>
+    <strong>Prefer a private local vault?</strong>
+    <p>Obsidian 同步仍然保留，但现在默认发布流已经切到 Notion。</p>
+  </a>
+</section>

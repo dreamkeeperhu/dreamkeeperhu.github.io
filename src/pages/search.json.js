@@ -3,7 +3,7 @@ import { noteHref } from "../utils/content";
 
 export async function GET() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
-  const papers = await getCollection("papers");
+  const papers = (await getCollection("papers")).filter((paper) => !paper.data.draft);
 
   const items = [
     ...notes.map((note) => ({

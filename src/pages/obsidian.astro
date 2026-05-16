@@ -1,0 +1,34 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout current="Obsidian" title="Obsidian Fallback | HJH">
+  <section class="content-hero">
+    <span class="eyebrow">Optional Local Workflow</span>
+    <h1>Obsidian stays as a private fallback</h1>
+    <p>Notion is now the default publishing source. Obsidian remains useful when you want a local-first vault and only export selected folders during build.</p>
+  </section>
+
+  <section class="now-grid writing-grid">
+    <article>
+      <span>01</span>
+      <h2>Write locally</h2>
+      <p>Use normal Markdown notes in your vault. Frontmatter such as title, description, date, tags, draft, status, abstract, pdf, and code is understood by the sync script.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h2>Sync selected folders</h2>
+      <p>The Obsidian sync script copies selected Notes and Papers folders from your vault into generated content folders. Drafts stay private unless explicitly enabled.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h2>Keep secrets local</h2>
+      <p>Your vault path belongs in a local environment file. The static site only receives the Markdown that you choose to export.</p>
+    </article>
+    <article>
+      <span>04</span>
+      <h2>Run on demand</h2>
+      <p>Use Obsidian sync manually when you want it. The default build path now pulls from Notion instead.</p>
+    </article>
+  </section>
+</BaseLayout>
