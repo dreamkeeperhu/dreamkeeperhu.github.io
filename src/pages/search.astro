@@ -1,0 +1,68 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout current="Search" title="Search | HJH">
+  <section class="content-hero">
+    <span class="eyebrow">Search</span>
+    <h1>Find notes, papers, and pages</h1>
+    <p>A small local search over generated site content. It works from a static JSON index, so there is no search server to maintain.</p>
+  </section>
+
+  <section class="notes-tools">
+    <label for="global-search">Search site</label>
+    <input id="global-search" type="search" placeholder="Try sim-to-real, Astro, CV, robotics..." data-global-search />
+  </section>
+
+  <section class="notes-list" data-search-results>
+    <p class="muted">Start typing to search generated content.</p>
+  </section>
+
+  <script is:inline>
+    const input = document.querySelector("[data-global-search]");
+    const results = document.querySelector("[data-search-results]");
+    let index = [];
+
+    fetch("/search.json")
+      .then((response) => response.json())
+      .then((items) => {
+        index = items.map((item) => ({
+          ...item,
+          haystack: `${item.title} ${item.description} ${(item.tags || []).join(" ")} ${item.type}`.toLowerCase(),
+        }));
+      })
+      .catch(() => {
+        results.innerHTML = '<p class="muted">Search index is not available right now.</p>';
+      });
+
+    input?.addEventListener("input", () => {
+      const query = input.value.trim().toLowerCase();
+      if (!query) {
+        results.innerHTML = '<p class="muted">Start typing to search generated content.</p>';
+        return;
+      }
+
+      const matches = index.filter((item) => item.haystack.includes(query)).slice(0, 12);
+      results.innerHTML = matches.length
+        ? matches.map((item) => `
+          <a class="note-row" href="${item.url}">
+            <span>${item.type} · ${item.date}</span>
+            <strong>${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.description)}</p>
+            <em>${escapeHtml((item.tags || []).join(" · "))}</em>
+          </a>
+        `).join("")
+        : '<p class="muted">No results yet.</p>';
+    });
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      }[char]));
+    }
+  </script>
+</BaseLayout>

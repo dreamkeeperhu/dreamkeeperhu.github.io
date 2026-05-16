@@ -19,20 +19,60 @@ The generated site is in `dist/`.
 
 ## Content
 
-- Notes: `src/content/notes/*.md`
+- Notes: `src/content/notes/*.md`, or synced from Obsidian into `src/content/notes/obsidian/`
 - Papers: `src/content/papers/*.md`
 - Pages: `src/pages/`
 - Shared layout: `src/layouts/BaseLayout.astro`
 - Public CV PDF: `public/cv/jianheng-hu-cv.pdf`
 - Paper PDFs: `public/papers/`
 
-This is Obsidian + Git friendly: write Markdown in `src/content/notes`, commit, and the site renders list pages, single pages, and RSS automatically.
+This is Obsidian + Git friendly: write Markdown directly in `src/content/notes`, or set `OBSIDIAN_VAULT_PATH` and sync selected folders from a local vault.
+
+## Obsidian Sync
+
+Create `.env.local` from `.env.example`:
+
+```bash
+OBSIDIAN_VAULT_PATH=/absolute/path/to/your/vault
+OBSIDIAN_NOTES_DIR=Notes
+OBSIDIAN_PAPERS_DIR=Papers
+OBSIDIAN_SYNC_DRAFTS=false
+```
+
+Then run:
+
+```bash
+npm run obsidian:sync
+```
+
+The script copies public notes into:
+
+- `src/content/notes/obsidian/`
+- `src/content/papers/obsidian/`
+
+Supported frontmatter:
+
+```yaml
+---
+title: My note
+description: One sentence summary
+date: 2026-05-16
+tags: [robotics, sim-to-real]
+draft: false
+---
+```
+
+For papers, also use `status`, `authors`, `year`, `venue`, `abstract`, `pdf`, and `code`.
+
+Draft notes are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`.
 
 ## Dynamic Features
 
 - GitHub repositories: fetched client-side from the GitHub REST API.
 - GitHub contribution graph: fetched client-side from a public contribution API.
 - Article search: client-side filtering on `/notes`.
+- Global search: generated at `/search.json` and used by `/search`.
+- Tags: generated from note frontmatter at `/tags`.
 - Email subscription: set `PUBLIC_SUBSCRIBE_ACTION` to a provider endpoint. Without it, the form falls back to a mailto subscription request.
 - Analytics: set either Plausible or Umami environment variables:
   - `PUBLIC_PLAUSIBLE_DOMAIN`

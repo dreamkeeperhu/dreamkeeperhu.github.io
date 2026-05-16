@@ -10,6 +10,8 @@ const notes = defineCollection({
     updatedDate: z.coerce.date().optional(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
+    source: z.string().optional(),
+    obsidianPath: z.string().optional(),
   }),
 });
 
@@ -25,6 +27,8 @@ const papers = defineCollection({
     pdf: z.string().optional(),
     code: z.string().optional(),
     tags: z.array(z.string()).default([]),
+    source: z.string().optional(),
+    obsidianPath: z.string().optional(),
   }),
 });
 

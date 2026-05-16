@@ -1623,6 +1623,23 @@ html[data-theme="dark"] .profile-copy {
   font: inherit;
 }
 
+.tool-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tool-links a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .notes-list,
 .friends-list {
   padding: 18px 80px;
@@ -1806,6 +1823,14 @@ html[data-theme="dark"] .profile-copy {
 .subscribe-form p {
   max-width: 760px;
   color: var(--muted);
+}
+
+.tag-cloud a {
+  min-height: 160px;
+}
+
+.writing-grid article {
+  min-height: 330px;
 }
 
 @media (max-width: 1024px) {

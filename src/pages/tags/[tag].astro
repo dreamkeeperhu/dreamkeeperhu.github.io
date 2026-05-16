@@ -1,0 +1,34 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { noteHref, tagCounts, tagSlug } from "../../utils/content";
+
+export async function getStaticPaths() {
+  const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
+  return tagCounts(notes).map(([tag]) => ({
+    params: { tag: tagSlug(tag) },
+    props: { tag, notes: notes.filter((note) => note.data.tags.includes(tag)) },
+  }));
+}
+
+const { tag, notes } = Astro.props;
+---
+
+<BaseLayout current="Tags" title={`#${tag} | HJH Notes`}>
+  <section class="content-hero">
+    <span class="eyebrow">Tag</span>
+    <h1>#{tag}</h1>
+    <p>{notes.length} note{notes.length === 1 ? "" : "s"} collected under this topic.</p>
+  </section>
+
+  <section class="notes-list">
+    {notes.map((note) => (
+      <a class="note-row" href={noteHref(note)}>
+        <span>{note.data.pubDate.toISOString().slice(0, 10)}</span>
+        <strong>{note.data.title}</strong>
+        <p>{note.data.description}</p>
+        <em>{note.data.tags.join(" · ")}</em>
+      </a>
+    ))}
+  </section>
+</BaseLayout>

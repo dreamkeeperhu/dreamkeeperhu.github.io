@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
+    "obsidian:sync": "node scripts/sync-obsidian.mjs",
+    "prebuild": "node scripts/sync-obsidian.mjs",
     "build": "astro build",
     "preview": "astro preview"
   },

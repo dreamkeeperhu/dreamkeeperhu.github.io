@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SubscribeForm from "../../components/SubscribeForm.astro";
+import { noteHref } from "../../utils/content";
 
 const notes = (await getCollection("notes"))
   .filter((note) => !note.data.draft)
@@ -18,13 +19,18 @@ const notes = (await getCollection("notes"))
   <section class="notes-tools">
     <label for="note-search">Search articles</label>
     <input id="note-search" type="search" placeholder="Search title, tag, or description" data-note-search />
+    <div class="tool-links">
+      <a href="/tags">Browse tags</a>
+      <a href="/search">Search everything</a>
+      <a href="/writing">Obsidian workflow</a>
+    </div>
   </section>
 
   <section class="notes-list" data-notes-list>
     {notes.map((note) => (
       <a
         class="note-row"
-        href={`/notes/${note.id}`}
+        href={noteHref(note)}
         data-title={`${note.data.title} ${note.data.description} ${note.data.tags.join(" ")}`.toLowerCase()}
       >
         <span>{note.data.pubDate.toISOString().slice(0, 10)}</span>

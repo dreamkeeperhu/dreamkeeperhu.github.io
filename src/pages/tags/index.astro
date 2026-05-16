@@ -1,0 +1,26 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { tagCounts, tagSlug } from "../../utils/content";
+
+const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
+const tags = tagCounts(notes);
+---
+
+<BaseLayout current="Tags" title="Tags | HJH Notes">
+  <section class="content-hero">
+    <span class="eyebrow">Tags</span>
+    <h1>Topics across notes</h1>
+    <p>Tags are generated from Markdown frontmatter, including notes synced from Obsidian.</p>
+  </section>
+
+  <section class="friends-list tag-cloud">
+    {tags.map(([tag, count]) => (
+      <a href={`/tags/${tagSlug(tag)}`}>
+        <span>{count} note{count === 1 ? "" : "s"}</span>
+        <strong>#{tag}</strong>
+        <p>Open all notes tagged with {tag}.</p>
+      </a>
+    ))}
+  </section>
+</BaseLayout>
