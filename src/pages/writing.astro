@@ -1,8 +1,33 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import NotionGuide from "../components/NotionGuide.astro";
 ---
 
-<BaseLayout current="Notion" title="Writing System | HJH">
-  <NotionGuide />
+<BaseLayout current="Writing" title="Writing | HJH">
+  <section class="content-hero writing-hero">
+    <span class="eyebrow">Writing</span>
+    <h1>Notes, experiments, and rough thinking</h1>
+    <p>This is the public writing shelf: selected research notes, project logs, and short essays that are ready to leave the private workspace.</p>
+    <div class="hero-actions">
+      <a class="button-primary" href="/notes">Read notes</a>
+      <a class="button-secondary" href="/rss.xml">RSS</a>
+    </div>
+  </section>
+
+  <section class="writing-board">
+    <article>
+      <span>01</span>
+      <h2>Research Notes</h2>
+      <p>Robotics instruction, sim-to-real transfer, embodied intelligence, and questions that may become experiments later.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h2>Project Logs</h2>
+      <p>Small tools, interface prototypes, scheduling experiments, and implementation notes that are useful enough to keep public.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h2>Now Updates</h2>
+      <p>A lighter trail of current focus: what I am reading, building, testing, or trying to understand next.</p>
+    </article>
+  </section>
 </BaseLayout>

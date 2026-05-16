@@ -2,11 +2,21 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import GitHubPanel from "../components/GitHubPanel.astro";
 import SubscribeForm from "../components/SubscribeForm.astro";
+import { getCollection } from "astro:content";
 import { profile, publicCv } from "../data/profile";
 import { asset } from "../utils/cdn";
+import { noteHref } from "../utils/content";
 
 const rows = Array.from({ length: 11 });
 const copies = Array.from({ length: 18 });
+const latestNotes = (await getCollection("notes"))
+  .filter((note) => !note.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 2);
+const latestPapers = (await getCollection("papers"))
+  .filter((paper) => !paper.data.draft)
+  .sort((a, b) => b.data.year - a.data.year)
+  .slice(0, 1);
 ---
 
 <BaseLayout current="Home" title="HJH | dreamkeeperhu">
@@ -23,7 +33,7 @@ const copies = Array.from({ length: 18 });
             <h1>HELLO, I'M HJH</h1>
             <div class="hero-strip" aria-label="Homepage summary">
               <span>{profile.tagline}</span>
-              <span>Robotics instruction / Sim-to-real / Notion publishing</span>
+              <span>Robotics instruction / Sim-to-real / Public research notes</span>
               <span>{profile.email}</span>
             </div>
             <div class="alt-layer" aria-hidden="true">
@@ -90,26 +100,26 @@ const copies = Array.from({ length: 18 });
       <span>CV</span>
       <strong>Resume PDF & Preview</strong>
     </a>
-    <a href="/notion">
-      <span>Writing Source</span>
-      <strong>Notion → Astro</strong>
+    <a href="/notes">
+      <span>Writing</span>
+      <strong>Notes & Research Logs</strong>
     </a>
   </section>
 
   <section class="direction-board reveal" aria-label="Homepage direction board">
     <div class="direction-copy">
-      <span class="eyebrow">Current Operating System</span>
-      <h2>Research, tools, and notes should feel like one live surface.</h2>
-      <p>My homepage now treats Notion as the source of public writing, Astro as the static renderer, GitHub as the project trace, and Cloudflare as the fast edge.</p>
+      <span class="eyebrow">Current Surface</span>
+      <h2>Research, tools, and notes should feel connected.</h2>
+      <p>This homepage is the public layer for my robotics direction: papers, prototypes, project traces, and selected notes from a private writing workspace.</p>
     </div>
     <div class="direction-steps">
       <a href="/research">
         <span>Research</span>
         <strong>Sim-to-real robotics and adaptive scheduling</strong>
       </a>
-      <a href="/notion">
+      <a href="/notes">
         <span>Writing</span>
-        <strong>Public notes pulled from Notion at build time</strong>
+        <strong>Selected notes, essays, and project logs</strong>
       </a>
       <a href="#github">
         <span>Projects</span>
@@ -118,10 +128,39 @@ const copies = Array.from({ length: 18 });
     </div>
   </section>
 
+  <section class="latest-board reveal" aria-label="Latest public work">
+    <div class="section-head compact-head">
+      <h2>Latest Work</h2>
+      <p>最近公开的文章和研究条目会在这里汇总。这里展示的是访客应该看到的内容，写作工具和同步配置留在后台。</p>
+    </div>
+    <div class="latest-grid">
+      <article>
+        <span class="panel-kicker">Notes</span>
+        {latestNotes.map((note) => (
+          <a class="mini-entry" href={noteHref(note)}>
+            <time datetime={note.data.pubDate.toISOString()}>{note.data.pubDate.toISOString().slice(0, 10)}</time>
+            <strong>{note.data.title}</strong>
+            <p>{note.data.description}</p>
+          </a>
+        ))}
+      </article>
+      <article>
+        <span class="panel-kicker">Research</span>
+        {latestPapers.map((paper) => (
+          <a class="mini-entry" href="/research">
+            <time>{paper.data.status} · {paper.data.year}</time>
+            <strong>{paper.data.title}</strong>
+            <p>{paper.data.abstract}</p>
+          </a>
+        ))}
+      </article>
+    </div>
+  </section>
+
   <section class="split-section">
     <div class="section-head">
       <h2>Field Notes</h2>
-      <p>这个站点现在会收纳简历、论文进展、Notion notes、当前状态和公开项目。它保持静态优先，但写作和 GitHub 会在构建或访问时自动更新。</p>
+      <p>这个站点会收纳简历、论文进展、公开 notes、当前状态和项目痕迹。内部写作可以保持私密，前台只留下整理后的结果。</p>
     </div>
     <div class="row-list">
       <a class="list-row" href="/about">
@@ -144,23 +183,23 @@ const copies = Array.from({ length: 18 });
         <span class="row-index">03</span>
         <span class="row-copy">
           <strong>Blog / Notes</strong>
-          <small>Public writing synced from Notion, rendered as Markdown pages with tags, RSS, and client-side search.</small>
+          <small>Selected public notes rendered as Markdown pages with tags, RSS, and client-side search.</small>
         </span>
         <span class="row-arrow">→</span>
       </a>
-      <a class="list-row" href="/notion">
+      <a class="list-row" href="/research">
         <span class="row-index">04</span>
         <span class="row-copy">
-          <strong>Notion Publishing System</strong>
-          <small>Use Notion as the default CMS, pull public database items at build time, and keep drafts private.</small>
+          <strong>Research Progress</strong>
+          <small>Papers, drafts, abstracts, PDFs, and status labels in one place.</small>
         </span>
         <span class="row-arrow">→</span>
       </a>
-      <a class="list-row" href="/obsidian">
+      <a class="list-row" href="#github">
         <span class="row-index">05</span>
         <span class="row-copy">
-          <strong>Obsidian Fallback</strong>
-          <small>Local vault sync remains available when a private, file-first workflow is useful.</small>
+          <strong>Projects</strong>
+          <small>GitHub repositories and contribution activity, refreshed from the public API.</small>
         </span>
         <span class="row-arrow">→</span>
       </a>

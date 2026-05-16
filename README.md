@@ -1,6 +1,6 @@
 # HJH Personal Homepage
 
-Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research, notes, Now, friends, Notion-backed publishing, dynamic GitHub data, RSS, dark mode, and privacy-friendly analytics hooks.
+Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research, public notes, Now, dynamic GitHub data, RSS, dark mode, and privacy-friendly analytics hooks.
 
 ## Local Development
 
@@ -19,66 +19,23 @@ The generated site is in `dist/`.
 
 ## Content
 
-- Notes: `src/content/notes/*.md`, or synced from Notion into `src/content/notes/notion/`
-- Papers: `src/content/papers/*.md`, or synced from Notion into `src/content/papers/notion/`
+- Notes: `src/content/notes/*.md`, or synced from Obsidian into `src/content/notes/obsidian/`
+- Papers: `src/content/papers/*.md`, or synced from Obsidian into `src/content/papers/obsidian/`
 - Pages: `src/pages/`
 - Shared layout: `src/layouts/BaseLayout.astro`
 - Public CV PDF: `public/cv/jianheng-hu-cv.pdf`
 - Paper PDFs: `public/papers/`
 
-Notion is the default writing source. You can still write Markdown directly in `src/content/notes`, and Obsidian remains available as a local fallback.
-
-## Notion Sync
-
-Create `.env.local` from `.env.example`:
-
-```bash
-NOTION_API_KEY=secret_xxx
-NOTION_NOTES_DATA_SOURCE_ID=your_notes_data_source_id
-NOTION_PAPERS_DATA_SOURCE_ID=your_papers_data_source_id
-NOTION_SYNC_DRAFTS=false
-```
-
-You can also use `NOTION_NOTES_DATABASE_ID` and `NOTION_PAPERS_DATABASE_ID`; the script will retrieve the first data source under each database.
-
-Then run:
-
-```bash
-npm run notion:sync
-```
-
-Builds run Notion sync automatically before Astro:
-
-```bash
-npm run build
-```
-
-Suggested Notes database properties:
-
-```text
-Name / Title: title
-Description / Summary: text
-Date / Published: date
-Tags: multi-select
-Status: status or select
-Draft: checkbox
-Slug: text, optional
-```
-
-Suggested Papers database properties: `Name`, `Authors`, `Status`, `Year`, `Venue`, `Abstract`, `PDF`, `Code`, and `Tags`.
-
-Draft notes are skipped unless `NOTION_SYNC_DRAFTS=true`.
-
 ## Obsidian Sync
 
-Obsidian is optional now. Use it when you prefer a private local vault.
+Obsidian is the default private writing source. Keep personal journal folders out of the publish folders; only export selected notes that should appear on the public website.
 
 Create `.env.local` from `.env.example`:
 
 ```bash
 OBSIDIAN_VAULT_PATH=/absolute/path/to/your/vault
-OBSIDIAN_NOTES_DIR=Notes
-OBSIDIAN_PAPERS_DIR=Papers
+OBSIDIAN_NOTES_DIR=Homepage/Notes
+OBSIDIAN_PAPERS_DIR=Homepage/Papers
 OBSIDIAN_SYNC_DRAFTS=false
 ```
 
@@ -88,12 +45,18 @@ Then run:
 npm run obsidian:sync
 ```
 
+Builds run Obsidian sync automatically before Astro:
+
+```bash
+npm run build
+```
+
 The script copies public notes into:
 
 - `src/content/notes/obsidian/`
 - `src/content/papers/obsidian/`
 
-Supported frontmatter:
+Supported note frontmatter:
 
 ```yaml
 ---
@@ -105,15 +68,29 @@ draft: false
 ---
 ```
 
-For papers, also use `status`, `authors`, `year`, `venue`, `abstract`, `pdf`, and `code`.
+Supported paper frontmatter:
+
+```yaml
+---
+title: Paper title
+authors: [Jianheng Hu]
+status: under review
+year: 2026
+abstract: One paragraph abstract
+pdf: /papers/example.pdf
+tags: [robotics]
+draft: false
+---
+```
 
 Draft notes are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`.
+
+This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/Notes` and `/Users/hu/Documents/Obsidian Vault/Homepage/Papers`. See `docs/obsidian-publishing.md` for the exact local workflow.
 
 ## Dynamic Features
 
 - GitHub repositories: fetched client-side from the GitHub REST API.
 - GitHub contribution graph: fetched client-side from a public contribution API.
-- Notion publishing: fetched server-side at build time from the Notion API.
 - Article search: client-side filtering on `/notes`.
 - Global search: generated at `/search.json` and used by `/search`.
 - Tags: generated from note frontmatter at `/tags`.

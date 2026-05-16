@@ -11,8 +11,6 @@ const notes = defineCollection({
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
     source: z.string().optional(),
-    notionId: z.string().optional(),
-    notionUrl: z.string().optional(),
     obsidianPath: z.string().optional(),
   }),
 });
@@ -31,8 +29,6 @@ const papers = defineCollection({
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
     source: z.string().optional(),
-    notionId: z.string().optional(),
-    notionUrl: z.string().optional(),
     obsidianPath: z.string().optional(),
   }),
 });

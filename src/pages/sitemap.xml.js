@@ -1,7 +1,7 @@
 import { getCollection } from "astro:content";
 import { noteHref } from "../utils/content";
 
-const staticPages = ["/", "/about", "/cv", "/research", "/notes", "/now", "/friends", "/search", "/tags", "/notion", "/obsidian", "/writing"];
+const staticPages = ["/", "/about", "/cv", "/research", "/notes", "/now", "/friends", "/search", "/tags", "/writing"];
 
 export async function GET({ site }) {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
