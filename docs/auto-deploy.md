@@ -50,6 +50,26 @@ status: public
 
 ## Change-triggered Deployment
 
-The workflow already accepts `repository_dispatch` with type `obsidian-updated`.
+The workflow accepts `repository_dispatch` with type `obsidian-updated`.
 
-To make deployment happen immediately after an R2 object changes, connect Cloudflare R2 Event Notifications to a Queue and a small Worker. The Worker should call GitHub's `repository_dispatch` API for this repository. Keep the scheduled 12-hour run as a fallback in case an event is missed.
+R2 object changes are handled by `workers/obsidian-r2-dispatcher`:
+
+1. R2 sends matching object events to the `obsidian-r2-deploy-events` Queue.
+2. The Worker consumes the queue.
+3. The Worker calls GitHub's `repository_dispatch` API for this repository.
+4. GitHub Actions rebuilds the site from R2 and deploys it to Cloudflare Pages.
+
+The Worker filters for Markdown files under:
+
+- `Homepage/Notes/`
+- `Homepage/Papers/`
+
+Keep the scheduled 12-hour run as a fallback in case an event is missed.
+
+## Worker Secret
+
+The Worker needs one secret:
+
+- `GITHUB_DISPATCH_TOKEN`
+
+This token should have permission to create a `repository_dispatch` event for `dreamkeeperhu/dreamkeeperhu.github.io`. GitHub documents this endpoint as requiring `Contents` repository permission with write access for fine-grained tokens.

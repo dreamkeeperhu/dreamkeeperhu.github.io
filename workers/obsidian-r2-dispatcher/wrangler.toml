@@ -1,0 +1,18 @@
+name = "obsidian-r2-dispatcher"
+main = "src/index.js"
+compatibility_date = "2026-05-16"
+account_id = "2a4010e9777fe9be047d4f7201426124"
+workers_dev = true
+
+[vars]
+GITHUB_OWNER = "dreamkeeperhu"
+GITHUB_REPO = "dreamkeeperhu.github.io"
+GITHUB_EVENT_TYPE = "obsidian-updated"
+OBSIDIAN_EVENT_PREFIXES = "Homepage/Notes/,Homepage/Papers/"
+OBSIDIAN_EVENT_SUFFIXES = ".md,.mdx"
+
+[[queues.consumers]]
+queue = "obsidian-r2-deploy-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
