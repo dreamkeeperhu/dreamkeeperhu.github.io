@@ -38,12 +38,23 @@ const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "/api/subscribe";
       if (message) {
         const status = payload.message || "Subscribed. I will only send updates when there is something worth reading.";
         message.innerHTML = payload.unsubscribeUrl
-          ? `${escapeHtml(status)} <a href="${payload.unsubscribeUrl}">Unsubscribe anytime</a>.`
+          ? `${escapeHtml(status)} <a href="${payload.unsubscribeUrl}">Unsubscribe anytime</a>. <button type="button" data-copy-unsubscribe="${escapeHtml(payload.unsubscribeUrl)}">Copy unsubscribe link</button>`
           : escapeHtml(status);
       }
       form.reset();
     } catch {
       if (message) message.innerHTML = `Subscription is not responding. Email <a href="mailto:${email}">${email}</a> directly and I will add you manually.`;
+    }
+  });
+
+  message?.addEventListener("click", async (event) => {
+    const button = event.target?.closest?.("[data-copy-unsubscribe]");
+    if (!button) return;
+    try {
+      await navigator.clipboard.writeText(button.dataset.copyUnsubscribe || "");
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Copy failed";
     }
   });
 

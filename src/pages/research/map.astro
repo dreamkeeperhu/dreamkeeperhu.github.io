@@ -194,7 +194,9 @@ function inferThread(text) {
       {threadItems.map((thread) => (
         <button type="button" data-thread={thread.id}>{thread.title}</button>
       ))}
+      <p data-map-count>{positioned.length} nodes · {drawnEdges.length} links</p>
     </div>
+    <p class="map-scroll-hint">Scroll sideways to inspect all nodes. Hover or focus a node for a short preview.</p>
     <div class="map-scroll">
       <div class="map-canvas" style={`height: ${canvasHeight}px;`}>
         <svg viewBox={`0 0 1320 ${canvasHeight}`} preserveAspectRatio="none" aria-hidden="true">
@@ -214,6 +216,9 @@ function inferThread(text) {
             class={`map-node map-node-${node.type}`}
             href={node.href}
             data-thread={node.thread}
+            data-title={node.title}
+            data-summary={node.summary}
+            data-type={node.type}
             style={`left: ${node.x}px; top: ${node.y}px;`}
           >
             <span>{node.type}</span>
@@ -226,23 +231,44 @@ function inferThread(text) {
     <div class="map-legend">
       {columns.map(([type]) => <span>{type}</span>)}
     </div>
+    <div class="map-preview" data-map-preview aria-live="polite">
+      <span>Preview</span>
+      <strong>Select a node</strong>
+      <p>Hover or tab through the map to preview why a node is present.</p>
+    </div>
   </section>
 
   <script is:inline>
     const filterButtons = [...document.querySelectorAll("[data-map-filters] button")];
     const mapNodes = [...document.querySelectorAll(".map-node")];
     const mapEdges = [...document.querySelectorAll(".map-edge")];
+    const mapCount = document.querySelector("[data-map-count]");
+    const mapPreview = document.querySelector("[data-map-preview]");
     const initialThread = new URLSearchParams(window.location.search).get("thread") || "all";
 
     function applyThread(thread) {
       filterButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.thread === thread)));
+      let visibleNodes = 0;
+      let visibleEdges = 0;
       mapNodes.forEach((node) => {
         node.hidden = thread !== "all" && node.dataset.thread !== thread;
+        if (!node.hidden) visibleNodes += 1;
       });
       mapEdges.forEach((edge) => {
         edge.hidden = thread !== "all" && edge.dataset.thread !== thread;
+        if (!edge.hidden) visibleEdges += 1;
       });
+      if (mapCount) mapCount.textContent = `${visibleNodes} nodes · ${visibleEdges} links`;
     }
+
+    mapNodes.forEach((node) => {
+      const paintPreview = () => {
+        if (!mapPreview) return;
+        mapPreview.innerHTML = `<span>${node.dataset.type || "node"}</span><strong>${escapeMap(node.dataset.title || "")}</strong><p>${escapeMap(node.dataset.summary || "")}</p>`;
+      };
+      node.addEventListener("mouseenter", paintPreview);
+      node.addEventListener("focus", paintPreview);
+    });
 
     filterButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -253,5 +279,15 @@ function inferThread(text) {
     });
 
     applyThread(filterButtons.some((button) => button.dataset.thread === initialThread) ? initialThread : "all");
+
+    function escapeMap(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      }[char]));
+    }
   </script>
 </BaseLayout>

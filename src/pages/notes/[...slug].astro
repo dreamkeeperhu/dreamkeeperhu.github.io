@@ -3,6 +3,7 @@ import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { noteHref, noteSlug } from "../../utils/content";
+import { collectBacklinks } from "../../utils/relations";
 
 export async function getStaticPaths() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
@@ -11,6 +12,18 @@ export async function getStaticPaths() {
 
 const { note } = Astro.props;
 const { Content } = await render(note);
+const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
+  getCollection("papers", (item) => !item.data.draft),
+  getCollection("projects", (item) => !item.data.draft),
+  getCollection("notes", (item) => !item.data.draft),
+  getCollection("library", (item) => !item.data.draft),
+]);
+const backlinks = collectBacklinks(noteHref(note), {
+  papers: allPapers,
+  projects: allProjects,
+  notes: allNotes,
+  library: allLibrary,
+});
 ---
 
 <BaseLayout current="Notes" title={`${note.data.title} | HJH Notes`} description={note.data.description}>
@@ -24,6 +37,14 @@ const { Content } = await render(note);
     </header>
     <div class="article-body">
       <Content />
+      {backlinks.length > 0 && (
+        <section class="related-block">
+          <h2>Referenced By</h2>
+          <div class="inline-links">
+            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
+          </div>
+        </section>
+      )}
       <FeedbackForm targetType="note" targetTitle={note.data.title} targetUrl={noteHref(note)} />
     </div>
   </article>

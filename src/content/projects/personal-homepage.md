@@ -4,6 +4,8 @@ summary: "A research-oriented personal website with Astro, Obsidian publishing, 
 problem: "A static homepage was not enough to connect CV, research progress, public notes, projects, and deployment automation."
 method: "Use Astro for static-first pages, Obsidian/R2 for writing, GitHub Actions for deployment, and Cloudflare KV for subscriptions, contact backups, and pulse metrics."
 status: "active"
+statusDetail: "usable"
+updatedDate: 2026-05-17
 tags:
   - "Astro"
   - "Cloudflare"

@@ -7,6 +7,15 @@ import { noteHref } from "../../utils/content";
 const notes = (await getCollection("notes"))
   .filter((note) => !note.data.draft)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const categoryLabels = {
+  research: "Research notes",
+  site: "Site notes",
+  personal: "Personal notes",
+  log: "Logs",
+};
+const categories = ["research", "site", "personal", "log"].filter((category) =>
+  notes.some((note) => note.data.category === category)
+);
 ---
 
 <BaseLayout current="Notes" title="Notes | HJH">
@@ -24,20 +33,30 @@ const notes = (await getCollection("notes"))
       <a href="/search">Search everything</a>
       <a href="/writing">Writing shelf</a>
     </div>
+    <div class="filter-row" data-note-categories>
+      <button type="button" data-category="all" aria-pressed="true">all</button>
+      {categories.map((category) => <button type="button" data-category={category}>{category}</button>)}
+    </div>
   </section>
 
-  <section class="notes-list" data-notes-list>
-    {notes.map((note) => (
-      <a
-        class="note-row"
-        href={noteHref(note)}
-        data-title={`${note.data.title} ${note.data.description} ${note.data.tags.join(" ")}`.toLowerCase()}
-      >
-        <span>{note.data.pubDate.toISOString().slice(0, 10)}</span>
-        <strong>{note.data.title}</strong>
-        <p>{note.data.description}</p>
-        <em>{note.data.tags.join(" · ")}</em>
-      </a>
+  <section class="notes-list grouped-notes" data-notes-list>
+    {categories.map((category) => (
+      <div class="note-group" data-note-group={category}>
+        <h2>{categoryLabels[category]}</h2>
+        {notes.filter((note) => note.data.category === category).map((note) => (
+          <a
+            class="note-row"
+            href={noteHref(note)}
+            data-category={note.data.category}
+            data-title={`${note.data.title} ${note.data.description} ${note.data.tags.join(" ")}`.toLowerCase()}
+          >
+            <span>{note.data.pubDate.toISOString().slice(0, 10)}</span>
+            <strong>{note.data.title}</strong>
+            <p>{note.data.description}</p>
+            <em>{note.data.category} · {note.data.tags.join(" · ")}</em>
+          </a>
+        ))}
+      </div>
     ))}
   </section>
 
@@ -48,12 +67,30 @@ const notes = (await getCollection("notes"))
   <script is:inline>
     const search = document.querySelector("[data-note-search]");
     const rows = [...document.querySelectorAll("[data-notes-list] .note-row")];
+    const groups = [...document.querySelectorAll("[data-note-group]")];
+    const categoryButtons = [...document.querySelectorAll("[data-note-categories] button")];
+    let activeCategory = "all";
 
-    search?.addEventListener("input", () => {
-      const query = search.value.trim().toLowerCase();
-      rows.forEach((row) => {
-        row.hidden = query && !row.dataset.title.includes(query);
+    categoryButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeCategory = button.dataset.category || "all";
+        categoryButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        renderNotes();
       });
     });
+
+    search?.addEventListener("input", renderNotes);
+
+    function renderNotes() {
+      const query = search.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        const queryMatch = !query || row.dataset.title.includes(query);
+        const categoryMatch = activeCategory === "all" || row.dataset.category === activeCategory;
+        row.hidden = !(queryMatch && categoryMatch);
+      });
+      groups.forEach((group) => {
+        group.hidden = ![...group.querySelectorAll(".note-row")].some((row) => !row.hidden);
+      });
+    }
   </script>
 </BaseLayout>

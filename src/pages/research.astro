@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ResearchRoadmap from "../components/ResearchRoadmap.astro";
+import EvidenceBadges from "../components/EvidenceBadges.astro";
 import { paperHref } from "../utils/content";
 
 const papers = (await getCollection("papers"))
@@ -90,6 +91,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
           <div class="tag-row">
             {paper.data.tags.map((tag) => <span>{tag}</span>)}
           </div>
+          <EvidenceBadges artifacts={paper.data.artifacts} />
           <div class="paper-actions">
             <a href={paperHref(paper)}>Details</a>
             {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}

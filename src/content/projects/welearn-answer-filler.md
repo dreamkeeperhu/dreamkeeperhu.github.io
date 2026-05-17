@@ -4,6 +4,8 @@ summary: "A small browser automation tool for repetitive WeLearn coursework inpu
 problem: "Repetitive platform interactions are tedious and easy to mistype."
 method: "Use a focused JavaScript automation script to fill answers while keeping the workflow simple and inspectable."
 status: "utility"
+statusDetail: "usable"
+updatedDate: 2026-05-17
 tags:
   - "Automation"
   - "JavaScript"

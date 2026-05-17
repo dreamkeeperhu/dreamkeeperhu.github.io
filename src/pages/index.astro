@@ -3,25 +3,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import SubscribeForm from "../components/SubscribeForm.astro";
 import SitePulse from "../components/SitePulse.astro";
 import ResearchRoadmap from "../components/ResearchRoadmap.astro";
+import EvidenceBadges from "../components/EvidenceBadges.astro";
 import { getCollection } from "astro:content";
 import { profile } from "../data/profile";
 import { asset } from "../utils/cdn";
-import { noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
+import { entryUpdatedValue, noteHref, paperHref, projectHref, sortFeaturedEntries, timelineSortValue } from "../utils/content";
 
 const rows = Array.from({ length: 11 });
 const copies = Array.from({ length: 18 });
 const latestNotes = (await getCollection("notes"))
   .filter((note) => !note.data.draft)
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .sort((a, b) => entryUpdatedValue(b) - entryUpdatedValue(a))
   .slice(0, 2);
 const latestPapers = (await getCollection("papers"))
   .filter((paper) => !paper.data.draft)
-  .sort((a, b) => b.data.year - a.data.year)
+  .sort((a, b) => entryUpdatedValue(b) - entryUpdatedValue(a))
   .slice(0, 1);
-const featuredProjects = (await getCollection("projects"))
-  .filter((project) => !project.data.draft && project.data.featured)
-  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title))
+const featuredProjects = sortFeaturedEntries((await getCollection("projects"))
+  .filter((project) => !project.data.draft && project.data.featured))
   .slice(0, 3);
+const currentSignal = latestPapers[0] || featuredProjects[0];
 const latestMilestones = (await getCollection("timeline"))
   .filter((item) => !item.data.draft && item.data.featured)
   .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)) || a.data.order - b.data.order)
@@ -39,10 +40,19 @@ const latestMilestones = (await getCollection("timeline"))
                 <div class="pattern-row">{copies.map(() => <span>H J H</span>)}</div>
               ))}
             </div>
-            <h1>HELLO, I'M HJH</h1>
+            <h1>Jianheng Hu</h1>
+            <div class="hero-focus">
+              <span>Research direction</span>
+              <strong>General physical intelligence</strong>
+              <p>Better instructing robotics, sim-to-real generalization, and the next robotics paradigm.</p>
+              <div class="hero-actions">
+                <a class="button-primary" href="/research">Research</a>
+                <a class="button-secondary" href={`mailto:${profile.email}`}>Email</a>
+              </div>
+            </div>
             <div class="hero-strip" aria-label="Homepage summary">
-              <span>{profile.tagline}</span>
-              <span>Robotics instruction / Sim-to-real / Next robotics paradigm</span>
+              <span>HJH / Beihang University</span>
+              <span>Robotics instruction · Sim-to-real · New robotics paradigm</span>
               <span>{profile.email}</span>
             </div>
             <div class="alt-layer" aria-hidden="true">
@@ -122,24 +132,24 @@ const latestMilestones = (await getCollection("timeline"))
     </div>
     <div class="snapshot-grid">
       <article>
-        <span>Base</span>
-        <strong>Chengdu → Beijing</strong>
-        <p>Growing into research life at Beihang University while keeping a public record of what I learn and build.</p>
+        <span>Thread 01</span>
+        <strong>Robotics instruction</strong>
+        <p>Make task intent, constraints, and corrections easier for robots to interpret and execute.</p>
       </article>
       <article>
-        <span>Long-term Goal</span>
-        <strong>General physical intelligence</strong>
-        <p>Make intelligence more reliable at understanding tasks, acting, and generalizing in the physical world.</p>
+        <span>Thread 02</span>
+        <strong>Sim-to-real transfer</strong>
+        <p>Track the mismatch between simulation and deployment, then build toward more reliable transfer.</p>
       </article>
       <article>
-        <span>Current Focus</span>
-        <strong>Instruction + sim-to-real</strong>
-        <p>Better instructing robotics, improving transfer from simulation, and looking for the next robotics paradigm.</p>
+        <span>Thread 03</span>
+        <strong>Next robotics paradigm</strong>
+        <p>Look for better diagrams for embodied intelligence after demos stop being enough.</p>
       </article>
       <article>
-        <span>Open To</span>
-        <strong>Robotics conversations</strong>
-        <p>Research ideas, student projects, paper feedback, small tools, and conversations with people building in this direction.</p>
+        <span>Current public signal</span>
+        <strong>{currentSignal?.data.title}</strong>
+        <p>{currentSignal?.data.abstract || currentSignal?.data.summary}</p>
       </article>
     </div>
   </section>
@@ -157,7 +167,7 @@ const latestMilestones = (await getCollection("timeline"))
           <span>{project.data.status}</span>
           <strong>{project.data.title}</strong>
           <small>{project.data.summary}</small>
-          {project.data.artifacts.length > 0 && <em class="evidence-signal">Evidence available · {project.data.artifacts.length} artifacts</em>}
+          <EvidenceBadges artifacts={project.data.artifacts} compact />
         </a>
       ))}
     </div>

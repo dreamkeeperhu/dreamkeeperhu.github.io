@@ -45,6 +45,27 @@ export function timelineSortValue(date: string) {
   return "0000-01-01";
 }
 
+export function entryUpdatedValue(entry: { data: Record<string, unknown> }) {
+  const data = entry.data;
+  const value = data.updatedDate || data.pubDate || data.year || data.date || "";
+  if (value instanceof Date) return value.valueOf();
+  const text = String(value || "");
+  if (/^\d{4}$/.test(text)) return new Date(`${text}-01-01`).valueOf();
+  if (/^\d{4}-\d{2}$/.test(text)) return new Date(`${text}-01`).valueOf();
+  const parsed = new Date(text).valueOf();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function sortFeaturedEntries<T extends { data: Record<string, unknown> }>(entries: T[]) {
+  return [...entries].sort((a, b) => {
+    const featuredDelta = Number(Boolean(b.data.featured)) - Number(Boolean(a.data.featured));
+    if (featuredDelta) return featuredDelta;
+    const orderDelta = Number(a.data.order ?? 99) - Number(b.data.order ?? 99);
+    if (orderDelta) return orderDelta;
+    return entryUpdatedValue(b) - entryUpdatedValue(a);
+  });
+}
+
 export function entrySlug(id: string) {
   return id.replace(/^obsidian\//, "").replace(/\.(md|mdx)$/i, "");
 }

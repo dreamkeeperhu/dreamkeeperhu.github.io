@@ -234,6 +234,7 @@ function mapNote({ frontmatter: fm, body, slugPath, sourcePath }) {
       description: stringValue(fm.description) || stringValue(fm.summary) || excerpt(body),
       pubDate: dateValue(fm.pubDate || fm.date || fm.created) || today(),
       updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
+      category: normalizeNoteCategory(stringValue(fm.category || fm.type) || "research"),
       tags: tagList(fm.tags ?? fm.tag),
       draft: shouldKeepPrivate(fm),
       source: "obsidian",
@@ -254,6 +255,7 @@ function mapPaper({ frontmatter: fm, body, slugPath, sourcePath }) {
       status,
       venue: stringValue(fm.venue || fm.journal || fm.target) || undefined,
       year,
+      updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
       abstract: stringValue(fm.abstract || fm.summary) || excerpt(body),
       problem: stringValue(fm.problem) || undefined,
       method: stringValue(fm.method) || undefined,
@@ -284,6 +286,8 @@ function mapProject({ frontmatter: fm, body, slugPath, sourcePath }) {
       problem: stringValue(fm.problem) || "Problem statement will be expanded from Obsidian.",
       method: stringValue(fm.method) || "Method notes will be expanded from Obsidian.",
       status: normalizeProjectStatus(stringValue(fm.status) || "active"),
+      statusDetail: normalizeProjectStatusDetail(stringValue(fm.statusDetail || fm.maturity) || "prototype"),
+      updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
       techStack: listValue(fm.techStack || fm.stack) || [],
       repo: stringValue(fm.repo || fm.repository) || undefined,
@@ -314,6 +318,7 @@ function mapLibrary({ frontmatter: fm, body, slugPath, sourcePath }) {
       type: stringValue(fm.type) || "resource",
       status: normalizeLibraryStatus(stringValue(fm.status) || "reading"),
       year: stringValue(fm.year || fm.date) || "ongoing",
+      updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
       url: stringValue(fm.url || fm.link) || undefined,
       note: stringValue(fm.note || fm.summary || fm.description) || excerpt(body),
@@ -557,6 +562,22 @@ function normalizeProjectStatus(status) {
   if (lower.includes("archive")) return "archived";
   if (lower.includes("idea")) return "idea";
   return "active";
+}
+
+function normalizeProjectStatusDetail(status) {
+  const lower = status.toLowerCase();
+  if (lower.includes("usable") || lower.includes("ready")) return "usable";
+  if (lower.includes("research")) return "research trace";
+  if (lower.includes("archive")) return "archived";
+  return "prototype";
+}
+
+function normalizeNoteCategory(category) {
+  const lower = category.toLowerCase();
+  if (lower.includes("site") || lower.includes("web")) return "site";
+  if (lower.includes("personal")) return "personal";
+  if (lower.includes("log") || lower.includes("journal")) return "log";
+  return "research";
 }
 
 function normalizeLibraryStatus(status) {

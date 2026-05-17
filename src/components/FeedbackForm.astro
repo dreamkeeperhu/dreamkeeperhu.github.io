@@ -18,28 +18,28 @@ const { targetType, targetTitle, targetUrl = Astro.url.pathname } = Astro.props;
     <input type="hidden" name="targetType" value={targetType} />
     <input type="hidden" name="targetTitle" value={targetTitle} />
     <input type="hidden" name="targetUrl" value={targetUrl} />
+    <input type="hidden" name="type" value="useful" data-feedback-type-value />
     <label class="screen-reader-field">
       Website
       <input type="text" name="website" tabindex="-1" autocomplete="off" />
     </label>
-    <label>
-      Type
-      <select name="type" required>
-        <option value="useful">Useful</option>
-        <option value="confusing">Confusing</option>
-        <option value="question">Question</option>
-        <option value="collaboration">Collaboration</option>
-      </select>
-    </label>
-    <label>
-      Message
-      <textarea name="message" rows="4" maxlength="1200" placeholder="A short note is enough."></textarea>
-    </label>
-    <label>
-      Email (optional)
-      <input type="email" name="email" placeholder="you@example.com" />
-    </label>
-    <button type="submit">Send feedback</button>
+    <div class="feedback-type-row" role="group" aria-label="Feedback type">
+      <button type="button" data-feedback-type="useful" aria-pressed="true">Useful</button>
+      <button type="button" data-feedback-type="confusing">Confusing</button>
+      <button type="button" data-feedback-type="question">Question</button>
+      <button type="button" data-feedback-type="collaboration">Collaboration</button>
+    </div>
+    <div class="feedback-detail" data-feedback-detail hidden>
+      <label>
+        Message
+        <textarea name="message" rows="4" maxlength="1200" placeholder="A short note is enough."></textarea>
+      </label>
+      <label>
+        Email (optional)
+        <input type="email" name="email" placeholder="you@example.com" />
+      </label>
+      <button type="submit">Send note</button>
+    </div>
     <p data-feedback-status aria-live="polite"></p>
   </form>
 </section>
@@ -49,22 +49,48 @@ const { targetType, targetTitle, targetUrl = Astro.url.pathname } = Astro.props;
     if (form.dataset.bound === "true") return;
     form.dataset.bound = "true";
     const status = form.querySelector("[data-feedback-status]");
+    const typeValue = form.querySelector("[data-feedback-type-value]");
+    const detail = form.querySelector("[data-feedback-detail]");
+    const typeButtons = [...form.querySelectorAll("[data-feedback-type]")];
+    typeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const type = button.dataset.feedbackType || "useful";
+        if (typeValue) typeValue.value = type;
+        typeButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        if (type === "useful") {
+          if (detail) detail.hidden = true;
+          submitFeedback(form, status);
+        } else if (detail) {
+          detail.hidden = false;
+          detail.querySelector("textarea")?.focus();
+        }
+      });
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (status) status.textContent = "Sending...";
-      const data = new FormData(form);
-      try {
-        const response = await fetch("/api/feedback", {
-          method: "POST",
-          body: data,
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) throw new Error(result.error || "Feedback failed.");
-        form.reset();
-        if (status) status.textContent = "Saved. Thank you.";
-      } catch (error) {
-        if (status) status.textContent = error.message || "Feedback is unavailable right now.";
-      }
+      submitFeedback(form, status);
     });
   });
+
+  async function submitFeedback(form, status) {
+    if (status) status.textContent = "Sending...";
+    const data = new FormData(form);
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        body: data,
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || "Feedback failed.");
+      form.reset();
+      const detail = form.querySelector("[data-feedback-detail]");
+      if (detail) detail.hidden = true;
+      form.querySelectorAll("[data-feedback-type]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.feedbackType === "useful")));
+      const typeValue = form.querySelector("[data-feedback-type-value]");
+      if (typeValue) typeValue.value = "useful";
+      if (status) status.textContent = "Saved. Thank you.";
+    } catch (error) {
+      if (status) status.textContent = error.message || "Feedback is unavailable right now.";
+    }
+  }
 </script>

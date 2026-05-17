@@ -3,6 +3,7 @@
 title: My thoughts 05162026
 description: A bit of sadness
 pubDate: '2026-05-16'
+category: research
 tags:
   - notes
 draft: false

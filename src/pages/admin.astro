@@ -1,5 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
+const panels = ["site-stats", "content-health", "subscribers", "contacts", "feedback", "newsletter-draft"];
 ---
 
 <BaseLayout
@@ -31,12 +33,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       <p data-admin-status aria-live="polite">Waiting for token.</p>
     </div>
 
+    <div class="admin-summary" data-admin-summary>
+      <span>Not loaded</span>
+      <span>Paste token and refresh</span>
+      <span>Private browser session</span>
+    </div>
+
+    <div class="admin-tabs" role="tablist" aria-label="Admin panels">
+      {panels.map((panel, index) => (
+        <button type="button" role="tab" data-admin-tab={panel} aria-selected={index === 0 ? "true" : "false"}>{panel}</button>
+      ))}
+    </div>
+
     <div class="admin-grid">
-      {["site-stats", "subscribers", "contacts", "feedback", "newsletter-draft"].map((panel) => (
-        <article class="admin-panel" data-admin-panel={panel}>
+      {panels.map((panel, index) => (
+        <article class="admin-panel" data-admin-panel={panel} hidden={index !== 0}>
           <div>
             <span>{panel}</span>
-            <button type="button" data-copy-panel={panel}>Copy JSON</button>
+            <span data-panel-count={panel}>0</span>
+            <button type="button" data-copy-panel={panel} data-copy-mode="json">Copy JSON</button>
+            <button type="button" data-copy-panel={panel} data-copy-mode={panel === "newsletter-draft" ? "draft" : "csv"}>{panel === "newsletter-draft" ? "Copy draft" : "Copy CSV"}</button>
           </div>
           <pre><code data-panel-output={panel}>Not loaded.</code></pre>
         </article>
@@ -48,7 +64,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const tokenInput = document.querySelector("[data-admin-token]");
     const sinceInput = document.querySelector("[data-admin-since]");
     const statusNode = document.querySelector("[data-admin-status]");
+    const summaryNode = document.querySelector("[data-admin-summary]");
     const outputs = new Map([...document.querySelectorAll("[data-panel-output]")].map((node) => [node.dataset.panelOutput, node]));
+    const panelCounts = new Map([...document.querySelectorAll("[data-panel-count]")].map((node) => [node.dataset.panelCount, node]));
+    const panels = [...document.querySelectorAll("[data-admin-panel]")];
+    const tabs = [...document.querySelectorAll("[data-admin-tab]")];
     let cache = {};
 
     const storedToken = sessionStorage.getItem("hjh_admin_token") || "";
@@ -68,21 +88,37 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (tokenInput) tokenInput.value = "";
       cache = {};
       outputs.forEach((node) => (node.textContent = "Not loaded."));
+      panelCounts.forEach((node) => (node.textContent = "0"));
+      if (summaryNode) summaryNode.innerHTML = "<span>Not loaded</span><span>Paste token and refresh</span><span>Private browser session</span>";
       setStatus("Token cleared.");
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
+        panels.forEach((panel) => {
+          panel.hidden = panel.dataset.adminPanel !== tab.dataset.adminTab;
+        });
+      });
     });
 
     document.querySelectorAll("[data-copy-panel]").forEach((button) => {
       button.addEventListener("click", async () => {
         const key = button.dataset.copyPanel;
-        const value = key === "newsletter-draft" && cache[key]?.markdown ? cache[key].markdown : JSON.stringify(cache[key] || {}, null, 2);
+        const mode = button.dataset.copyMode || "json";
+        const value = mode === "draft"
+          ? cache[key]?.markdown || cache[key]?.text || ""
+          : mode === "csv"
+            ? toCsv(key, cache[key])
+            : JSON.stringify(cache[key] || {}, null, 2);
         try {
           await navigator.clipboard.writeText(value);
-          button.textContent = key === "newsletter-draft" ? "Copied draft" : "Copied JSON";
+          button.textContent = "Copied";
         } catch {
           button.textContent = "Copy failed";
         }
         setTimeout(() => {
-          button.textContent = "Copy JSON";
+          button.textContent = mode === "draft" ? "Copy draft" : mode === "csv" ? "Copy CSV" : "Copy JSON";
         }, 1800);
       });
     });
@@ -100,11 +136,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       const since = sinceInput?.value || defaultSince;
       await Promise.all([
         loadPanel("site-stats", "/api/site-stats"),
+        loadPanel("content-health", "/api/admin/content-health", token),
         loadPanel("subscribers", "/api/admin/subscribers", token),
         loadPanel("contacts", "/api/admin/contacts", token),
-        loadPanel("feedback", "/api/admin/feedback", token),
+        loadPanel("feedback", `/api/admin/feedback?since=${encodeURIComponent(since)}`, token),
         loadPanel("newsletter-draft", `/api/admin/newsletter-draft?since=${encodeURIComponent(since)}`, token),
       ]);
+      renderSummary();
       setStatus("Admin data loaded.");
     }
 
@@ -117,6 +155,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         });
         const json = await response.json();
         cache[key] = json;
+        const countNode = panelCounts.get(key);
+        if (countNode) countNode.textContent = String(panelCount(key, json));
         if (node) node.textContent = JSON.stringify(json, null, 2);
       } catch (error) {
         const payload = { ok: false, error: error.message || "Request failed." };
@@ -127,6 +167,42 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     function setStatus(text) {
       if (statusNode) statusNode.textContent = text;
+    }
+
+    function panelCount(key, json) {
+      if (!json) return 0;
+      if (typeof json.count === "number") return json.count;
+      if (key === "site-stats") return json.views || 0;
+      if (key === "newsletter-draft") return json.items?.length || 0;
+      if (key === "content-health") return Object.values(json.counts || {}).reduce((sum, item) => sum + (item.public || 0), 0);
+      return 0;
+    }
+
+    function renderSummary() {
+      if (!summaryNode) return;
+      const subscribers = cache.subscribers?.count || 0;
+      const feedback = cache.feedback?.count || 0;
+      const content = panelCount("content-health", cache["content-health"]);
+      summaryNode.innerHTML = `<span>${content} public items</span><span>${subscribers} subscribers</span><span>${feedback} recent feedback</span>`;
+    }
+
+    function toCsv(key, json) {
+      const rows = key === "subscribers" ? json?.subscribers
+        : key === "contacts" ? json?.contacts
+          : key === "feedback" ? json?.feedback
+            : key === "content-health" ? json?.missingArtifacts
+              : [];
+      if (!rows?.length) return "";
+      const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+      return [
+        headers.join(","),
+        ...rows.map((row) => headers.map((header) => csvCell(row[header])).join(",")),
+      ].join("\\n");
+    }
+
+    function csvCell(value) {
+      const text = typeof value === "object" ? JSON.stringify(value || "") : String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
     }
   </script>
 </BaseLayout>

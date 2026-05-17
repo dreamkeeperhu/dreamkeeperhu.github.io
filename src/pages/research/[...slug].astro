@@ -5,6 +5,7 @@ import EvidencePanel from "../../components/EvidencePanel.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { paperHref, paperSlug } from "../../utils/content";
 import { mergeArtifacts } from "../../utils/artifacts";
+import { collectBacklinks } from "../../utils/relations";
 import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
@@ -15,6 +16,18 @@ export async function getStaticPaths() {
 const { paper } = Astro.props;
 const { Content } = await render(paper);
 const title = `${paper.data.title} | HJH Research`;
+const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
+  getCollection("papers", (item) => !item.data.draft),
+  getCollection("projects", (item) => !item.data.draft),
+  getCollection("notes", (item) => !item.data.draft),
+  getCollection("library", (item) => !item.data.draft),
+]);
+const backlinks = collectBacklinks(paperHref(paper), {
+  papers: allPapers,
+  projects: allProjects,
+  notes: allNotes,
+  library: allLibrary,
+});
 const paperArtifacts = mergeArtifacts([
   ...paper.data.artifacts,
   paper.data.pdf && {
@@ -78,7 +91,7 @@ const jsonLd = {
         {paper.data.relatedNotes.map((href) => <a href={href}>Related note</a>)}
       </div>
     </header>
-    <div class="detail-grid">
+    <div class="detail-grid archive-detail-grid">
       {paper.data.problem && (
         <section>
           <span class="panel-kicker">Problem</span>
@@ -114,6 +127,14 @@ const jsonLd = {
             {paper.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
             {paper.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
             {paper.data.relatedLibrary.map((href) => <a href={href}>Library</a>)}
+          </div>
+        </section>
+      )}
+      {backlinks.length > 0 && (
+        <section class="related-block">
+          <h2>Referenced By</h2>
+          <div class="inline-links">
+            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
           </div>
         </section>
       )}

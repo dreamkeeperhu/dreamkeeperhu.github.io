@@ -4,6 +4,8 @@ summary: "Research code and experiment traces for cooperative coevolution in clo
 problem: "Cloud, edge, and shop-floor devices must coordinate offloading, sequencing, and assignment under resource and communication uncertainty."
 method: "Decompose the scheduling decision into coherent blocks, assign adaptive learners, and preserve parallel search through heterogeneous islands."
 status: "research"
+statusDetail: "research trace"
+updatedDate: 2026-05-17
 tags:
   - "Scheduling"
   - "Cooperative coevolution"

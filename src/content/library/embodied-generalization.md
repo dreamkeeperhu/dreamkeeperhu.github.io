@@ -5,6 +5,7 @@ authors:
 type: "topic map"
 status: "collecting"
 year: "ongoing"
+updatedDate: 2026-05-17
 tags:
   - "embodied intelligence"
   - "robotics"

@@ -1,5 +1,6 @@
 import { getCollection } from "astro:content";
 import { libraryHref, noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
+import { artifactTypes } from "../utils/artifacts";
 
 export async function GET() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
@@ -16,7 +17,9 @@ export async function GET() {
       description: note.data.description,
       url: noteHref(note),
       tags: note.data.tags,
-      date: note.data.pubDate.toISOString().slice(0, 10),
+      date: (note.data.updatedDate || note.data.pubDate).toISOString().slice(0, 10),
+      status: note.data.category,
+      category: note.data.category,
       source: note.data.source || "markdown",
       content: plainText(note.body),
     })),
@@ -26,8 +29,9 @@ export async function GET() {
       description: paper.data.abstract,
       url: paperHref(paper),
       tags: paper.data.tags,
-      date: String(paper.data.year),
+      date: paper.data.updatedDate ? paper.data.updatedDate.toISOString().slice(0, 10) : String(paper.data.year),
       status: paper.data.status,
+      evidenceTypes: artifactTypes(paper.data.artifacts),
       source: paper.data.source || "markdown",
       content: plainText([
         paper.body,
@@ -44,8 +48,10 @@ export async function GET() {
       description: project.data.summary,
       url: projectHref(project),
       tags: project.data.tags,
-      date: project.data.status,
+      date: project.data.updatedDate ? project.data.updatedDate.toISOString().slice(0, 10) : project.data.status,
       status: project.data.status,
+      statusDetail: project.data.statusDetail,
+      evidenceTypes: artifactTypes(project.data.artifacts),
       source: project.data.source || "project",
       content: plainText([
         project.body,
@@ -63,8 +69,9 @@ export async function GET() {
       description: item.data.note,
       url: libraryHref(item),
       tags: item.data.tags,
-      date: item.data.year,
+      date: item.data.updatedDate ? item.data.updatedDate.toISOString().slice(0, 10) : item.data.year,
       status: item.data.status,
+      evidenceTypes: artifactTypes(item.data.artifacts),
       source: item.data.source || "library",
       content: plainText([
         item.body,

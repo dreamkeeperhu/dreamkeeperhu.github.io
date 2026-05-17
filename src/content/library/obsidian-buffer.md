@@ -5,6 +5,7 @@ authors:
 type: "workflow"
 status: "used"
 year: "2026"
+updatedDate: 2026-05-17
 tags:
   - "Obsidian"
   - "notes"

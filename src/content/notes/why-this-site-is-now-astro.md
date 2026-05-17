@@ -2,6 +2,8 @@
 title: "Why This Site Moved to Astro"
 description: "The site needed Markdown notes, RSS, dynamic GitHub data, and clean static deployment without becoming too heavy."
 pubDate: 2026-05-16
+updatedDate: 2026-05-17
+category: site
 tags:
   - website
   - astro

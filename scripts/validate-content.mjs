@@ -26,6 +26,8 @@ const staticRoutes = new Set([
 const collectionRules = {
   notes: {
     required: ["title", "description", "pubDate"],
+    statuses: ["research", "site", "personal", "log"],
+    statusField: "category",
   },
   papers: {
     required: ["title", "authors", "status", "year", "abstract"],
@@ -34,6 +36,9 @@ const collectionRules = {
   projects: {
     required: ["title", "summary", "problem", "method", "status"],
     statuses: ["idea", "active", "research", "utility", "paused", "archived"],
+    extraStatuses: {
+      statusDetail: ["usable", "prototype", "research trace", "archived"],
+    },
   },
   library: {
     required: ["title", "status", "year", "note"],
@@ -94,6 +99,14 @@ function validateCollection(collection, rule) {
     const statusField = rule.statusField || "status";
     if (rule.statuses && data[statusField] && !rule.statuses.includes(String(data[statusField]))) {
       errors.push(`${relative} has invalid ${statusField} "${data[statusField]}".`);
+    }
+
+    if (rule.extraStatuses) {
+      for (const [field, allowed] of Object.entries(rule.extraStatuses)) {
+        if (data[field] && !allowed.includes(String(data[field]))) {
+          errors.push(`${relative} has invalid ${field} "${data[field]}".`);
+        }
+      }
     }
 
     if (data.draft === true && data.publish === true) {

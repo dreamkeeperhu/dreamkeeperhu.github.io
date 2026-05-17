@@ -1,6 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import EvidenceBadges from "../components/EvidenceBadges.astro";
 import { projectHref, projectSlug } from "../utils/content";
 
 const projects = (await getCollection("projects"))
@@ -47,6 +48,7 @@ const tags = [...new Set(projects.flatMap((project) => project.data.tags))].slic
         <div class="project-main">
           <div class="paper-meta">
             <span>{project.data.status}</span>
+            <span>{project.data.statusDetail}</span>
             {project.data.artifacts.length > 0 && <span>{project.data.artifacts.length} artifacts</span>}
             <span data-repo-meta>{project.data.repo ? "GitHub metadata loading" : "Curated project"}</span>
           </div>
@@ -63,6 +65,7 @@ const tags = [...new Set(projects.flatMap((project) => project.data.tags))].slic
             </div>
           </div>
           <div class="tag-row">{project.data.tags.map((tag) => <span>{tag}</span>)}</div>
+          <EvidenceBadges artifacts={project.data.artifacts} />
           <div class="paper-actions">
             <a href={projectHref(project)}>Details</a>
             {project.data.url && <a href={project.data.url} target="_blank" rel="noreferrer">GitHub</a>}

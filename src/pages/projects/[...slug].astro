@@ -5,6 +5,8 @@ import EvidencePanel from "../../components/EvidencePanel.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { projectHref, projectSlug } from "../../utils/content";
 import { mergeArtifacts } from "../../utils/artifacts";
+import { collectBacklinks } from "../../utils/relations";
+import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
   const projects = (await getCollection("projects")).filter((project) => !project.data.draft);
@@ -13,6 +15,18 @@ export async function getStaticPaths() {
 
 const { project } = Astro.props;
 const { Content } = await render(project);
+const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
+  getCollection("papers", (item) => !item.data.draft),
+  getCollection("projects", (item) => !item.data.draft),
+  getCollection("notes", (item) => !item.data.draft),
+  getCollection("library", (item) => !item.data.draft),
+]);
+const backlinks = collectBacklinks(projectHref(project), {
+  papers: allPapers,
+  projects: allProjects,
+  notes: allNotes,
+  library: allLibrary,
+});
 const projectArtifacts = mergeArtifacts([
   ...project.data.artifacts,
   project.data.url && {
@@ -44,18 +58,29 @@ const projectArtifacts = mergeArtifacts([
     status: "available",
   })),
 ]);
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": project.data.repo ? "SoftwareSourceCode" : "CreativeWork",
+  name: project.data.title,
+  description: project.data.summary,
+  url: new URL(projectHref(project), profile.site).toString(),
+  codeRepository: project.data.url,
+  programmingLanguage: project.data.techStack,
+  keywords: project.data.tags,
+};
 ---
 
 <BaseLayout
   current="Projects"
   title={`${project.data.title} | HJH Projects`}
   description={project.data.summary}
+  jsonLd={jsonLd}
   ogType="article"
 >
   <article class="article-page project-detail">
     <header class="article-header">
       <a href="/projects">← Projects</a>
-      <time>{project.data.status}</time>
+      <time>{project.data.status} · {project.data.statusDetail}</time>
       <h1>{project.data.title}</h1>
       <p>{project.data.summary}</p>
       <div class="tag-row">{project.data.tags.map((tag) => <span>{tag}</span>)}</div>
@@ -101,6 +126,14 @@ const projectArtifacts = mergeArtifacts([
           <a href={projectHref(project)}>Canonical project link</a>
         </div>
       </section>
+      {backlinks.length > 0 && (
+        <section class="related-block">
+          <h2>Referenced By</h2>
+          <div class="inline-links">
+            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
+          </div>
+        </section>
+      )}
       <FeedbackForm targetType="project" targetTitle={project.data.title} targetUrl={projectHref(project)} />
     </div>
   </article>

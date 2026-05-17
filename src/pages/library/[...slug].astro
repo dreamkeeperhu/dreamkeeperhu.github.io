@@ -5,6 +5,8 @@ import EvidencePanel from "../../components/EvidencePanel.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { libraryHref, librarySlug } from "../../utils/content";
 import { mergeArtifacts } from "../../utils/artifacts";
+import { collectBacklinks } from "../../utils/relations";
+import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
   const library = (await getCollection("library")).filter((item) => !item.data.draft);
@@ -13,6 +15,18 @@ export async function getStaticPaths() {
 
 const { item } = Astro.props;
 const { Content } = await render(item);
+const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
+  getCollection("papers", (entry) => !entry.data.draft),
+  getCollection("projects", (entry) => !entry.data.draft),
+  getCollection("notes", (entry) => !entry.data.draft),
+  getCollection("library", (entry) => !entry.data.draft),
+]);
+const backlinks = collectBacklinks(libraryHref(item), {
+  papers: allPapers,
+  projects: allProjects,
+  notes: allNotes,
+  library: allLibrary,
+});
 const artifacts = mergeArtifacts([
   ...item.data.artifacts,
   item.data.url && {
@@ -44,12 +58,22 @@ const artifacts = mergeArtifacts([
     status: "available",
   })),
 ]);
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: item.data.title,
+  description: item.data.note,
+  url: new URL(libraryHref(item), profile.site).toString(),
+  keywords: item.data.tags,
+  author: { "@type": "Person", name: profile.name },
+};
 ---
 
 <BaseLayout
   current="Library"
   title={`${item.data.title} | HJH Library`}
   description={item.data.note}
+  jsonLd={jsonLd}
   ogType="article"
 >
   <article class="article-page library-detail">
@@ -76,7 +100,7 @@ const artifacts = mergeArtifacts([
         <p>{item.data.type}</p>
       </section>
       <section>
-        <span class="panel-kicker">Why It Matters</span>
+        <span class="panel-kicker">Why this matters to my current research</span>
         <p>{item.data.note}</p>
       </section>
       <section>
@@ -96,6 +120,14 @@ const artifacts = mergeArtifacts([
             {item.data.relatedPapers.map((href) => <a href={href}>Research</a>)}
             {item.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
             {item.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
+          </div>
+        </section>
+      )}
+      {backlinks.length > 0 && (
+        <section class="related-block">
+          <h2>Referenced By</h2>
+          <div class="inline-links">
+            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
           </div>
         </section>
       )}

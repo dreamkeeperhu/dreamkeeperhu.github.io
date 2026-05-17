@@ -4,6 +4,8 @@ summary: "Experiment workspace for cloud-edge-device collaborative scheduling id
 problem: "Distributed scheduling experiments need repeatable baselines and compact ways to compare resource conditions."
 method: "Keep runnable experiment scripts and data traces close to the research iteration loop."
 status: "active"
+statusDetail: "prototype"
+updatedDate: 2026-05-17
 tags:
   - "Cloud-edge-device"
   - "Scheduling"

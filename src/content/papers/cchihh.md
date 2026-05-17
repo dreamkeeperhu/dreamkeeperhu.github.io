@@ -7,6 +7,7 @@ authors:
 status: "under review"
 venue: "Target: Robotics and Computer-Integrated Manufacturing / Journal of Manufacturing Systems"
 year: 2026
+updatedDate: 2026-05-17
 pdf: "/papers/cchihh.pdf"
 code: "https://github.com/dreamkeeperhu/CCHIHH_Final"
 problem: "Cloud-edge-device collaborative scheduling needs to coordinate offloading, sequencing, and assignment while resource conditions and communication costs change."

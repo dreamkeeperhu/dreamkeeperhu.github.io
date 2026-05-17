@@ -7,6 +7,7 @@ authors:
 type: "paper"
 status: "used"
 year: "2026"
+updatedDate: 2026-05-17
 tags:
   - "scheduling"
   - "cooperative coevolution"

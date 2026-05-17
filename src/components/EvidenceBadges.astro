@@ -1,0 +1,17 @@
+---
+import { artifactTypes, type Artifact } from "../utils/artifacts";
+
+interface Props {
+  artifacts?: Artifact[];
+  compact?: boolean;
+}
+
+const { artifacts = [], compact = false } = Astro.props;
+const types = artifactTypes(artifacts).slice(0, compact ? 4 : 6);
+---
+
+{types.length > 0 && (
+  <div class={`evidence-badges${compact ? " compact" : ""}`} aria-label="Available evidence">
+    {types.map((type) => <span>{type}</span>)}
+  </div>
+)}

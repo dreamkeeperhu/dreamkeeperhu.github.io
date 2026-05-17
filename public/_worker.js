@@ -29,11 +29,15 @@ export default {
     }
 
     if (url.pathname === "/api/admin/feedback") {
-      return handleFeedbackExport(request, env);
+      return handleFeedbackExport(request, env, url);
     }
 
     if (url.pathname === "/api/admin/newsletter-draft") {
       return handleNewsletterDraft(request, env, url);
+    }
+
+    if (url.pathname === "/api/admin/content-health") {
+      return handleContentHealth(request, env, url);
     }
 
     if (url.pathname === "/api/feedback") {
@@ -184,7 +188,7 @@ async function handleContactExport(request, env) {
   );
 }
 
-async function handleFeedbackExport(request, env) {
+async function handleFeedbackExport(request, env, url) {
   if (!env.CONTACT_MESSAGES) {
     return json({ ok: false, error: "Feedback storage is not configured." }, 503);
   }
@@ -202,12 +206,36 @@ async function handleFeedbackExport(request, env) {
     }
   } while (cursor);
 
-  feedback.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  const type = sanitizeText(url.searchParams.get("type"), 40);
+  const targetType = sanitizeText(url.searchParams.get("targetType"), 40);
+  const sinceValue = url.searchParams.get("since");
+  const since = parseSince(sinceValue);
+  const filtered = feedback
+    .filter((item) => !type || item.type === type)
+    .filter((item) => !targetType || item.targetType === targetType)
+    .filter((item) => {
+      if (!sinceValue) return true;
+      const date = item.createdAt ? new Date(item.createdAt) : null;
+      return date && date >= since;
+    })
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   return json(
-    { ok: true, count: feedback.length, feedback },
+    { ok: true, count: filtered.length, feedback: filtered, filters: { type, targetType, since: sinceValue || "" } },
     200,
     { "Cache-Control": "no-store" }
   );
+}
+
+async function handleContentHealth(request, env, url) {
+  const denied = requireAdmin(request, env);
+  if (denied) return denied;
+
+  const healthRequest = new Request(new URL("/content-health.json", url.origin).toString(), { headers: { Accept: "application/json" } });
+  const healthResponse = await env.ASSETS.fetch(healthRequest);
+  if (!healthResponse.ok) {
+    return json({ ok: false, error: "Content health is not available." }, 503);
+  }
+  return json(await healthResponse.json(), 200, { "Cache-Control": "no-store" });
 }
 
 async function handleNewsletterDraft(request, env, url) {
@@ -230,10 +258,15 @@ async function handleNewsletterDraft(request, env, url) {
       return date && date >= since;
     })
     .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-  const items = (recent.length ? recent : allItems.filter((item) => publishTypes.has(item.type))).slice(0, 8);
+  const items = (recent.length ? recent : allItems.filter((item) => publishTypes.has(item.type))).slice(0, 9);
   const subscribers = env.SUBSCRIBERS ? await readSubscribers(env) : [];
   const today = new Date().toISOString().slice(0, 10);
   const subject = `HJH research update - ${today}`;
+  const groups = {
+    notes: items.filter((item) => item.type === "note"),
+    research: items.filter((item) => item.type === "paper"),
+    projects: items.filter((item) => item.type === "project"),
+  };
   const markdown = [
     `# ${subject}`,
     "",
@@ -241,16 +274,28 @@ async function handleNewsletterDraft(request, env, url) {
     "",
     "Here are the latest public notes, research entries, and project traces from jianhenghu.com.",
     "",
-    ...items.flatMap((item) => [
-      `- ${item.title}`,
-      `  ${url.origin}${item.url}`,
-      `  ${item.description}`,
-    ]),
+    ...newsletterSection("Notes", groups.notes, url.origin),
+    ...newsletterSection("Research", groups.research, url.origin),
+    ...newsletterSection("Projects", groups.projects, url.origin),
     "",
     "Best,",
     "Jianheng Hu",
     "",
     "You can unsubscribe using the link returned when you subscribed, or reply to this email.",
+  ].join("\n");
+  const text = [
+    subject,
+    "",
+    "Hi,",
+    "",
+    "Latest public updates from jianhenghu.com:",
+    "",
+    ...plainNewsletterSection("Notes", groups.notes, url.origin),
+    ...plainNewsletterSection("Research", groups.research, url.origin),
+    ...plainNewsletterSection("Projects", groups.projects, url.origin),
+    "",
+    "Best,",
+    "Jianheng Hu",
   ].join("\n");
 
   return json(
@@ -259,13 +304,41 @@ async function handleNewsletterDraft(request, env, url) {
       since: since.toISOString().slice(0, 10),
       subscriberCount: subscribers.length,
       subject,
-      text: markdown,
+      text,
       markdown,
+      groups,
       items,
     },
     200,
     { "Cache-Control": "no-store" }
   );
+}
+
+function newsletterSection(title, items, origin) {
+  if (!items.length) return [];
+  return [
+    `## ${title}`,
+    "",
+    ...items.flatMap((item) => [
+      `- **${item.title}**`,
+      `  ${origin}${item.url}`,
+      `  ${item.description}`,
+    ]),
+    "",
+  ];
+}
+
+function plainNewsletterSection(title, items, origin) {
+  if (!items.length) return [];
+  return [
+    `${title}:`,
+    ...items.flatMap((item) => [
+      `- ${item.title}`,
+      `  ${origin}${item.url}`,
+      `  ${item.description}`,
+    ]),
+    "",
+  ];
 }
 
 async function handleContact(request, env, url) {

@@ -1,6 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import EvidenceBadges from "../components/EvidenceBadges.astro";
 import { libraryHref, librarySlug } from "../utils/content";
 
 const libraryItems = (await getCollection("library"))
@@ -45,6 +46,7 @@ const statuses = ["all", "reading", "collecting", "used", "read", "planned"].fil
           <p>{item.data.note}</p>
           {item.data.authors.length > 0 && <em>{item.data.authors.join(", ")}</em>}
           <div class="tag-row">{item.data.tags.map((tag) => <span>{tag}</span>)}</div>
+          <EvidenceBadges artifacts={item.data.artifacts} />
         </div>
       </a>
     ))}
