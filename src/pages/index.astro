@@ -33,7 +33,7 @@ const latestPapers = (await getCollection("papers"))
             <h1>HELLO, I'M HJH</h1>
             <div class="hero-strip" aria-label="Homepage summary">
               <span>{profile.tagline}</span>
-              <span>Robotics instruction / Sim-to-real / Public research notes</span>
+              <span>Robotics instruction / Sim-to-real / Next robotics paradigm</span>
               <span>{profile.email}</span>
             </div>
             <div class="alt-layer" aria-hidden="true">
@@ -106,24 +106,53 @@ const latestPapers = (await getCollection("papers"))
     </a>
   </section>
 
+  <section class="profile-snapshot reveal" aria-label="Profile snapshot">
+    <div class="snapshot-lead">
+      <span class="eyebrow">Snapshot</span>
+      <h2>Freshman at Beihang, building toward embodied intelligence.</h2>
+    </div>
+    <div class="snapshot-grid">
+      <article>
+        <span>Base</span>
+        <strong>Chengdu → Beijing</strong>
+        <p>Growing into research life at Beihang University while keeping a public record of what I learn and build.</p>
+      </article>
+      <article>
+        <span>Long-term Goal</span>
+        <strong>General physical intelligence</strong>
+        <p>Make intelligence more reliable at understanding tasks, acting, and generalizing in the physical world.</p>
+      </article>
+      <article>
+        <span>Current Focus</span>
+        <strong>Instruction + sim-to-real</strong>
+        <p>Better instructing robotics, improving transfer from simulation, and looking for the next robotics paradigm.</p>
+      </article>
+      <article>
+        <span>Open To</span>
+        <strong>Robotics conversations</strong>
+        <p>Research ideas, student projects, paper feedback, small tools, and conversations with people building in this direction.</p>
+      </article>
+    </div>
+  </section>
+
   <section class="direction-board reveal" aria-label="Homepage direction board">
     <div class="direction-copy">
-      <span class="eyebrow">Current Surface</span>
-      <h2>Research, tools, and notes should feel connected.</h2>
-      <p>This homepage is the public layer for my robotics direction: papers, prototypes, project traces, and selected notes from a private writing workspace.</p>
+      <span class="eyebrow">Direction</span>
+      <h2>How does intelligence become physical?</h2>
+      <p>This site collects the pieces around that question: research progress, robotics notes, project traces, and the tools I make while learning.</p>
     </div>
     <div class="direction-steps">
       <a href="/research">
         <span>Research</span>
-        <strong>Sim-to-real robotics and adaptive scheduling</strong>
+        <strong>Robotics generalization and adaptive scheduling</strong>
       </a>
       <a href="/notes">
         <span>Writing</span>
-        <strong>Selected notes, essays, and project logs</strong>
+        <strong>Public notes, essays, and project logs</strong>
       </a>
       <a href="#github">
         <span>Projects</span>
-        <strong>GitHub repos and contribution activity stay live</strong>
+        <strong>Code, prototypes, and experiments from GitHub</strong>
       </a>
     </div>
   </section>
@@ -131,7 +160,7 @@ const latestPapers = (await getCollection("papers"))
   <section class="latest-board reveal" aria-label="Latest public work">
     <div class="section-head compact-head">
       <h2>Latest Work</h2>
-      <p>最近公开的文章和研究条目会在这里汇总。这里展示的是访客应该看到的内容，写作工具和同步配置留在后台。</p>
+      <p>最近公开的文章、研究条目和阶段性想法会在这里汇总。它不追求频繁更新，只保留值得被看见的部分。</p>
     </div>
     <div class="latest-grid">
       <article>
@@ -157,10 +186,39 @@ const latestPapers = (await getCollection("papers"))
     </div>
   </section>
 
+  <section class="visitor-paths reveal" aria-label="Start here">
+    <div class="section-head compact-head">
+      <h2>Start Here</h2>
+      <p>不同访客可以直接走不同入口：了解背景、看研究、读笔记，或者直接联系。</p>
+    </div>
+    <div class="path-grid">
+      <a href="/about">
+        <span>For first-time visitors</span>
+        <strong>Read the short personal background</strong>
+        <small>Who I am, why robotics, and what kind of work this site is trying to make visible.</small>
+      </a>
+      <a href="/research">
+        <span>For research conversations</span>
+        <strong>Check research progress</strong>
+        <small>Papers, abstracts, status labels, and the problems I am currently circling around.</small>
+      </a>
+      <a href="/cv">
+        <span>For formal review</span>
+        <strong>Open CV and resume</strong>
+        <small>A cleaner path for mentors, collaborators, applications, and anyone who needs the structured version.</small>
+      </a>
+      <a href="/notes">
+        <span>For reading</span>
+        <strong>Browse public notes</strong>
+        <small>Selected notes from Obsidian, published only when they are ready to leave the private workspace.</small>
+      </a>
+    </div>
+  </section>
+
   <section class="split-section">
     <div class="section-head">
-      <h2>Field Notes</h2>
-      <p>这个站点会收纳简历、论文进展、公开 notes、当前状态和项目痕迹。内部写作可以保持私密，前台只留下整理后的结果。</p>
+      <h2>Site Map</h2>
+      <p>主页保留简洁，更多信息放在清楚的分区里：简历、论文进展、公开 notes、当前状态和项目痕迹。</p>
     </div>
     <div class="row-list">
       <a class="list-row" href="/about">
@@ -222,7 +280,7 @@ const latestPapers = (await getCollection("papers"))
   <section class="subscribe-section reveal">
     <div class="section-head compact-head">
       <h2>Notes Updates</h2>
-      <p>邮件订阅入口已经预留。没接入服务商时，它会用邮件请求订阅；接入 Buttondown、ConvertKit 或自托管服务后会自动改为表单提交。</p>
+      <p>如果你想偶尔收到公开笔记和研究更新，可以留下邮箱。更新不会频繁，只在确实有东西值得发出时出现。</p>
     </div>
     <SubscribeForm />
   </section>

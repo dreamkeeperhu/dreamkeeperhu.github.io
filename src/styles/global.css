@@ -447,6 +447,90 @@ img {
   color: rgba(255, 255, 255, 0.68);
 }
 
+.profile-snapshot,
+.visitor-paths {
+  border-left: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper);
+}
+
+.snapshot-lead {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 48px;
+  align-items: end;
+  padding: 54px 80px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.snapshot-lead h2 {
+  max-width: 980px;
+  margin: 0;
+  font-size: clamp(40px, 6vw, 78px);
+  line-height: 0.98;
+  font-weight: 850;
+}
+
+.snapshot-grid,
+.path-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.snapshot-grid article,
+.path-grid a {
+  min-height: 250px;
+  padding: 32px;
+  border-left: 1px solid var(--hairline);
+}
+
+.snapshot-grid article:first-child,
+.path-grid a:first-child {
+  border-left: 0;
+}
+
+.snapshot-grid span,
+.path-grid span {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+.snapshot-grid strong,
+.path-grid strong {
+  display: block;
+  margin-top: 44px;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.08;
+}
+
+.snapshot-grid p,
+.path-grid small {
+  display: block;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.path-grid a {
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.path-grid a:hover,
+.path-grid a:focus-visible {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.path-grid a:hover span,
+.path-grid a:focus-visible span,
+.path-grid a:hover small,
+.path-grid a:focus-visible small {
+  color: color-mix(in srgb, var(--paper) 68%, transparent);
+}
+
 .showcase-card {
   position: relative;
   min-height: 284px;
@@ -2013,8 +2097,14 @@ html[data-theme="dark"] .writing-hero {
   .cv-layout,
   .now-grid,
   .direction-board,
-  .latest-grid {
+  .latest-grid,
+  .snapshot-lead {
     grid-template-columns: 1fr;
+  }
+
+  .snapshot-grid,
+  .path-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .github-live-panel + .github-live-panel,
@@ -2032,6 +2122,21 @@ html[data-theme="dark"] .writing-hero {
   .direction-steps,
   .latest-grid article + article {
     border-top: 1px solid var(--hairline);
+  }
+
+  .snapshot-grid article,
+  .path-grid a {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .snapshot-grid article:nth-child(odd),
+  .path-grid a:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .snapshot-grid article:nth-child(-n + 2),
+  .path-grid a:nth-child(-n + 2) {
+    border-top: 0;
   }
 
   .now-grid article:nth-child(-n + 2) {
@@ -2070,8 +2175,36 @@ html[data-theme="dark"] .writing-hero {
   .direction-copy,
   .direction-steps a,
   .latest-grid article,
-  .writing-board article {
+  .writing-board article,
+  .snapshot-grid article,
+  .path-grid a {
     padding: 28px 24px;
+  }
+
+  .snapshot-lead {
+    gap: 22px;
+    padding: 42px 24px;
+  }
+
+  .snapshot-grid,
+  .path-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .snapshot-grid article,
+  .path-grid a {
+    min-height: 210px;
+    border-left: 0;
+  }
+
+  .snapshot-grid article:nth-child(2),
+  .path-grid a:nth-child(2) {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .snapshot-grid strong,
+  .path-grid strong {
+    margin-top: 34px;
   }
 
   .paper-item {
