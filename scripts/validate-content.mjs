@@ -71,7 +71,7 @@ function validateCollection(collection, rule) {
   const dir = path.join(root, "src", "content", collection);
   for (const file of walk(dir).filter((item) => /\.(md|mdx)$/.test(item))) {
     const relative = path.relative(root, file);
-    const { data } = readFrontmatter(file);
+    const { data, body } = readFrontmatter(file);
     if (!data) {
       errors.push(`${relative} is missing frontmatter.`);
       continue;
@@ -131,6 +131,21 @@ function validateCollection(collection, rule) {
     for (const href of [...extractLinks(file), ...related]) {
       if (isLocalMissing(href)) errors.push(`${relative} links to missing local target ${href}.`);
     }
+
+    validateUnsafeMarkdown(relative, body);
+  }
+}
+
+function validateUnsafeMarkdown(relative, body) {
+  const checks = [
+    [/<script[\s>]/i, "raw <script> tags are not allowed in public content"],
+    [/\son[a-z]+\s*=/i, "inline event handlers are not allowed in public content"],
+    [/javascript:/i, "javascript: URLs are not allowed in public content"],
+    [/<iframe[\s>]/i, "raw iframes are not allowed in public content"],
+    [/<object[\s>]/i, "raw objects are not allowed in public content"],
+  ];
+  for (const [pattern, message] of checks) {
+    if (pattern.test(body || "")) errors.push(`${relative} ${message}.`);
   }
 }
 

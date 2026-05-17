@@ -1,0 +1,38 @@
+# Security Hardening
+
+This site is static-first, but the Cloudflare Pages Worker exposes lightweight APIs for subscriptions, feedback, contact backups, site stats, and hidden admin exports. The security boundary is the Worker, not the frontend.
+
+## Worker protections
+
+- Adds browser security headers to every response: CSP, `X-Frame-Options`, `X-Content-Type-Options`, HSTS on HTTPS, referrer policy, permissions policy, and cross-origin policies.
+- Blocks direct public access to `/content-health.json`; the hidden admin page reads it through `/api/admin/content-health`.
+- Protects admin APIs with `Authorization: Bearer <ADMIN_TOKEN>` and rate-limits admin attempts.
+- Restricts admin APIs to `GET` and rejects unknown write methods before they reach static assets.
+- Blocks obvious source/config paths such as `/src/`, `/scripts/`, `/.github/`, `/.env`, `package.json`, and `wrangler.toml` if they are ever accidentally published.
+- Rate-limits public mutation endpoints:
+  - subscribe
+  - unsubscribe
+  - contact
+  - feedback
+  - visit metrics
+- Rejects oversized request bodies and unexpected content types before parsing form data.
+- Requires same-origin requests for browser-write endpoints.
+- Marks hidden admin/API responses as `no-store` and `noindex`.
+
+## Content protections
+
+`npm run validate:content` fails the build if public Markdown contains common XSS vectors:
+
+- raw `<script>` tags
+- inline event handlers like `onclick=`
+- `javascript:` URLs
+- raw `<iframe>` or `<object>` tags
+
+This matters because Obsidian content is synced into public Markdown. Keep any embeds as normal Markdown links unless a page intentionally implements a safe embed component.
+
+## Operational notes
+
+- Keep `ADMIN_TOKEN` only in Cloudflare Pages environment variables and local `.env.local`.
+- Rotate `ADMIN_TOKEN` if it is ever pasted into a public page, issue, commit, screenshot, or chat transcript.
+- The hidden `/admin` page is `noindex`, blocked in robots, and absent from sitemap, but it is not a login system. Treat the token as the actual secret.
+- Cloudflare WAF / Turnstile can be added later if spam grows, but the current setup avoids extra services.

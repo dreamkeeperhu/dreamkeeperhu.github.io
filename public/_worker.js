@@ -3,11 +3,23 @@ const UNSUBSCRIBE_PREFIX = "unsubscribe:";
 const CONTACT_PREFIX = "contact:";
 const FEEDBACK_PREFIX = "feedback:";
 const METRIC_PREFIX = "metric:";
+const RATE_LIMIT_PREFIX = "rate:";
+const MAX_FORM_BYTES = 16 * 1024;
+const MAX_ADMIN_BYTES = 2 * 1024;
 
 export default {
   async fetch(request, env, context) {
     const url = new URL(request.url);
+    try {
+      const response = await routeRequest(request, env, context, url);
+      return withSecurityHeaders(response, request, url);
+    } catch {
+      return withSecurityHeaders(json({ ok: false, error: "Internal server error." }, 500), request, url);
+    }
+  },
+};
 
+async function routeRequest(request, env, context, url) {
     if (url.pathname === "/api/subscribe") {
       return request.method === "POST"
         ? handleSubscribe(request, env, url)
@@ -21,23 +33,33 @@ export default {
     }
 
     if (url.pathname === "/api/admin/subscribers") {
-      return handleSubscriberExport(request, env);
+      return request.method === "GET"
+        ? handleSubscriberExport(request, env)
+        : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     if (url.pathname === "/api/admin/contacts") {
-      return handleContactExport(request, env);
+      return request.method === "GET"
+        ? handleContactExport(request, env)
+        : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     if (url.pathname === "/api/admin/feedback") {
-      return handleFeedbackExport(request, env, url);
+      return request.method === "GET"
+        ? handleFeedbackExport(request, env, url)
+        : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     if (url.pathname === "/api/admin/newsletter-draft") {
-      return handleNewsletterDraft(request, env, url);
+      return request.method === "GET"
+        ? handleNewsletterDraft(request, env, url)
+        : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     if (url.pathname === "/api/admin/content-health") {
-      return handleContentHealth(request, env, url);
+      return request.method === "GET"
+        ? handleContentHealth(request, env, url)
+        : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     if (url.pathname === "/api/feedback") {
@@ -56,22 +78,43 @@ export default {
       if (request.method !== "POST") {
         return json({ ok: false, error: "Method not allowed" }, 405);
       }
+      if (!isSameOrigin(request, url)) {
+        return json({ ok: false, error: "Invalid origin." }, 403);
+      }
       context.waitUntil(recordVisit(request, env));
       return json({ ok: true });
     }
 
     if (url.pathname === "/api/site-stats") {
-      return handleSiteStats(env);
+      return request.method === "GET"
+        ? handleSiteStats(env)
+        : json({ ok: false, error: "Method not allowed" }, 405);
+    }
+
+    if (url.pathname === "/content-health.json" || isBlockedPublicPath(url.pathname)) {
+      return json({ ok: false, error: "Not found." }, 404);
+    }
+
+    if (!["GET", "HEAD"].includes(request.method)) {
+      return json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     return env.ASSETS.fetch(request);
-  },
-};
+}
 
 async function handleSubscribe(request, env, url) {
   if (!env.SUBSCRIBERS) {
     return json({ ok: false, error: "Subscription storage is not configured." }, 503);
   }
+
+  const limited = await checkRateLimit(env, request, "subscribe", 5, 600);
+  if (limited) return limited;
+
+  const tooLarge = enforceBodyLimit(request, MAX_FORM_BYTES);
+  if (tooLarge) return tooLarge;
+
+  const badType = enforceContentType(request, ["application/x-www-form-urlencoded", "multipart/form-data"]);
+  if (badType) return badType;
 
   if (!isSameOrigin(request, url)) {
     return json({ ok: false, error: "Invalid origin." }, 403);
@@ -122,6 +165,15 @@ async function handleUnsubscribe(request, env, url) {
     return json({ ok: false, error: "Subscription storage is not configured." }, 503);
   }
 
+  const limited = await checkRateLimit(env, request, "unsubscribe", 20, 600);
+  if (limited) return limited;
+
+  const tooLarge = request.method === "POST" ? enforceBodyLimit(request, MAX_ADMIN_BYTES) : null;
+  if (tooLarge) return tooLarge;
+
+  const badType = request.method === "POST" ? enforceContentType(request, ["application/x-www-form-urlencoded", "multipart/form-data"]) : null;
+  if (badType) return badType;
+
   const data = request.method === "POST" ? await readRequestData(request) : new URLSearchParams(url.search);
   const token = String(data.get("token") || "").trim();
   if (!token) {
@@ -150,7 +202,7 @@ async function handleSubscriberExport(request, env) {
   if (!env.SUBSCRIBERS) {
     return json({ ok: false, error: "Subscription storage is not configured." }, 503);
   }
-  const denied = requireAdmin(request, env);
+  const denied = await requireAdmin(request, env);
   if (denied) return denied;
 
   const subscribers = await readSubscribers(env);
@@ -166,7 +218,7 @@ async function handleContactExport(request, env) {
   if (!env.CONTACT_MESSAGES) {
     return json({ ok: false, error: "Contact storage is not configured." }, 503);
   }
-  const denied = requireAdmin(request, env);
+  const denied = await requireAdmin(request, env);
   if (denied) return denied;
 
   const contacts = [];
@@ -192,7 +244,7 @@ async function handleFeedbackExport(request, env, url) {
   if (!env.CONTACT_MESSAGES) {
     return json({ ok: false, error: "Feedback storage is not configured." }, 503);
   }
-  const denied = requireAdmin(request, env);
+  const denied = await requireAdmin(request, env);
   if (denied) return denied;
 
   const feedback = [];
@@ -227,7 +279,7 @@ async function handleFeedbackExport(request, env, url) {
 }
 
 async function handleContentHealth(request, env, url) {
-  const denied = requireAdmin(request, env);
+  const denied = await requireAdmin(request, env);
   if (denied) return denied;
 
   const healthRequest = new Request(new URL("/content-health.json", url.origin).toString(), { headers: { Accept: "application/json" } });
@@ -239,7 +291,7 @@ async function handleContentHealth(request, env, url) {
 }
 
 async function handleNewsletterDraft(request, env, url) {
-  const denied = requireAdmin(request, env);
+  const denied = await requireAdmin(request, env);
   if (denied) return denied;
 
   const since = parseSince(url.searchParams.get("since"));
@@ -342,6 +394,15 @@ function plainNewsletterSection(title, items, origin) {
 }
 
 async function handleContact(request, env, url) {
+  const limited = await checkRateLimit(env, request, "contact", 5, 600);
+  if (limited) return limited;
+
+  const tooLarge = enforceBodyLimit(request, MAX_FORM_BYTES);
+  if (tooLarge) return tooLarge;
+
+  const badType = enforceContentType(request, ["application/x-www-form-urlencoded", "multipart/form-data"]);
+  if (badType) return badType;
+
   if (!isSameOrigin(request, url)) {
     return json({ ok: false, error: "Invalid origin." }, 403);
   }
@@ -373,6 +434,15 @@ async function handleContact(request, env, url) {
 }
 
 async function handleFeedback(request, env, url) {
+  const limited = await checkRateLimit(env, request, "feedback", 20, 600);
+  if (limited) return limited;
+
+  const tooLarge = enforceBodyLimit(request, MAX_FORM_BYTES);
+  if (tooLarge) return tooLarge;
+
+  const badType = enforceContentType(request, ["application/x-www-form-urlencoded", "multipart/form-data"]);
+  if (badType) return badType;
+
   if (!isSameOrigin(request, url)) {
     return json({ ok: false, error: "Invalid origin." }, 403);
   }
@@ -382,6 +452,7 @@ async function handleFeedback(request, env, url) {
   if (honeypot) return json({ ok: true });
 
   const allowedTypes = new Set(["useful", "confusing", "question", "collaboration"]);
+  const allowedTargetTypes = new Set(["paper", "project", "note", "library"]);
   const type = sanitizeText(data.get("type"), 40);
   const targetType = sanitizeText(data.get("targetType"), 40);
   const targetTitle = sanitizeText(data.get("targetTitle"), 220);
@@ -389,7 +460,7 @@ async function handleFeedback(request, env, url) {
   const message = sanitizeText(data.get("message"), 1200);
   const email = normalizeEmail(data.get("email"));
 
-  if (!allowedTypes.has(type) || !targetType || !targetTitle || !targetUrl) {
+  if (!allowedTypes.has(type) || !allowedTargetTypes.has(targetType) || !targetTitle || !isPublicContentPath(targetUrl)) {
     return json({ ok: false, error: "Feedback is missing required fields." }, 400);
   }
 
@@ -439,6 +510,15 @@ async function readSubscribers(env) {
 
 async function recordVisit(request, env) {
   if (!env.SITE_METRICS) return;
+
+  const limited = await checkRateLimit(env, request, "visit", 120, 60);
+  if (limited) return;
+
+  const tooLarge = enforceBodyLimit(request, 1024);
+  if (tooLarge) return;
+
+  const badType = enforceContentType(request, ["application/json", "text/plain"]);
+  if (badType) return;
 
   const data = await readRequestData(request).catch(() => new Map());
   const path = sanitizePath(data.get("path"));
@@ -530,11 +610,53 @@ function normalizeEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
 }
 
-function requireAdmin(request, env) {
+async function requireAdmin(request, env) {
+  const limited = await checkRateLimit(env, request, "admin", 40, 300);
+  if (limited) return limited;
+
   const auth = request.headers.get("authorization") || "";
   const expected = env.ADMIN_TOKEN ? `Bearer ${env.ADMIN_TOKEN}` : "";
-  if (!expected || auth !== expected) {
+  if (!expected || !safeEqual(auth, expected)) {
     return json({ ok: false, error: "Unauthorized." }, 401);
+  }
+  return null;
+}
+
+async function checkRateLimit(env, request, scope, limit, windowSeconds) {
+  if (!env.SITE_METRICS) return null;
+  const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
+  const identity = await clientFingerprint(request);
+  const key = `${RATE_LIMIT_PREFIX}${scope}:${bucket}:${identity}`;
+  const current = Number((await env.SITE_METRICS.get(key)) || "0");
+  if (current >= limit) {
+    return json(
+      { ok: false, error: "Too many requests. Please try again later." },
+      429,
+      { "Retry-After": String(windowSeconds) }
+    );
+  }
+  await env.SITE_METRICS.put(key, String(current + 1), { expirationTtl: windowSeconds * 2 });
+  return null;
+}
+
+async function clientFingerprint(request) {
+  const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "local";
+  const ua = request.headers.get("user-agent") || "";
+  return sha256(`${ip}|${ua.slice(0, 120)}`);
+}
+
+function enforceBodyLimit(request, maxBytes) {
+  const length = Number(request.headers.get("content-length") || "0");
+  if (length && length > maxBytes) {
+    return json({ ok: false, error: "Request body is too large." }, 413);
+  }
+  return null;
+}
+
+function enforceContentType(request, allowedTypes) {
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType || !allowedTypes.some((type) => contentType.includes(type))) {
+    return json({ ok: false, error: "Unsupported content type." }, 415);
   }
   return null;
 }
@@ -556,23 +678,77 @@ function parseItemDate(value) {
 }
 
 function sanitizePath(value) {
-  const path = String(value || "/").trim();
-  if (!path.startsWith("/")) return "/";
-  return path.slice(0, 160);
+  const raw = String(value || "/").trim();
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  try {
+    const url = new URL(raw, "https://jianhenghu.local");
+    const path = `${url.pathname}${url.search}`;
+    return path.replace(/[^\w\-./?=&%#\u4e00-\u9fa5]/g, "").slice(0, 180) || "/";
+  } catch {
+    return "/";
+  }
 }
 
 function sanitizeText(value, limit) {
-  return String(value || "").trim().replace(/\s+/g, " ").slice(0, limit);
+  return String(value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, limit);
 }
 
 function isSameOrigin(request, url) {
   const origin = request.headers.get("origin");
-  if (!origin) return true;
+  if (!origin) return request.method === "GET" || request.method === "HEAD";
   try {
-    return new URL(origin).host === url.host;
+    const parsed = new URL(origin);
+    return parsed.protocol === url.protocol && parsed.host === url.host;
   } catch {
     return false;
   }
+}
+
+function isPublicContentPath(path) {
+  return (
+    path === "/" ||
+    path.startsWith("/notes/") ||
+    path.startsWith("/research/") ||
+    path.startsWith("/projects/") ||
+    path.startsWith("/library/")
+  ) && !path.startsWith("/api/") && !path.startsWith("/admin") && path !== "/content-health.json";
+}
+
+function isBlockedPublicPath(path) {
+  const blockedPrefixes = [
+    "/.git",
+    "/.github",
+    "/.env",
+    "/src/",
+    "/scripts/",
+    "/docs/",
+    "/node_modules/",
+  ];
+  const blockedFiles = new Set([
+    "/package.json",
+    "/package-lock.json",
+    "/pnpm-lock.yaml",
+    "/yarn.lock",
+    "/wrangler.toml",
+    "/astro.config.mjs",
+    "/tsconfig.json",
+  ]);
+  return blockedFiles.has(path) || blockedPrefixes.some((prefix) => path === prefix.replace(/\/$/, "") || path.startsWith(prefix));
+}
+
+function safeEqual(left, right) {
+  const a = String(left || "");
+  const b = String(right || "");
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    result |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+  return result === 0;
 }
 
 async function sha256(value) {
@@ -588,6 +764,49 @@ function json(body, status = 200, headers = {}) {
       "Content-Type": "application/json; charset=utf-8",
       ...headers,
     },
+  });
+}
+
+function withSecurityHeaders(response, request, url) {
+  const headers = new Headers(response.headers);
+  const isHtml = (headers.get("content-type") || "").includes("text/html");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "DENY");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), accelerometer=(), gyroscope=()");
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  headers.set("X-Permitted-Cross-Domain-Policies", "none");
+  if (url.protocol === "https:") {
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+  if (isHtml) {
+    headers.set("Content-Security-Policy", [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'self'",
+      "frame-ancestors 'none'",
+      "img-src 'self' data: https:",
+      "font-src 'self' data:",
+      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://plausible.io https://*.plausible.io https://cloud.umami.is",
+      "connect-src 'self' https://api.github.com https://plausible.io https://*.plausible.io https://cloud.umami.is",
+      "form-action 'self' mailto:",
+    ].join("; "));
+  }
+  if (url.pathname.startsWith("/admin") || url.pathname.startsWith("/api/admin")) {
+    headers.set("Cache-Control", "no-store");
+    headers.set("X-Robots-Tag", "noindex, nofollow");
+  } else if (url.pathname.startsWith("/api/") && url.pathname !== "/api/site-stats") {
+    headers.set("Cache-Control", "no-store");
+  }
+  if (request.method === "OPTIONS") {
+    headers.set("Allow", "GET, HEAD, POST");
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
