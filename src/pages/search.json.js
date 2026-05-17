@@ -1,5 +1,5 @@
 import { getCollection } from "astro:content";
-import { librarySlug, noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
+import { libraryHref, noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
 
 export async function GET() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
@@ -35,6 +35,7 @@ export async function GET() {
         paper.data.method,
         paper.data.nextStep,
         ...(paper.data.evidence || []),
+        ...(paper.data.artifacts || []).flatMap((artifact) => [artifact.label, artifact.type, artifact.description, artifact.status]),
       ].filter(Boolean).join(" ")),
     })),
     ...projects.map((project) => ({
@@ -53,18 +54,24 @@ export async function GET() {
         project.data.nextStep,
         ...(project.data.evidence || []),
         ...(project.data.techStack || []),
+        ...(project.data.artifacts || []).flatMap((artifact) => [artifact.label, artifact.type, artifact.description, artifact.status]),
       ].filter(Boolean).join(" ")),
     })),
     ...library.map((item) => ({
       type: "library",
       title: item.data.title,
       description: item.data.note,
-      url: item.data.url || `/library#${librarySlug(item)}`,
+      url: libraryHref(item),
       tags: item.data.tags,
       date: item.data.year,
       status: item.data.status,
       source: item.data.source || "library",
-      content: plainText([item.body, item.data.type, ...(item.data.authors || [])].filter(Boolean).join(" ")),
+      content: plainText([
+        item.body,
+        item.data.type,
+        ...(item.data.authors || []),
+        ...(item.data.artifacts || []).flatMap((artifact) => [artifact.label, artifact.type, artifact.description, artifact.status]),
+      ].filter(Boolean).join(" ")),
     })),
     ...timeline
       .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)))
@@ -109,6 +116,16 @@ export async function GET() {
       date: "2026-05-17",
       source: "site",
       content: "email research project paper feedback general chat",
+    },
+    {
+      type: "page",
+      title: "Research Map",
+      description: "Lightweight map connecting roadmap threads, papers, projects, notes, and library entries.",
+      url: "/research/map",
+      tags: ["research", "map", "evidence"],
+      date: "2026-05-17",
+      source: "site",
+      content: "research map evidence artifacts roadmap papers projects notes library",
     },
   ];
 

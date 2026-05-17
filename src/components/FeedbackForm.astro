@@ -1,0 +1,70 @@
+---
+interface Props {
+  targetType: "paper" | "project" | "note" | "library";
+  targetTitle: string;
+  targetUrl?: string;
+}
+
+const { targetType, targetTitle, targetUrl = Astro.url.pathname } = Astro.props;
+---
+
+<section class="feedback-panel" aria-label="Page feedback">
+  <div>
+    <span class="panel-kicker">Page feedback</span>
+    <h2>Leave a signal</h2>
+    <p>If this page is useful, confusing, or suggests a collaboration thread, you can leave a short note. It goes into the private admin view, not onto the page.</p>
+  </div>
+  <form class="feedback-form" data-feedback-form>
+    <input type="hidden" name="targetType" value={targetType} />
+    <input type="hidden" name="targetTitle" value={targetTitle} />
+    <input type="hidden" name="targetUrl" value={targetUrl} />
+    <label class="screen-reader-field">
+      Website
+      <input type="text" name="website" tabindex="-1" autocomplete="off" />
+    </label>
+    <label>
+      Type
+      <select name="type" required>
+        <option value="useful">Useful</option>
+        <option value="confusing">Confusing</option>
+        <option value="question">Question</option>
+        <option value="collaboration">Collaboration</option>
+      </select>
+    </label>
+    <label>
+      Message
+      <textarea name="message" rows="4" maxlength="1200" placeholder="A short note is enough."></textarea>
+    </label>
+    <label>
+      Email (optional)
+      <input type="email" name="email" placeholder="you@example.com" />
+    </label>
+    <button type="submit">Send feedback</button>
+    <p data-feedback-status aria-live="polite"></p>
+  </form>
+</section>
+
+<script is:inline>
+  document.querySelectorAll("[data-feedback-form]").forEach((form) => {
+    if (form.dataset.bound === "true") return;
+    form.dataset.bound = "true";
+    const status = form.querySelector("[data-feedback-status]");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (status) status.textContent = "Sending...";
+      const data = new FormData(form);
+      try {
+        const response = await fetch("/api/feedback", {
+          method: "POST",
+          body: data,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || "Feedback failed.");
+        form.reset();
+        if (status) status.textContent = "Saved. Thank you.";
+      } catch (error) {
+        if (status) status.textContent = error.message || "Feedback is unavailable right now.";
+      }
+    });
+  });
+</script>

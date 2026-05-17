@@ -6,6 +6,14 @@ const linkSchema = z.object({
   href: z.string(),
 });
 
+const artifactSchema = z.object({
+  label: z.string(),
+  type: z.string(),
+  href: z.string(),
+  description: z.string(),
+  status: z.string(),
+});
+
 const notes = defineCollection({
   loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/notes" }),
   schema: z.object({
@@ -38,6 +46,7 @@ const papers = defineCollection({
     relatedProjects: z.array(z.string()).default([]),
     relatedNotes: z.array(z.string()).default([]),
     relatedLibrary: z.array(z.string()).default([]),
+    artifacts: z.array(artifactSchema).default([]),
     bibtex: z.string().optional(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
@@ -62,6 +71,7 @@ const projects = defineCollection({
     relatedNotes: z.array(z.string()).default([]),
     relatedPapers: z.array(z.string()).default([]),
     relatedLibrary: z.array(z.string()).default([]),
+    artifacts: z.array(artifactSchema).default([]),
     evidence: z.array(z.string()).default([]),
     nextStep: z.string().optional(),
     featured: z.boolean().default(false),
@@ -85,6 +95,8 @@ const library = defineCollection({
     note: z.string(),
     relatedNotes: z.array(z.string()).default([]),
     relatedPapers: z.array(z.string()).default([]),
+    relatedProjects: z.array(z.string()).default([]),
+    artifacts: z.array(artifactSchema).default([]),
     featured: z.boolean().default(false),
     order: z.number().default(99),
     draft: z.boolean().default(false),

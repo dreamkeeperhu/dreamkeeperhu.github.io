@@ -17,6 +17,7 @@ const staticRoutes = new Set([
   "/now",
   "/projects",
   "/research",
+  "/research/map",
   "/search",
   "/tags",
   "/timeline",
@@ -88,6 +89,8 @@ function validateCollection(collection, rule) {
       if (!fs.existsSync(pdfPath)) errors.push(`${relative} points to missing PDF ${data.pdf}.`);
     }
 
+    validateArtifacts(relative, data.artifacts);
+
     const statusField = rule.statusField || "status";
     if (rule.statuses && data[statusField] && !rule.statuses.includes(String(data[statusField]))) {
       errors.push(`${relative} has invalid ${statusField} "${data[statusField]}".`);
@@ -106,6 +109,7 @@ function validateCollection(collection, rule) {
       ...(data.relatedPapers || []),
       ...(data.relatedProjects || []),
       ...(data.relatedLibrary || []),
+      ...(data.artifacts || []).map((artifact) => artifact?.href).filter(Boolean),
       ...(data.links || []).map((link) => link?.href).filter(Boolean),
       data.url,
       data.link,
@@ -115,6 +119,25 @@ function validateCollection(collection, rule) {
       if (isLocalMissing(href)) errors.push(`${relative} links to missing local target ${href}.`);
     }
   }
+}
+
+function validateArtifacts(relative, artifacts) {
+  if (!artifacts) return;
+  if (!Array.isArray(artifacts)) {
+    errors.push(`${relative} has artifacts but it is not an array.`);
+    return;
+  }
+
+  artifacts.forEach((artifact, index) => {
+    const prefix = `${relative} artifacts[${index}]`;
+    for (const field of ["label", "type", "href", "description", "status"]) {
+      if (!artifact?.[field]) errors.push(`${prefix} is missing "${field}".`);
+    }
+    if (artifact?.type === "pdf" && artifact?.href && artifact.href.startsWith("/")) {
+      const target = path.join(root, "public", String(artifact.href).replace(/^\//, ""));
+      if (!fs.existsSync(target)) errors.push(`${prefix} points to missing PDF ${artifact.href}.`);
+    }
+  });
 }
 
 function readFrontmatter(file) {

@@ -1,0 +1,66 @@
+---
+interface Artifact {
+  label: string;
+  type: string;
+  href: string;
+  description: string;
+  status: string;
+}
+
+interface Props {
+  artifacts?: Artifact[];
+  bibtex?: string;
+  title?: string;
+}
+
+const { artifacts = [], bibtex = "", title = "Evidence / Artifacts" } = Astro.props;
+const visibleArtifacts = artifacts.filter((artifact) => artifact?.label && artifact?.href);
+---
+
+{(visibleArtifacts.length > 0 || bibtex) && (
+  <section class="evidence-panel" aria-label={title}>
+    <div class="section-head compact-head">
+      <h2>{title}</h2>
+      <p>Public links that make this item easier to inspect: source material, code, demos, notes, datasets, slides, or citation data.</p>
+    </div>
+    <div class="artifact-list">
+      {visibleArtifacts.map((artifact) => (
+        <a class="artifact-card" href={artifact.href} target={artifact.href.startsWith("http") ? "_blank" : undefined} rel={artifact.href.startsWith("http") ? "noreferrer" : undefined}>
+          <span>{artifact.type} · {artifact.status}</span>
+          <strong>{artifact.label}</strong>
+          <p>{artifact.description}</p>
+        </a>
+      ))}
+      {bibtex && (
+        <div class="artifact-card artifact-copy-card">
+          <span>citation · copy</span>
+          <strong>BibTeX</strong>
+          <p>Copy the citation block for reference managers, notes, or paper drafts.</p>
+          <pre><code>{bibtex}</code></pre>
+          <button type="button" data-copy-artifact>Copy BibTeX</button>
+        </div>
+      )}
+    </div>
+    <script is:inline>
+      if (!window.__artifactCopyBound) {
+        window.__artifactCopyBound = true;
+        document.addEventListener("click", async (event) => {
+          const button = event.target?.closest?.("[data-copy-artifact]");
+          if (!button) return;
+          const source = button.closest(".artifact-copy-card")?.querySelector("code");
+          const text = source?.textContent || "";
+          if (!text) return;
+          try {
+            await navigator.clipboard.writeText(text);
+            button.textContent = "Copied";
+          } catch {
+            button.textContent = "Copy failed";
+          }
+          setTimeout(() => {
+            button.textContent = "Copy BibTeX";
+          }, 1800);
+        });
+      }
+    </script>
+  </section>
+)}

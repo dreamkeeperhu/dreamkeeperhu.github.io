@@ -1,6 +1,6 @@
 import rss from "@astrojs/rss";
 import { getCollection } from "astro:content";
-import { noteHref, paperHref, projectHref } from "../utils/content";
+import { libraryHref, noteHref, paperHref, projectHref } from "../utils/content";
 
 export async function GET(context) {
   const notes = (await getCollection("notes"))
@@ -11,6 +11,9 @@ export async function GET(context) {
     .sort((a, b) => b.data.year - a.data.year);
   const projects = (await getCollection("projects"))
     .filter((project) => !project.data.draft)
+    .sort((a, b) => a.data.order - b.data.order);
+  const library = (await getCollection("library"))
+    .filter((item) => !item.data.draft && item.data.featured)
     .sort((a, b) => a.data.order - b.data.order);
 
   return rss({
@@ -35,6 +38,12 @@ export async function GET(context) {
         description: project.data.summary,
         pubDate: new Date("2026-05-17"),
         link: projectHref(project),
+      })),
+      ...library.map((item) => ({
+        title: `Library: ${item.data.title}`,
+        description: item.data.note,
+        pubDate: new Date("2026-05-17"),
+        link: libraryHref(item),
       })),
     ],
   });

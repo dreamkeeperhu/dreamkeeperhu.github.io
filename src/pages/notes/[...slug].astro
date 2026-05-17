@@ -1,7 +1,8 @@
 ---
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { noteSlug } from "../../utils/content";
+import FeedbackForm from "../../components/FeedbackForm.astro";
+import { noteHref, noteSlug } from "../../utils/content";
 
 export async function getStaticPaths() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
@@ -23,6 +24,7 @@ const { Content } = await render(note);
     </header>
     <div class="article-body">
       <Content />
+      <FeedbackForm targetType="note" targetTitle={note.data.title} targetUrl={noteHref(note)} />
     </div>
   </article>
 </BaseLayout>

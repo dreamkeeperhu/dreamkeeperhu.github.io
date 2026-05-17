@@ -1,0 +1,132 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Hidden Admin | HJH"
+  description="Private local admin surface for homepage subscribers, contacts, feedback, newsletter draft, and site stats."
+  noindex
+>
+  <section class="content-hero admin-hero">
+    <span class="eyebrow">Hidden Admin</span>
+    <h1>Private site signals</h1>
+    <p>This page is not linked in navigation or sitemap. The token is stored only in this browser session and sent as an Authorization header.</p>
+  </section>
+
+  <section class="admin-shell">
+    <div class="admin-token-panel">
+      <label>
+        ADMIN_TOKEN
+        <input type="password" data-admin-token placeholder="Paste token for this session" autocomplete="off" />
+      </label>
+      <label>
+        Newsletter since
+        <input type="date" data-admin-since />
+      </label>
+      <div class="admin-actions">
+        <button type="button" data-admin-save>Save token</button>
+        <button type="button" data-admin-refresh>Refresh</button>
+        <button type="button" data-admin-clear>Clear</button>
+      </div>
+      <p data-admin-status aria-live="polite">Waiting for token.</p>
+    </div>
+
+    <div class="admin-grid">
+      {["site-stats", "subscribers", "contacts", "feedback", "newsletter-draft"].map((panel) => (
+        <article class="admin-panel" data-admin-panel={panel}>
+          <div>
+            <span>{panel}</span>
+            <button type="button" data-copy-panel={panel}>Copy JSON</button>
+          </div>
+          <pre><code data-panel-output={panel}>Not loaded.</code></pre>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <script is:inline>
+    const tokenInput = document.querySelector("[data-admin-token]");
+    const sinceInput = document.querySelector("[data-admin-since]");
+    const statusNode = document.querySelector("[data-admin-status]");
+    const outputs = new Map([...document.querySelectorAll("[data-panel-output]")].map((node) => [node.dataset.panelOutput, node]));
+    let cache = {};
+
+    const storedToken = sessionStorage.getItem("hjh_admin_token") || "";
+    const defaultSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (tokenInput) tokenInput.value = storedToken;
+    if (sinceInput) sinceInput.value = defaultSince;
+
+    document.querySelector("[data-admin-save]")?.addEventListener("click", () => {
+      sessionStorage.setItem("hjh_admin_token", tokenInput?.value || "");
+      setStatus("Token saved for this browser session.");
+      refreshAdmin();
+    });
+
+    document.querySelector("[data-admin-refresh]")?.addEventListener("click", refreshAdmin);
+    document.querySelector("[data-admin-clear]")?.addEventListener("click", () => {
+      sessionStorage.removeItem("hjh_admin_token");
+      if (tokenInput) tokenInput.value = "";
+      cache = {};
+      outputs.forEach((node) => (node.textContent = "Not loaded."));
+      setStatus("Token cleared.");
+    });
+
+    document.querySelectorAll("[data-copy-panel]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const key = button.dataset.copyPanel;
+        const value = key === "newsletter-draft" && cache[key]?.markdown ? cache[key].markdown : JSON.stringify(cache[key] || {}, null, 2);
+        try {
+          await navigator.clipboard.writeText(value);
+          button.textContent = key === "newsletter-draft" ? "Copied draft" : "Copied JSON";
+        } catch {
+          button.textContent = "Copy failed";
+        }
+        setTimeout(() => {
+          button.textContent = "Copy JSON";
+        }, 1800);
+      });
+    });
+
+    if (storedToken) refreshAdmin();
+
+    async function refreshAdmin() {
+      const token = tokenInput?.value || sessionStorage.getItem("hjh_admin_token") || "";
+      if (!token) {
+        setStatus("Paste ADMIN_TOKEN first.");
+        return;
+      }
+      sessionStorage.setItem("hjh_admin_token", token);
+      setStatus("Loading admin data...");
+      const since = sinceInput?.value || defaultSince;
+      await Promise.all([
+        loadPanel("site-stats", "/api/site-stats"),
+        loadPanel("subscribers", "/api/admin/subscribers", token),
+        loadPanel("contacts", "/api/admin/contacts", token),
+        loadPanel("feedback", "/api/admin/feedback", token),
+        loadPanel("newsletter-draft", `/api/admin/newsletter-draft?since=${encodeURIComponent(since)}`, token),
+      ]);
+      setStatus("Admin data loaded.");
+    }
+
+    async function loadPanel(key, url, token) {
+      const node = outputs.get(key);
+      if (node) node.textContent = "Loading...";
+      try {
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const json = await response.json();
+        cache[key] = json;
+        if (node) node.textContent = JSON.stringify(json, null, 2);
+      } catch (error) {
+        const payload = { ok: false, error: error.message || "Request failed." };
+        cache[key] = payload;
+        if (node) node.textContent = JSON.stringify(payload, null, 2);
+      }
+    }
+
+    function setStatus(text) {
+      if (statusNode) statusNode.textContent = text;
+    }
+  </script>
+</BaseLayout>

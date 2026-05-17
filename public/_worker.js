@@ -1,6 +1,7 @@
 const SUBSCRIBER_PREFIX = "subscriber:";
 const UNSUBSCRIBE_PREFIX = "unsubscribe:";
 const CONTACT_PREFIX = "contact:";
+const FEEDBACK_PREFIX = "feedback:";
 const METRIC_PREFIX = "metric:";
 
 export default {
@@ -27,8 +28,18 @@ export default {
       return handleContactExport(request, env);
     }
 
+    if (url.pathname === "/api/admin/feedback") {
+      return handleFeedbackExport(request, env);
+    }
+
     if (url.pathname === "/api/admin/newsletter-draft") {
       return handleNewsletterDraft(request, env, url);
+    }
+
+    if (url.pathname === "/api/feedback") {
+      return request.method === "POST"
+        ? handleFeedback(request, env, url)
+        : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
     if (url.pathname === "/api/contact") {
@@ -173,6 +184,32 @@ async function handleContactExport(request, env) {
   );
 }
 
+async function handleFeedbackExport(request, env) {
+  if (!env.CONTACT_MESSAGES) {
+    return json({ ok: false, error: "Feedback storage is not configured." }, 503);
+  }
+  const denied = requireAdmin(request, env);
+  if (denied) return denied;
+
+  const feedback = [];
+  let cursor;
+  do {
+    const page = await env.CONTACT_MESSAGES.list({ prefix: FEEDBACK_PREFIX, cursor });
+    cursor = page.list_complete ? undefined : page.cursor;
+    for (const key of page.keys) {
+      const record = await env.CONTACT_MESSAGES.get(key.name, "json");
+      if (record?.id) feedback.push(record);
+    }
+  } while (cursor);
+
+  feedback.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return json(
+    { ok: true, count: feedback.length, feedback },
+    200,
+    { "Cache-Control": "no-store" }
+  );
+}
+
 async function handleNewsletterDraft(request, env, url) {
   const denied = requireAdmin(request, env);
   if (denied) return denied;
@@ -260,6 +297,49 @@ async function handleContact(request, env, url) {
 
   await bumpMetric(env, "contact:total");
   return json({ ok: true, message: "Contact backup saved." });
+}
+
+async function handleFeedback(request, env, url) {
+  if (!isSameOrigin(request, url)) {
+    return json({ ok: false, error: "Invalid origin." }, 403);
+  }
+
+  const data = await readRequestData(request);
+  const honeypot = String(data.get("website") || "").trim();
+  if (honeypot) return json({ ok: true });
+
+  const allowedTypes = new Set(["useful", "confusing", "question", "collaboration"]);
+  const type = sanitizeText(data.get("type"), 40);
+  const targetType = sanitizeText(data.get("targetType"), 40);
+  const targetTitle = sanitizeText(data.get("targetTitle"), 220);
+  const targetUrl = sanitizePath(data.get("targetUrl"));
+  const message = sanitizeText(data.get("message"), 1200);
+  const email = normalizeEmail(data.get("email"));
+
+  if (!allowedTypes.has(type) || !targetType || !targetTitle || !targetUrl) {
+    return json({ ok: false, error: "Feedback is missing required fields." }, 400);
+  }
+
+  if (env.CONTACT_MESSAGES) {
+    const id = crypto.randomUUID();
+    await env.CONTACT_MESSAGES.put(
+      `${FEEDBACK_PREFIX}${id}`,
+      JSON.stringify({
+        id,
+        type,
+        targetType,
+        targetTitle,
+        targetUrl,
+        message,
+        email,
+        userAgent: sanitizeText(request.headers.get("user-agent"), 220),
+        createdAt: new Date().toISOString(),
+      })
+    );
+  }
+
+  await bumpMetric(env, "feedback:total");
+  return json({ ok: true, message: "Feedback saved." });
 }
 
 async function readSubscribers(env) {

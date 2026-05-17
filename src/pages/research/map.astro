@@ -1,0 +1,257 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { entrySlug, libraryHref, noteHref, paperHref, projectHref } from "../../utils/content";
+
+const [roadmap, papers, projects, notes, library] = await Promise.all([
+  getCollection("roadmap", (item) => !item.data.draft),
+  getCollection("papers", (item) => !item.data.draft),
+  getCollection("projects", (item) => !item.data.draft),
+  getCollection("notes", (item) => !item.data.draft),
+  getCollection("library", (item) => !item.data.draft),
+]);
+
+const threadItems = roadmap
+  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title))
+  .map((item) => ({
+    id: entrySlug(item.id),
+    title: item.data.title,
+    tags: item.data.tags,
+  }));
+
+const nodes = [
+  ...roadmap.map((item) => makeNode({
+    id: `roadmap:${entrySlug(item.id)}`,
+    type: "roadmap",
+    title: item.data.title,
+    summary: item.data.question,
+    href: `/research#${entrySlug(item.id)}`,
+    tags: item.data.tags,
+    thread: entrySlug(item.id),
+  })),
+  ...papers.map((item) => makeNode({
+    id: `paper:${entrySlug(item.id)}`,
+    type: "paper",
+    title: item.data.title,
+    summary: item.data.status,
+    href: paperHref(item),
+    tags: item.data.tags,
+  })),
+  ...projects.map((item) => makeNode({
+    id: `project:${entrySlug(item.id)}`,
+    type: "project",
+    title: item.data.title,
+    summary: item.data.status,
+    href: projectHref(item),
+    tags: item.data.tags,
+  })),
+  ...notes.map((item) => makeNode({
+    id: `note:${entrySlug(item.id)}`,
+    type: "note",
+    title: item.data.title,
+    summary: item.data.pubDate.toISOString().slice(0, 10),
+    href: noteHref(item),
+    tags: item.data.tags,
+  })),
+  ...library.map((item) => makeNode({
+    id: `library:${entrySlug(item.id)}`,
+    type: "library",
+    title: item.data.title,
+    summary: item.data.status,
+    href: libraryHref(item),
+    tags: item.data.tags,
+  })),
+];
+
+const byHref = new Map(nodes.map((node) => [node.href, node]));
+const byType = new Map([
+  ["roadmap", nodes.filter((node) => node.type === "roadmap")],
+  ["paper", nodes.filter((node) => node.type === "paper")],
+  ["project", nodes.filter((node) => node.type === "project")],
+  ["note", nodes.filter((node) => node.type === "note")],
+  ["library", nodes.filter((node) => node.type === "library")],
+]);
+
+const columns = [
+  ["roadmap", 40],
+  ["paper", 300],
+  ["project", 560],
+  ["note", 820],
+  ["library", 1080],
+];
+const positioned = [];
+for (const [type, x] of columns) {
+  const group = byType.get(type) || [];
+  group.forEach((node, index) => positioned.push({ ...node, x, y: 82 + index * 126 }));
+}
+const positionedById = new Map(positioned.map((node) => [node.id, node]));
+const canvasHeight = Math.max(520, Math.max(...positioned.map((node) => node.y + 112), 0));
+
+const edges = dedupeEdges([
+  ...roadmap.flatMap((item) => {
+    const source = `roadmap:${entrySlug(item.id)}`;
+    const tagEdges = nodes
+      .filter((node) => node.type !== "roadmap" && sharesTag(item.data.tags, node.tags))
+      .map((node) => ({ source, target: node.id, thread: entrySlug(item.id), label: "tag" }));
+    const related = [
+      ...item.data.links.map((link) => link.href),
+      ...item.data.relatedProjects,
+      ...item.data.relatedNotes,
+    ].map((href) => byHref.get(href))
+      .filter(Boolean)
+      .map((node) => ({ source, target: node.id, thread: entrySlug(item.id), label: "related" }));
+    return [...tagEdges, ...related];
+  }),
+  ...papers.flatMap((item) => relatedEdges(`paper:${entrySlug(item.id)}`, [
+    ...item.data.relatedProjects,
+    ...item.data.relatedNotes,
+    ...item.data.relatedLibrary,
+    ...item.data.artifacts.map((artifact) => artifact.href),
+  ])),
+  ...projects.flatMap((item) => relatedEdges(`project:${entrySlug(item.id)}`, [
+    ...item.data.relatedPapers,
+    ...item.data.relatedNotes,
+    ...item.data.relatedLibrary,
+    ...item.data.artifacts.map((artifact) => artifact.href),
+  ])),
+  ...library.flatMap((item) => relatedEdges(`library:${entrySlug(item.id)}`, [
+    ...item.data.relatedPapers,
+    ...item.data.relatedProjects,
+    ...item.data.relatedNotes,
+    ...item.data.artifacts.map((artifact) => artifact.href),
+  ])),
+]).filter((edge) => positionedById.has(edge.source) && positionedById.has(edge.target));
+const drawnEdges = edges.map((edge) => ({
+  ...edge,
+  sourceNode: positionedById.get(edge.source),
+  targetNode: positionedById.get(edge.target),
+})).filter((edge) => edge.sourceNode && edge.targetNode);
+
+function makeNode(node) {
+  return {
+    ...node,
+    thread: node.thread || inferThread([node.title, node.summary, ...(node.tags || [])].join(" ")),
+    tags: node.tags || [],
+  };
+}
+
+function relatedEdges(source, hrefs) {
+  const sourceNode = nodes.find((node) => node.id === source);
+  return hrefs
+    .map((href) => byHref.get(href))
+    .filter(Boolean)
+    .map((target) => ({
+      source,
+      target: target.id,
+      thread: sourceNode?.thread || target.thread,
+      label: "related",
+    }));
+}
+
+function dedupeEdges(items) {
+  const seen = new Set();
+  return items.filter((edge) => {
+    const key = `${edge.source}->${edge.target}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return edge.source !== edge.target;
+  });
+}
+
+function sharesTag(left = [], right = []) {
+  const set = new Set(left.map((tag) => tag.toLowerCase()));
+  return right.some((tag) => set.has(tag.toLowerCase()));
+}
+
+function inferThread(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("sim-to-real") || lower.includes("transfer")) return "sim-to-real";
+  if (lower.includes("instruction") || lower.includes("instruct")) return "robotics-instruction";
+  if (lower.includes("paradigm") || lower.includes("embodied") || lower.includes("physical")) return "next-robotics-paradigm";
+  return "next-robotics-paradigm";
+}
+---
+
+<BaseLayout
+  current="Research"
+  title="Research Map | HJH"
+  description="A lightweight evidence map connecting research roadmap threads, papers, projects, notes, and reading entries."
+>
+  <section class="content-hero">
+    <span class="eyebrow">Research Map</span>
+    <h1>How the public research pieces connect</h1>
+    <p>This map is generated from roadmap, papers, projects, notes, and library metadata. It keeps the site honest by showing evidence relationships instead of isolated claims.</p>
+    <div class="hero-actions">
+      <a class="button-primary" href="/research">Research home</a>
+      <a class="button-secondary" href="/projects">Projects</a>
+      <a class="button-secondary" href="/library">Library</a>
+    </div>
+  </section>
+
+  <section class="research-map-shell" aria-label="Research relationship map">
+    <div class="map-toolbar" data-map-filters>
+      <button type="button" data-thread="all" aria-pressed="true">All threads</button>
+      {threadItems.map((thread) => (
+        <button type="button" data-thread={thread.id}>{thread.title}</button>
+      ))}
+    </div>
+    <div class="map-scroll">
+      <div class="map-canvas" style={`height: ${canvasHeight}px;`}>
+        <svg viewBox={`0 0 1320 ${canvasHeight}`} preserveAspectRatio="none" aria-hidden="true">
+          {drawnEdges.map((edge) => (
+            <line
+              class="map-edge"
+              data-thread={edge.thread}
+              x1={edge.sourceNode!.x + 190}
+              y1={edge.sourceNode!.y + 44}
+              x2={edge.targetNode!.x}
+              y2={edge.targetNode!.y + 44}
+            />
+          ))}
+        </svg>
+        {positioned.map((node) => (
+          <a
+            class={`map-node map-node-${node.type}`}
+            href={node.href}
+            data-thread={node.thread}
+            style={`left: ${node.x}px; top: ${node.y}px;`}
+          >
+            <span>{node.type}</span>
+            <strong>{node.title}</strong>
+            <small>{node.summary}</small>
+          </a>
+        ))}
+      </div>
+    </div>
+    <div class="map-legend">
+      {columns.map(([type]) => <span>{type}</span>)}
+    </div>
+  </section>
+
+  <script is:inline>
+    const filterButtons = [...document.querySelectorAll("[data-map-filters] button")];
+    const mapNodes = [...document.querySelectorAll(".map-node")];
+    const mapEdges = [...document.querySelectorAll(".map-edge")];
+    const initialThread = new URLSearchParams(window.location.search).get("thread") || "all";
+
+    function applyThread(thread) {
+      filterButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.thread === thread)));
+      mapNodes.forEach((node) => {
+        node.hidden = thread !== "all" && node.dataset.thread !== thread;
+      });
+      mapEdges.forEach((edge) => {
+        edge.hidden = thread !== "all" && edge.dataset.thread !== thread;
+      });
+    }
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const thread = button.dataset.thread || "all";
+        history.replaceState(null, "", thread === "all" ? "/research/map" : `/research/map?thread=${encodeURIComponent(thread)}`);
+        applyThread(thread);
+      });
+    });
+
+    applyThread(filterButtons.some((button) => button.dataset.thread === initialThread) ? initialThread : "all");
+  </script>
+</BaseLayout>

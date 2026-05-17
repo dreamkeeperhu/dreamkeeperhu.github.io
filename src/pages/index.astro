@@ -157,6 +157,7 @@ const latestMilestones = (await getCollection("timeline"))
           <span>{project.data.status}</span>
           <strong>{project.data.title}</strong>
           <small>{project.data.summary}</small>
+          {project.data.artifacts.length > 0 && <em class="evidence-signal">Evidence available · {project.data.artifacts.length} artifacts</em>}
         </a>
       ))}
     </div>
@@ -182,7 +183,7 @@ const latestMilestones = (await getCollection("timeline"))
         <span class="panel-kicker">Research</span>
         {latestPapers.map((paper) => (
           <a class="mini-entry" href={paperHref(paper)}>
-            <time>{paper.data.status} · {paper.data.year}</time>
+            <time>{paper.data.status} · {paper.data.year}{paper.data.artifacts.length > 0 ? ` · ${paper.data.artifacts.length} artifacts` : ""}</time>
             <strong>{paper.data.title}</strong>
             <p>{paper.data.abstract}</p>
           </a>

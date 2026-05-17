@@ -28,6 +28,10 @@ export function librarySlug(item: CollectionEntry<"library">) {
   return entrySlug(item.id);
 }
 
+export function libraryHref(item: CollectionEntry<"library">) {
+  return `/library/${librarySlug(item)}`;
+}
+
 export function timelineYear(date: string) {
   const match = String(date).match(/^\d{4}/);
   return match ? match[0] : "Other";

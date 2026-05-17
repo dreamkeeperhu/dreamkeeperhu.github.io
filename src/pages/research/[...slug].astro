@@ -1,7 +1,10 @@
 ---
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import EvidencePanel from "../../components/EvidencePanel.astro";
+import FeedbackForm from "../../components/FeedbackForm.astro";
 import { paperHref, paperSlug } from "../../utils/content";
+import { mergeArtifacts } from "../../utils/artifacts";
 import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
@@ -12,6 +15,37 @@ export async function getStaticPaths() {
 const { paper } = Astro.props;
 const { Content } = await render(paper);
 const title = `${paper.data.title} | HJH Research`;
+const paperArtifacts = mergeArtifacts([
+  ...paper.data.artifacts,
+  paper.data.pdf && {
+    label: "Paper PDF",
+    type: "pdf",
+    href: paper.data.pdf,
+    description: "Public PDF attached to this research entry.",
+    status: "available",
+  },
+  paper.data.code && {
+    label: "Code repository",
+    type: "code",
+    href: paper.data.code,
+    description: "Code or implementation workspace linked to this research entry.",
+    status: "available",
+  },
+  ...paper.data.relatedProjects.map((href) => ({
+    label: "Related project",
+    type: "project",
+    href,
+    description: "Project trace connected to this paper.",
+    status: "available",
+  })),
+  ...paper.data.relatedNotes.map((href) => ({
+    label: "Related note",
+    type: "note",
+    href,
+    description: "Public note connected to this paper.",
+    status: "available",
+  })),
+]);
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "ScholarlyArticle",
@@ -70,14 +104,9 @@ const jsonLd = {
         </section>
       )}
     </div>
+    <EvidencePanel artifacts={paperArtifacts} bibtex={paper.data.bibtex} />
     <div class="article-body">
       <Content />
-      {paper.data.bibtex && (
-        <section class="bibtex-block">
-          <h2>BibTeX</h2>
-          <pre><code>{paper.data.bibtex}</code></pre>
-        </section>
-      )}
       {(paper.data.relatedProjects.length > 0 || paper.data.relatedNotes.length > 0 || paper.data.relatedLibrary.length > 0) && (
         <section class="related-block">
           <h2>Related</h2>
@@ -88,6 +117,7 @@ const jsonLd = {
           </div>
         </section>
       )}
+      <FeedbackForm targetType="paper" targetTitle={paper.data.title} targetUrl={paperHref(paper)} />
     </div>
   </article>
 </BaseLayout>

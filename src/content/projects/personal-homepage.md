@@ -27,6 +27,22 @@ relatedNotes:
 relatedPapers: []
 relatedLibrary:
   - "/library"
+artifacts:
+  - label: "Live site"
+    type: "demo"
+    href: "https://jianhenghu.com"
+    description: "Production deployment of the research-oriented personal homepage."
+    status: "available"
+  - label: "Source repository"
+    type: "code"
+    href: "https://github.com/dreamkeeperhu/dreamkeeperhu.github.io"
+    description: "Astro, Obsidian publishing, Cloudflare Pages, and lightweight API source."
+    status: "available"
+  - label: "Architecture note"
+    type: "note"
+    href: "/notes/why-this-site-is-now-astro"
+    description: "Public note explaining why the site moved from static HTML to Astro."
+    status: "available"
 evidence:
   - "Obsidian notes can be promoted into public pages without hand-editing the site."
   - "GitHub Actions rebuilds and deploys the site to Cloudflare Pages."

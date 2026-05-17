@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { librarySlug } from "../utils/content";
+import { libraryHref, librarySlug } from "../utils/content";
 
 const libraryItems = (await getCollection("library"))
   .filter((item) => !item.data.draft)
@@ -33,7 +33,7 @@ const statuses = ["all", "reading", "collecting", "used", "read", "planned"].fil
 
   <section class="library-list" data-library-list>
     {libraryItems.map((item, index) => (
-      <a id={librarySlug(item)} class="library-row" href={item.data.url || "/library"} data-library-row data-status={item.data.status}>
+      <a id={librarySlug(item)} class="library-row" href={libraryHref(item)} data-library-row data-status={item.data.status}>
         <span>{String(index + 1).padStart(2, "0")}</span>
         <div>
           <div class="paper-meta">

@@ -24,6 +24,22 @@ relatedPapers:
   - "/research/cchihh"
 relatedLibrary:
   - "/library"
+artifacts:
+  - label: "GitHub repository"
+    type: "code"
+    href: "https://github.com/dreamkeeperhu/CCHIHH_Final"
+    description: "Implementation and experiment traces for the CCHIHH scheduling paper."
+    status: "available"
+  - label: "Paper PDF"
+    type: "pdf"
+    href: "/papers/cchihh.pdf"
+    description: "Public manuscript linked to the research code."
+    status: "available"
+  - label: "Research detail"
+    type: "paper"
+    href: "/research/cchihh"
+    description: "Paper page with abstract, method, evidence, and BibTeX."
+    status: "available"
 evidence:
   - "Connects a paper, implementation, and experiment narrative in one public trace."
   - "Uses adaptive decomposition as a lens on distributed cooperation under uncertainty."

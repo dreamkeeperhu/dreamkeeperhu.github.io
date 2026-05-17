@@ -1,7 +1,10 @@
 ---
 import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import EvidencePanel from "../../components/EvidencePanel.astro";
+import FeedbackForm from "../../components/FeedbackForm.astro";
 import { projectHref, projectSlug } from "../../utils/content";
+import { mergeArtifacts } from "../../utils/artifacts";
 
 export async function getStaticPaths() {
   const projects = (await getCollection("projects")).filter((project) => !project.data.draft);
@@ -10,6 +13,37 @@ export async function getStaticPaths() {
 
 const { project } = Astro.props;
 const { Content } = await render(project);
+const projectArtifacts = mergeArtifacts([
+  ...project.data.artifacts,
+  project.data.url && {
+    label: "Primary link",
+    type: "code",
+    href: project.data.url,
+    description: "Primary public link for this project.",
+    status: "available",
+  },
+  ...project.data.links.map((link) => ({
+    label: link.label,
+    type: "link",
+    href: link.href,
+    description: "Curated project reference.",
+    status: "available",
+  })),
+  ...project.data.relatedPapers.map((href) => ({
+    label: "Related research",
+    type: "paper",
+    href,
+    description: "Research entry connected to this project.",
+    status: "available",
+  })),
+  ...project.data.relatedNotes.map((href) => ({
+    label: "Related note",
+    type: "note",
+    href,
+    description: "Public note connected to this project.",
+    status: "available",
+  })),
+]);
 ---
 
 <BaseLayout
@@ -54,6 +88,8 @@ const { Content } = await render(project);
       )}
     </div>
 
+    <EvidencePanel artifacts={projectArtifacts} />
+
     <div class="article-body">
       <Content />
       <section class="related-block">
@@ -65,6 +101,7 @@ const { Content } = await render(project);
           <a href={projectHref(project)}>Canonical project link</a>
         </div>
       </section>
+      <FeedbackForm targetType="project" targetTitle={project.data.title} targetUrl={projectHref(project)} />
     </div>
   </article>
 </BaseLayout>

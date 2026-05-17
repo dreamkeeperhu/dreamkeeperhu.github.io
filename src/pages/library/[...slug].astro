@@ -1,0 +1,105 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import EvidencePanel from "../../components/EvidencePanel.astro";
+import FeedbackForm from "../../components/FeedbackForm.astro";
+import { libraryHref, librarySlug } from "../../utils/content";
+import { mergeArtifacts } from "../../utils/artifacts";
+
+export async function getStaticPaths() {
+  const library = (await getCollection("library")).filter((item) => !item.data.draft);
+  return library.map((item) => ({ params: { slug: librarySlug(item) }, props: { item } }));
+}
+
+const { item } = Astro.props;
+const { Content } = await render(item);
+const artifacts = mergeArtifacts([
+  ...item.data.artifacts,
+  item.data.url && {
+    label: "Primary source",
+    type: item.data.type,
+    href: item.data.url,
+    description: "Primary link associated with this reading or resource entry.",
+    status: "available",
+  },
+  ...item.data.relatedPapers.map((href) => ({
+    label: "Related paper",
+    type: "paper",
+    href,
+    description: "Research entry connected to this reading item.",
+    status: "available",
+  })),
+  ...item.data.relatedProjects.map((href) => ({
+    label: "Related project",
+    type: "project",
+    href,
+    description: "Project trace connected to this reading item.",
+    status: "available",
+  })),
+  ...item.data.relatedNotes.map((href) => ({
+    label: "Related note",
+    type: "note",
+    href,
+    description: "Public note connected to this reading item.",
+    status: "available",
+  })),
+]);
+---
+
+<BaseLayout
+  current="Library"
+  title={`${item.data.title} | HJH Library`}
+  description={item.data.note}
+  ogType="article"
+>
+  <article class="article-page library-detail">
+    <header class="article-header">
+      <a href="/library">← Library</a>
+      <time>{item.data.status} · {item.data.year}</time>
+      <h1>{item.data.title}</h1>
+      <p>{item.data.note}</p>
+      {item.data.authors.length > 0 && <div class="paper-meta"><span>{item.data.authors.join(", ")}</span></div>}
+      <div class="tag-row">{item.data.tags.map((tag) => <span>{tag}</span>)}</div>
+      <div class="paper-actions">
+        {item.data.url && <a href={item.data.url}>Primary source</a>}
+        <a href={libraryHref(item)}>Canonical library link</a>
+      </div>
+    </header>
+
+    <div class="detail-grid">
+      <section>
+        <span class="panel-kicker">Reading Status</span>
+        <p>{item.data.status}</p>
+      </section>
+      <section>
+        <span class="panel-kicker">Type</span>
+        <p>{item.data.type}</p>
+      </section>
+      <section>
+        <span class="panel-kicker">Why It Matters</span>
+        <p>{item.data.note}</p>
+      </section>
+      <section>
+        <span class="panel-kicker">Connections</span>
+        <p>{[...item.data.relatedPapers, ...item.data.relatedProjects, ...item.data.relatedNotes].length} linked research item(s).</p>
+      </section>
+    </div>
+
+    <EvidencePanel artifacts={artifacts} />
+
+    <div class="article-body">
+      <Content />
+      {(item.data.relatedPapers.length > 0 || item.data.relatedProjects.length > 0 || item.data.relatedNotes.length > 0) && (
+        <section class="related-block">
+          <h2>Related</h2>
+          <div class="inline-links">
+            {item.data.relatedPapers.map((href) => <a href={href}>Research</a>)}
+            {item.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
+            {item.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
+          </div>
+        </section>
+      )}
+      <FeedbackForm targetType="library" targetTitle={item.data.title} targetUrl={libraryHref(item)} />
+    </div>
+  </article>
+</BaseLayout>

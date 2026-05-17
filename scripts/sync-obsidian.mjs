@@ -264,6 +264,7 @@ function mapPaper({ frontmatter: fm, body, slugPath, sourcePath }) {
       relatedProjects: listValue(fm.relatedProjects) || [],
       relatedNotes: listValue(fm.relatedNotes) || [],
       relatedLibrary: listValue(fm.relatedLibrary) || [],
+      artifacts: artifactList(fm.artifacts),
       bibtex: stringValue(fm.bibtex) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
       draft: shouldKeepPrivate(fm),
@@ -291,6 +292,7 @@ function mapProject({ frontmatter: fm, body, slugPath, sourcePath }) {
       relatedNotes: listValue(fm.relatedNotes) || [],
       relatedPapers: listValue(fm.relatedPapers) || [],
       relatedLibrary: listValue(fm.relatedLibrary) || [],
+      artifacts: artifactList(fm.artifacts),
       evidence: listValue(fm.evidence) || [],
       nextStep: stringValue(fm.nextStep || fm.next) || undefined,
       featured: boolValue(fm.featured),
@@ -317,6 +319,8 @@ function mapLibrary({ frontmatter: fm, body, slugPath, sourcePath }) {
       note: stringValue(fm.note || fm.summary || fm.description) || excerpt(body),
       relatedNotes: listValue(fm.relatedNotes) || [],
       relatedPapers: listValue(fm.relatedPapers) || [],
+      relatedProjects: listValue(fm.relatedProjects) || [],
+      artifacts: artifactList(fm.artifacts),
       featured: boolValue(fm.featured),
       order: numberValue(fm.order) || 99,
       draft: shouldKeepPrivate(fm),
@@ -455,6 +459,30 @@ function linkList(value) {
       return {
         label: stringValue(item?.label || item?.title || item?.name),
         href: stringValue(item?.href || item?.url || item?.link),
+      };
+    })
+    .filter((item) => item.label && item.href);
+}
+
+function artifactList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        return {
+          label: item,
+          type: "link",
+          href: item,
+          description: "Linked research artifact.",
+          status: "available",
+        };
+      }
+      return {
+        label: stringValue(item?.label || item?.title || item?.name),
+        type: stringValue(item?.type || item?.kind) || "link",
+        href: stringValue(item?.href || item?.url || item?.link),
+        description: stringValue(item?.description || item?.summary) || "Linked research artifact.",
+        status: stringValue(item?.status) || "available",
       };
     })
     .filter((item) => item.label && item.href);

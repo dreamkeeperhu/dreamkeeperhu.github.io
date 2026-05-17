@@ -18,6 +18,12 @@ links:
     href: "https://github.com/dreamkeeperhu/welearn-answer-filler"
 relatedNotes: []
 relatedPapers: []
+artifacts:
+  - label: "GitHub repository"
+    type: "code"
+    href: "https://github.com/dreamkeeperhu/welearn-answer-filler"
+    description: "Small JavaScript automation utility for repetitive platform input."
+    status: "available"
 evidence:
   - "A practical example of turning repeated friction into a small tool."
 nextStep: "Keep it as a utility trace rather than a central research project."

@@ -19,6 +19,17 @@ links:
 relatedNotes: []
 relatedPapers:
   - "/research/cchihh"
+artifacts:
+  - label: "GitHub repository"
+    type: "code"
+    href: "https://github.com/dreamkeeperhu/CED"
+    description: "Runnable workspace for cloud-edge-device scheduling experiments."
+    status: "available"
+  - label: "Related research"
+    type: "paper"
+    href: "/research/cchihh"
+    description: "Research page connected to the scheduling experiment thread."
+    status: "available"
 evidence:
   - "Maintains a runnable workspace adjacent to the paper direction."
 nextStep: "Separate reusable baselines from one-off experiment traces."

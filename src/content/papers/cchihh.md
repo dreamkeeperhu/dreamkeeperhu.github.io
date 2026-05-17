@@ -21,6 +21,22 @@ relatedNotes:
   - "/notes/sim-to-real-transfer-gap"
 relatedLibrary:
   - "/library"
+artifacts:
+  - label: "Paper PDF"
+    type: "pdf"
+    href: "/papers/cchihh.pdf"
+    description: "Current public manuscript PDF for the CCHIHH scheduling work."
+    status: "available"
+  - label: "Implementation repository"
+    type: "code"
+    href: "https://github.com/dreamkeeperhu/CCHIHH_Final"
+    description: "Research code and experiment workspace connected to the paper."
+    status: "available"
+  - label: "Project trace"
+    type: "project"
+    href: "/projects/cchihh-scheduling"
+    description: "Public project page summarizing the implementation and experiment direction."
+    status: "available"
 bibtex: |
   @article{hu2026cchihh,
     title = {A Cooperative Coevolution Algorithm with a Heterogeneous-Island-Based Hyper-Heuristic for Cloud-Edge-Device Collaborative Scheduling},

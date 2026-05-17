@@ -22,6 +22,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
     <p>Public-facing research threads, paper status, PDFs, code links, and notes that make the direction easier to inspect.</p>
     <div class="hero-actions">
       <a class="button-primary" href="#papers">Papers</a>
+      <a class="button-secondary" href="/research/map">Research map</a>
       <a class="button-secondary" href="/projects">Projects</a>
       <a class="button-secondary" href="/library">Library</a>
     </div>
@@ -53,7 +54,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
       <article>
         <span>Principle</span>
         <strong>Evidence first</strong>
-        <p>Each research item should make its problem, method, next step, and artifacts inspectable.</p>
+        <p>Each research item should make its problem, method, next step, and artifacts inspectable. The map view connects those pieces.</p>
       </article>
     </div>
   </section>
@@ -67,6 +68,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
             <span>{paper.data.status}</span>
             <span>{paper.data.year}</span>
             {paper.data.venue && <span>{paper.data.venue}</span>}
+            {paper.data.artifacts.length > 0 && <span>{paper.data.artifacts.length} artifacts</span>}
           </div>
           <h2><a href={paperHref(paper)}>{paper.data.title}</a></h2>
           <p class="paper-authors">{paper.data.authors.join(", ")}</p>
