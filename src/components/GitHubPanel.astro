@@ -1,4 +1,6 @@
 ---
+import { selectedProjects } from "../data/projects";
+
 const username = "dreamkeeperhu";
 ---
 
@@ -24,7 +26,7 @@ const username = "dreamkeeperhu";
   </div>
 </section>
 
-<script is:inline define:vars={{ username }}>
+<script is:inline define:vars={{ username, selectedProjects }}>
   const repoTarget = document.querySelector("[data-github-repos]");
   const graphTarget = document.querySelector("[data-contrib-graph]");
   const summaryTarget = document.querySelector("[data-contrib-summary]");
@@ -45,24 +47,29 @@ const username = "dreamkeeperhu";
         headers: { Accept: "application/vnd.github+json" },
       });
       if (!response.ok) throw new Error("GitHub API unavailable");
-      const repos = (await response.json()).filter((repo) => !repo.fork).slice(0, 6);
+      const fallbackByName = new Map(selectedProjects.map((project) => [project.name, project]));
+      const repos = (await response.json())
+        .filter((repo) => !repo.fork && /^[A-Za-z0-9_.-]+$/.test(repo.name) && repo.name !== "-")
+        .slice(0, 6)
+        .map((repo) => ({ ...repo, fallback: fallbackByName.get(repo.name) }));
+
       repoTarget.innerHTML = repos.map((repo, index) => `
         <a class="repo-row" href="${repo.html_url}" target="_blank" rel="noreferrer">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <strong>${escapeHtml(repo.name)}</strong>
-          <small>${escapeHtml(repo.description || "No description yet.")}</small>
-          <em>${escapeHtml(repo.language || "Code")} · ${repo.stargazers_count} stars · ${new Date(repo.updated_at).toISOString().slice(0, 10)}</em>
+          <small>${escapeHtml(repo.description || repo.fallback?.description || "Public code and experiment notes.")}</small>
+          <em>${escapeHtml(repo.language || repo.fallback?.language || "Code")} · ${repo.stargazers_count} stars · ${new Date(repo.updated_at).toISOString().slice(0, 10)}</em>
         </a>
       `).join("");
     } catch {
-      repoTarget.innerHTML = `
-        <a class="repo-row" href="https://github.com/${username}?tab=repositories" target="_blank" rel="noreferrer">
-          <span>→</span>
-          <strong>Open GitHub repositories</strong>
-          <small>The live API is temporarily unavailable. The repository list is still available on GitHub.</small>
-          <em>@${username}</em>
+      repoTarget.innerHTML = selectedProjects.map((repo, index) => `
+        <a class="repo-row" href="${repo.url}" target="_blank" rel="noreferrer">
+          <span>${String(index + 1).padStart(2, "0")}</span>
+          <strong>${escapeHtml(repo.name)}</strong>
+          <small>${escapeHtml(repo.description)}</small>
+          <em>${escapeHtml(repo.language)} · curated fallback</em>
         </a>
-      `;
+      `).join("");
     }
   }
 

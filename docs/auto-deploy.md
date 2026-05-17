@@ -16,7 +16,8 @@ During each run, the workflow:
 1. checks out the site repository
 2. pulls public Markdown from the R2 bucket
 3. builds the Astro site
-4. deploys `dist/` to Cloudflare Pages
+4. copies the Pages `_worker.js` API into `dist/`
+5. deploys `dist/` to Cloudflare Pages
 
 ## Required GitHub Secrets
 
@@ -28,6 +29,15 @@ Add these in GitHub repository settings:
 - `R2_SECRET_ACCESS_KEY`
 
 The Cloudflare API token needs permission to deploy the Pages project. The R2 access keys need read access to the `obsidian-sync` bucket.
+
+## Pages Function Bindings
+
+The root `wrangler.toml` binds two KV namespaces to the Cloudflare Pages project:
+
+- `SUBSCRIBERS`: stores opt-in email subscriptions from `/api/subscribe`
+- `SITE_METRICS`: stores anonymous aggregate page-view counters from `/api/visit`
+
+The public API lives in `public/_worker.js`, which Astro copies into `dist/` during build.
 
 ## Optional GitHub Variables
 

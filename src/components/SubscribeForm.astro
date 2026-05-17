@@ -1,11 +1,12 @@
 ---
 import { profile } from "../data/profile";
 
-const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "";
+const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "/api/subscribe";
 ---
 
 <form class="subscribe-form" data-subscribe-form data-action={action}>
   <label for="subscribe-email">Subscribe to notes</label>
+  <input class="subscribe-honey" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
   <div>
     <input id="subscribe-email" name="email" type="email" inputmode="email" placeholder="you@example.com" required />
     <button type="submit">Notify me</button>
@@ -24,14 +25,7 @@ const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "";
     const formData = new FormData(form);
     const address = String(formData.get("email") || "").trim();
     if (!address) return;
-
-    if (!action) {
-      const subject = encodeURIComponent("Subscribe to HJH Notes");
-      const body = encodeURIComponent(`Please add ${address} to the notes update list.`);
-      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-      if (message) message.textContent = "Opening your email client to finish the subscription request.";
-      return;
-    }
+    if (message) message.textContent = "Saving your email...";
 
     try {
       const response = await fetch(action, {
@@ -39,11 +33,12 @@ const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "";
         body: formData,
         headers: { Accept: "application/json" },
       });
-      if (!response.ok) throw new Error("Subscription failed");
-      if (message) message.textContent = "Subscribed. I will only send updates when there is something worth reading.";
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) throw new Error(payload.error || "Subscription failed");
+      if (message) message.textContent = payload.message || "Subscribed. I will only send updates when there is something worth reading.";
       form.reset();
     } catch {
-      if (message) message.textContent = "Subscription endpoint is not responding. Email me directly and I will add you manually.";
+      if (message) message.innerHTML = `Subscription is not responding. Email <a href="mailto:${email}">${email}</a> directly and I will add you manually.`;
     }
   });
 </script>

@@ -1,3 +1,11 @@
 name = "dreamkeeperhu-github-io"
 compatibility_date = "2026-05-16"
 pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "SUBSCRIBERS"
+id = "8882ca2cc8e64ec4976d358ceb32a464"
+
+[[kv_namespaces]]
+binding = "SITE_METRICS"
+id = "732536c262ac4443b25139b2ef3a1518"

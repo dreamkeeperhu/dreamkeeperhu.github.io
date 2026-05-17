@@ -94,8 +94,9 @@ This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/N
 - Article search: client-side filtering on `/notes`.
 - Global search: generated at `/search.json` and used by `/search`.
 - Tags: generated from note frontmatter at `/tags`.
-- Email subscription: set `PUBLIC_SUBSCRIBE_ACTION` to a provider endpoint. Without it, the form falls back to a mailto subscription request.
-- Analytics: set either Plausible or Umami environment variables:
+- Email subscription: stored by the Cloudflare Pages Function at `/api/subscribe` in the `SUBSCRIBERS` KV namespace.
+- First-party analytics: `/api/visit` records anonymous aggregate page counts in the `SITE_METRICS` KV namespace, and `/api/site-stats` exposes totals for the homepage pulse.
+- Optional third-party analytics: set either Plausible or Umami environment variables:
   - `PUBLIC_PLAUSIBLE_DOMAIN`
   - `PUBLIC_PLAUSIBLE_SRC`
   - `PUBLIC_UMAMI_WEBSITE_ID`

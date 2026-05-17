@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import GitHubPanel from "../components/GitHubPanel.astro";
 import SubscribeForm from "../components/SubscribeForm.astro";
+import SitePulse from "../components/SitePulse.astro";
 import { getCollection } from "astro:content";
 import { profile, publicCv } from "../data/profile";
 import { asset } from "../utils/cdn";
@@ -265,6 +266,8 @@ const latestPapers = (await getCollection("papers"))
   </section>
 
   <GitHubPanel />
+
+  <SitePulse />
 
   <section id="contact" class="contact-section reveal">
     <div>

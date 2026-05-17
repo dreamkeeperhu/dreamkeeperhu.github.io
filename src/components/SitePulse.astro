@@ -1,0 +1,45 @@
+---
+import { getCollection } from "astro:content";
+
+const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
+const papers = (await getCollection("papers")).filter((paper) => !paper.data.draft);
+---
+
+<section class="site-pulse reveal" aria-label="Site pulse">
+  <div>
+    <span class="eyebrow">Site Pulse</span>
+    <h2>Small signals that this place is alive.</h2>
+  </div>
+  <div class="pulse-grid">
+    <article>
+      <span>Public notes</span>
+      <strong>{notes.length}</strong>
+    </article>
+    <article>
+      <span>Research items</span>
+      <strong>{papers.length}</strong>
+    </article>
+    <article>
+      <span>Total visits</span>
+      <strong data-site-views>--</strong>
+    </article>
+    <article>
+      <span>Today</span>
+      <strong data-site-views-today>--</strong>
+    </article>
+  </div>
+</section>
+
+<script is:inline>
+  const views = document.querySelector("[data-site-views]");
+  const viewsToday = document.querySelector("[data-site-views-today]");
+
+  fetch("/api/site-stats")
+    .then((response) => response.json())
+    .then((stats) => {
+      if (!stats.ok) return;
+      if (views) views.textContent = new Intl.NumberFormat().format(stats.views || 0);
+      if (viewsToday) viewsToday.textContent = new Intl.NumberFormat().format(stats.viewsToday || 0);
+    })
+    .catch(() => {});
+</script>
