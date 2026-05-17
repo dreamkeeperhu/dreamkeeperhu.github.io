@@ -9,8 +9,18 @@ venue: "Target: Robotics and Computer-Integrated Manufacturing / Journal of Manu
 year: 2026
 pdf: "/papers/cchihh.pdf"
 code: "https://github.com/dreamkeeperhu/CCHIHH_Final"
+problem: "Cloud-edge-device collaborative scheduling needs to coordinate offloading, sequencing, and assignment while resource conditions and communication costs change."
+method: "CCHIHH uses cooperative coevolution, heterogeneous islands, and contextual bandit learners to adapt search behavior for different decision blocks."
+evidence:
+  - "Experiments cover instances from 50 to 500 tasks with up to 800 devices."
+  - "The paper compares against evolutionary baselines and studies resource degradation and communication inflation."
+nextStep: "Keep the public page ready for paper status updates, reviewer-facing clarifications, and reproducibility notes."
+relatedProjects:
+  - "/projects/cchihh-scheduling"
 relatedNotes:
   - "/notes/sim-to-real-transfer-gap"
+relatedLibrary:
+  - "/library"
 bibtex: |
   @article{hu2026cchihh,
     title = {A Cooperative Coevolution Algorithm with a Heterogeneous-Island-Based Hyper-Heuristic for Cloud-Edge-Device Collaborative Scheduling},

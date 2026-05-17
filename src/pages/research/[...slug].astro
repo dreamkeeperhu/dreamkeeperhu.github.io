@@ -40,15 +40,52 @@ const jsonLd = {
       <div class="paper-actions">
         {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}
         {paper.data.code && <a href={paper.data.code} target="_blank" rel="noreferrer">Code</a>}
+        {paper.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
         {paper.data.relatedNotes.map((href) => <a href={href}>Related note</a>)}
       </div>
     </header>
+    <div class="detail-grid">
+      {paper.data.problem && (
+        <section>
+          <span class="panel-kicker">Problem</span>
+          <p>{paper.data.problem}</p>
+        </section>
+      )}
+      {paper.data.method && (
+        <section>
+          <span class="panel-kicker">Method</span>
+          <p>{paper.data.method}</p>
+        </section>
+      )}
+      {paper.data.evidence.length > 0 && (
+        <section>
+          <span class="panel-kicker">Evidence</span>
+          <ul>{paper.data.evidence.map((item) => <li>{item}</li>)}</ul>
+        </section>
+      )}
+      {paper.data.nextStep && (
+        <section>
+          <span class="panel-kicker">Next</span>
+          <p>{paper.data.nextStep}</p>
+        </section>
+      )}
+    </div>
     <div class="article-body">
       <Content />
       {paper.data.bibtex && (
         <section class="bibtex-block">
           <h2>BibTeX</h2>
           <pre><code>{paper.data.bibtex}</code></pre>
+        </section>
+      )}
+      {(paper.data.relatedProjects.length > 0 || paper.data.relatedNotes.length > 0 || paper.data.relatedLibrary.length > 0) && (
+        <section class="related-block">
+          <h2>Related</h2>
+          <div class="inline-links">
+            {paper.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
+            {paper.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
+            {paper.data.relatedLibrary.map((href) => <a href={href}>Library</a>)}
+          </div>
         </section>
       )}
     </div>

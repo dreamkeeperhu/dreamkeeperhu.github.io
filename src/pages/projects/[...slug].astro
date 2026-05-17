@@ -1,0 +1,70 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { projectHref, projectSlug } from "../../utils/content";
+
+export async function getStaticPaths() {
+  const projects = (await getCollection("projects")).filter((project) => !project.data.draft);
+  return projects.map((project) => ({ params: { slug: projectSlug(project) }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+---
+
+<BaseLayout
+  current="Projects"
+  title={`${project.data.title} | HJH Projects`}
+  description={project.data.summary}
+  ogType="article"
+>
+  <article class="article-page project-detail">
+    <header class="article-header">
+      <a href="/projects">← Projects</a>
+      <time>{project.data.status}</time>
+      <h1>{project.data.title}</h1>
+      <p>{project.data.summary}</p>
+      <div class="tag-row">{project.data.tags.map((tag) => <span>{tag}</span>)}</div>
+      <div class="paper-actions">
+        {project.data.url && <a href={project.data.url} target="_blank" rel="noreferrer">GitHub</a>}
+        {project.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
+      </div>
+    </header>
+
+    <div class="detail-grid">
+      <section>
+        <span class="panel-kicker">Problem</span>
+        <p>{project.data.problem}</p>
+      </section>
+      <section>
+        <span class="panel-kicker">Method</span>
+        <p>{project.data.method}</p>
+      </section>
+      {project.data.evidence.length > 0 && (
+        <section>
+          <span class="panel-kicker">Evidence</span>
+          <ul>{project.data.evidence.map((item) => <li>{item}</li>)}</ul>
+        </section>
+      )}
+      {project.data.nextStep && (
+        <section>
+          <span class="panel-kicker">Next</span>
+          <p>{project.data.nextStep}</p>
+        </section>
+      )}
+    </div>
+
+    <div class="article-body">
+      <Content />
+      <section class="related-block">
+        <h2>Related</h2>
+        <div class="inline-links">
+          {project.data.relatedPapers.map((href) => <a href={href}>Research</a>)}
+          {project.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
+          {project.data.relatedLibrary.map((href) => <a href={href}>Library</a>)}
+          <a href={projectHref(project)}>Canonical project link</a>
+        </div>
+      </section>
+    </div>
+  </article>
+</BaseLayout>

@@ -1,6 +1,17 @@
 ---
+import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { milestones } from "../data/timeline";
+import { timelineSortValue, timelineYear } from "../utils/content";
+
+const milestones = (await getCollection("timeline"))
+  .filter((item) => !item.data.draft)
+  .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)) || a.data.order - b.data.order);
+const grouped = [...milestones.reduce((map, item) => {
+  const year = timelineYear(item.data.date);
+  if (!map.has(year)) map.set(year, []);
+  map.get(year).push(item);
+  return map;
+}, new Map())];
 ---
 
 <BaseLayout
@@ -14,15 +25,20 @@ import { milestones } from "../data/timeline";
     <p>A lightweight public chronology for research progress, site infrastructure, notes, and the path from Chengdu to Beihang.</p>
   </section>
 
-  <section class="timeline-list">
-    {milestones.map((item, index) => (
-      <a class="timeline-row" href={item.link}>
-        <span>{String(index + 1).padStart(2, "0")}</span>
-        <time>{item.date}</time>
-        <strong>{item.title}</strong>
-        <p>{item.summary}</p>
-        <em>{item.type}</em>
-      </a>
+  <section class="timeline-list grouped-timeline">
+    {grouped.map(([year, items]) => (
+      <div class="timeline-year-group">
+        <h2>{year}</h2>
+        {items.map((item, index) => (
+          <a class="timeline-row" href={item.data.link}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <time>{item.data.date}</time>
+            <strong>{item.data.title}</strong>
+            <p>{item.data.summary}</p>
+            <em>{item.data.type}</em>
+          </a>
+        ))}
+      </div>
     ))}
   </section>
 </BaseLayout>

@@ -16,6 +16,35 @@ export function paperHref(paper: CollectionEntry<"papers">) {
   return `/research/${paperSlug(paper)}`;
 }
 
+export function projectSlug(project: CollectionEntry<"projects">) {
+  return entrySlug(project.id);
+}
+
+export function projectHref(project: CollectionEntry<"projects">) {
+  return `/projects/${projectSlug(project)}`;
+}
+
+export function librarySlug(item: CollectionEntry<"library">) {
+  return entrySlug(item.id);
+}
+
+export function timelineYear(date: string) {
+  const match = String(date).match(/^\d{4}/);
+  return match ? match[0] : "Other";
+}
+
+export function timelineSortValue(date: string) {
+  const text = String(date || "");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  if (/^\d{4}-\d{2}$/.test(text)) return `${text}-01`;
+  if (/^\d{4}$/.test(text)) return `${text}-01-01`;
+  return "0000-01-01";
+}
+
+export function entrySlug(id: string) {
+  return id.replace(/^obsidian\//, "").replace(/\.(md|mdx)$/i, "");
+}
+
 export function tagSlug(tag: string) {
   return tag
     .normalize("NFKD")

@@ -1,4 +1,11 @@
-const DEFAULT_PREFIXES = ["Homepage/Notes/", "Homepage/Papers/"];
+const DEFAULT_PREFIXES = [
+  "Homepage/Notes/",
+  "Homepage/Papers/",
+  "Homepage/Projects/",
+  "Homepage/Library/",
+  "Homepage/Timeline/",
+  "Homepage/Roadmap/",
+];
 const DEFAULT_SUFFIXES = [".md", ".mdx"];
 
 export default {

@@ -81,6 +81,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
     </script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="site-nav" aria-label="Main navigation">
       <div class="nav-inner">
         <a class="wordmark" href="/" aria-label="HJH home">
@@ -105,7 +106,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
       </div>
     </header>
 
-    <main class="site-main">
+    <main id="main-content" class="site-main">
       <slot />
     </main>
 
@@ -131,6 +132,8 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
       const quickSearchInput = document.querySelector("[data-quick-search-input]");
       const quickSearchResults = document.querySelector("[data-quick-search-results]");
       let quickSearchIndex = [];
+      let quickSearchMatches = [];
+      let quickSearchActive = 0;
 
       navToggle?.addEventListener("click", () => {
         document.body.classList.toggle("nav-open");
@@ -159,6 +162,24 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
       });
 
       quickSearchInput?.addEventListener("input", () => renderQuickSearch());
+      quickSearchInput?.addEventListener("keydown", (event) => {
+        if (!quickSearchMatches.length) return;
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          quickSearchActive = Math.min(quickSearchActive + 1, quickSearchMatches.length - 1);
+          paintQuickSearch();
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          quickSearchActive = Math.max(quickSearchActive - 1, 0);
+          paintQuickSearch();
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const target = quickSearchMatches[quickSearchActive];
+          if (target?.url) window.location.href = target.url;
+        }
+      });
 
       function openQuickSearch() {
         if (!quickSearch) return;
@@ -171,7 +192,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
             .then((items) => {
               quickSearchIndex = items.map((item) => ({
                 ...item,
-                haystack: `${item.title} ${item.description} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""}`.toLowerCase(),
+                haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""}`.toLowerCase(),
               }));
               renderQuickSearch();
             })
@@ -192,7 +213,8 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
       function renderQuickSearch() {
         if (!quickSearchResults) return;
         const query = String(quickSearchInput?.value || "").trim().toLowerCase();
-        const matches = (query
+        quickSearchActive = 0;
+        quickSearchMatches = (query
           ? quickSearchIndex
               .map((item) => ({ item, score: quickScore(item.haystack, query) }))
               .filter((row) => row.score > 0)
@@ -200,9 +222,13 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
               .map((row) => row.item)
           : quickSearchIndex
         ).slice(0, 8);
+        paintQuickSearch(query);
+      }
 
-        quickSearchResults.innerHTML = matches.length
-          ? matches.map((item) => `<a href="${item.url}"><span>${escapeQuick(item.type)}</span><strong>${escapeQuick(item.title)}</strong><small>${escapeQuick(item.description)}</small></a>`).join("")
+      function paintQuickSearch(query = String(quickSearchInput?.value || "").trim()) {
+        if (!quickSearchResults) return;
+        quickSearchResults.innerHTML = quickSearchMatches.length
+          ? quickSearchMatches.map((item, index) => `<a href="${item.url}" data-active="${index === quickSearchActive ? "true" : "false"}"><span>${escapeQuick(item.type)}</span><strong>${highlightQuick(item.title, query)}</strong><small>${highlightQuick(item.description, query)}</small></a>`).join("")
           : '<p class="muted">No results.</p>';
       }
 
@@ -229,9 +255,17 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
         }[char]));
       }
 
+      function highlightQuick(value, query) {
+        const text = escapeQuick(value);
+        const needle = String(query || "").trim();
+        if (!needle) return text;
+        const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return text.replace(new RegExp(`(${escaped})`, "ig"), "<mark>$1</mark>");
+      }
+
       if (coarsePointer) {
         document
-          .querySelectorAll("a, button, .site-main, .site-footer")
+          .querySelectorAll(".hero-title, .about-trigger, .back-close, .showcase-card, .showcase-card img")
           .forEach((element) => {
             element.addEventListener("contextmenu", (event) => event.preventDefault());
             element.addEventListener("selectstart", (event) => event.preventDefault());

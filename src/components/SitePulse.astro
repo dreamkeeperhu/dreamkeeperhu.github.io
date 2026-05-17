@@ -1,11 +1,14 @@
 ---
 import { getCollection } from "astro:content";
-import { selectedProjects } from "../data/projects";
-import { milestones } from "../data/timeline";
+import { timelineSortValue } from "../utils/content";
 
 const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
 const papers = (await getCollection("papers")).filter((paper) => !paper.data.draft);
-const latestUpdate = milestones[0]?.date || "2026";
+const projects = (await getCollection("projects")).filter((project) => !project.data.draft);
+const library = (await getCollection("library")).filter((item) => !item.data.draft);
+const milestones = (await getCollection("timeline")).filter((item) => !item.data.draft);
+const latestUpdate = milestones
+  .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)))[0]?.data.date || "2026";
 ---
 
 <section class="site-pulse reveal" aria-label="Site pulse">
@@ -24,7 +27,11 @@ const latestUpdate = milestones[0]?.date || "2026";
     </article>
     <article>
       <span>Projects</span>
-      <strong>{selectedProjects.length}</strong>
+      <strong>{projects.length}</strong>
+    </article>
+    <article>
+      <span>Library items</span>
+      <strong>{library.length}</strong>
     </article>
     <article>
       <span>Latest update</span>
@@ -38,10 +45,15 @@ const latestUpdate = milestones[0]?.date || "2026";
       <span>Today</span>
       <strong data-site-views-today>--</strong>
     </article>
+    <article>
+      <span>GitHub signal</span>
+      <strong class="pulse-date" data-github-signal>--</strong>
+    </article>
   </div>
 </section>
 
 <script is:inline>
+  const githubSignal = document.querySelector("[data-github-signal]");
   const views = document.querySelector("[data-site-views]");
   const viewsToday = document.querySelector("[data-site-views-today]");
 
@@ -49,8 +61,22 @@ const latestUpdate = milestones[0]?.date || "2026";
     .then((response) => response.json())
     .then((stats) => {
       if (!stats.ok) return;
-      if (views) views.textContent = new Intl.NumberFormat().format(stats.views || 0);
-      if (viewsToday) viewsToday.textContent = new Intl.NumberFormat().format(stats.viewsToday || 0);
+      const visits = new Intl.NumberFormat().format(stats.views || 0);
+      const today = new Intl.NumberFormat().format(stats.viewsToday || 0);
+      if (views) views.textContent = visits;
+      if (viewsToday) viewsToday.textContent = today;
+    })
+    .catch(() => {});
+
+  fetch("https://api.github.com/users/dreamkeeperhu/repos?sort=updated&per_page=1", {
+    headers: { Accept: "application/vnd.github+json" },
+  })
+    .then((response) => (response.ok ? response.json() : []))
+    .then((repos) => {
+      const repo = repos?.[0];
+      if (repo && githubSignal) {
+        githubSignal.textContent = `${repo.name} · ${new Date(repo.updated_at).toISOString().slice(0, 10)}`;
+      }
     })
     .catch(() => {});
 </script>

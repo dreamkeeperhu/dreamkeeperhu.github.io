@@ -1,12 +1,13 @@
 import { getCollection } from "astro:content";
-import { libraryItems } from "../data/library";
-import { selectedProjects } from "../data/projects";
-import { milestones } from "../data/timeline";
-import { noteHref, paperHref } from "../utils/content";
+import { librarySlug, noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
 
 export async function GET() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
   const papers = (await getCollection("papers")).filter((paper) => !paper.data.draft);
+  const projects = (await getCollection("projects")).filter((project) => !project.data.draft);
+  const library = (await getCollection("library")).filter((item) => !item.data.draft);
+  const timeline = (await getCollection("timeline")).filter((item) => !item.data.draft);
+  const roadmap = (await getCollection("roadmap")).filter((item) => !item.data.draft);
 
   const items = [
     ...notes.map((note) => ({
@@ -17,6 +18,7 @@ export async function GET() {
       tags: note.data.tags,
       date: note.data.pubDate.toISOString().slice(0, 10),
       source: note.data.source || "markdown",
+      content: plainText(note.body),
     })),
     ...papers.map((paper) => ({
       type: "paper",
@@ -27,36 +29,66 @@ export async function GET() {
       date: String(paper.data.year),
       status: paper.data.status,
       source: paper.data.source || "markdown",
+      content: plainText([
+        paper.body,
+        paper.data.problem,
+        paper.data.method,
+        paper.data.nextStep,
+        ...(paper.data.evidence || []),
+      ].filter(Boolean).join(" ")),
     })),
-    ...selectedProjects.map((project) => ({
+    ...projects.map((project) => ({
       type: "project",
-      title: project.name,
-      description: project.summary,
-      url: `/projects#${project.slug}`,
-      tags: project.tags,
-      date: project.status,
-      status: project.status,
-      source: "project",
+      title: project.data.title,
+      description: project.data.summary,
+      url: projectHref(project),
+      tags: project.data.tags,
+      date: project.data.status,
+      status: project.data.status,
+      source: project.data.source || "project",
+      content: plainText([
+        project.body,
+        project.data.problem,
+        project.data.method,
+        project.data.nextStep,
+        ...(project.data.evidence || []),
+        ...(project.data.techStack || []),
+      ].filter(Boolean).join(" ")),
     })),
-    ...libraryItems.map((item) => ({
+    ...library.map((item) => ({
       type: "library",
-      title: item.title,
-      description: item.note,
-      url: item.url,
-      tags: item.tags,
-      date: item.year,
-      status: item.status,
-      source: "library",
+      title: item.data.title,
+      description: item.data.note,
+      url: item.data.url || `/library#${librarySlug(item)}`,
+      tags: item.data.tags,
+      date: item.data.year,
+      status: item.data.status,
+      source: item.data.source || "library",
+      content: plainText([item.body, item.data.type, ...(item.data.authors || [])].filter(Boolean).join(" ")),
     })),
-    ...milestones.map((item) => ({
-      type: "timeline",
-      title: item.title,
-      description: item.summary,
-      url: item.link,
-      tags: [item.type],
-      date: item.date,
-      status: item.type,
-      source: "timeline",
+    ...timeline
+      .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)))
+      .map((item) => ({
+        type: "timeline",
+        title: item.data.title,
+        description: item.data.summary,
+        url: item.data.link,
+        tags: [item.data.type],
+        date: item.data.date,
+        status: item.data.type,
+        source: item.data.source || "timeline",
+        content: plainText(item.body),
+      })),
+    ...roadmap.map((item) => ({
+      type: "page",
+      title: item.data.title,
+      description: item.data.question,
+      url: `/research#${item.id.replace(/^obsidian\//, "").replace(/\.(md|mdx)$/i, "")}`,
+      tags: item.data.tags,
+      date: "roadmap",
+      status: "roadmap",
+      source: item.data.source || "roadmap",
+      content: plainText([item.body, item.data.now, item.data.next].filter(Boolean).join(" ")),
     })),
     {
       type: "page",
@@ -66,6 +98,7 @@ export async function GET() {
       tags: ["cv", "resume"],
       date: "2026-05-16",
       source: "site",
+      content: "resume cv beihang robotics scheduling",
     },
     {
       type: "page",
@@ -75,6 +108,7 @@ export async function GET() {
       tags: ["contact", "email"],
       date: "2026-05-17",
       source: "site",
+      content: "email research project paper feedback general chat",
     },
   ];
 
@@ -84,4 +118,16 @@ export async function GET() {
       "Cache-Control": "public, max-age=600",
     },
   });
+}
+
+function plainText(value) {
+  return String(value || "")
+    .replace(/^---[\s\S]*?---/, "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+    .replace(/[#>*_`~|-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 4000);
 }

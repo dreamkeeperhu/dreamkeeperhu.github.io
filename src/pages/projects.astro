@@ -1,6 +1,13 @@
 ---
+import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { selectedProjects } from "../data/projects";
+import { projectHref, projectSlug } from "../utils/content";
+
+const projects = (await getCollection("projects"))
+  .filter((project) => !project.data.draft)
+  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title));
+const statuses = ["all", ...new Set(projects.map((project) => project.data.status))];
+const tags = [...new Set(projects.flatMap((project) => project.data.tags))].slice(0, 12);
 ---
 
 <BaseLayout
@@ -11,34 +18,54 @@ import { selectedProjects } from "../data/projects";
   <section class="content-hero">
     <span class="eyebrow">Projects</span>
     <h1>Code, prototypes, and experiment traces</h1>
-    <p>Selected projects are written as small research objects: problem, method, status, links, and what they connect to.</p>
+    <p>Each project is treated as evidence: what problem it touches, how it is built, what is real today, and what it connects to.</p>
+  </section>
+
+  <section class="notes-tools project-tools" aria-label="Project filters">
+    <label>Filter projects</label>
+    <div class="filter-row" data-project-status>
+      {statuses.map((status) => (
+        <button type="button" data-status={status} aria-pressed={status === "all" ? "true" : "false"}>{status}</button>
+      ))}
+    </div>
+    <div class="tool-links" data-project-tags>
+      {tags.map((tag) => <button type="button" data-tag={tag}>{tag}</button>)}
+    </div>
   </section>
 
   <section class="project-board" data-project-board>
-    {selectedProjects.map((project, index) => (
-      <article id={project.slug} class="project-item" data-repo={project.repo}>
+    {projects.map((project, index) => (
+      <article
+        id={projectSlug(project)}
+        class="project-item"
+        data-project-row
+        data-status={project.data.status}
+        data-tags={project.data.tags.map((tag) => tag.toLowerCase()).join("|")}
+        data-repo={project.data.repo}
+      >
         <div class="project-index">{String(index + 1).padStart(2, "0")}</div>
         <div class="project-main">
           <div class="paper-meta">
-            <span>{project.status}</span>
-            <span data-repo-meta>GitHub metadata loading</span>
+            <span>{project.data.status}</span>
+            <span data-repo-meta>{project.data.repo ? "GitHub metadata loading" : "Curated project"}</span>
           </div>
-          <h2>{project.name}</h2>
-          <p>{project.summary}</p>
+          <h2><a href={projectHref(project)}>{project.data.title}</a></h2>
+          <p>{project.data.summary}</p>
           <div class="project-columns">
             <div>
               <span class="panel-kicker">Problem</span>
-              <p>{project.problem}</p>
+              <p>{project.data.problem}</p>
             </div>
             <div>
               <span class="panel-kicker">Method</span>
-              <p>{project.method}</p>
+              <p>{project.data.method}</p>
             </div>
           </div>
-          <div class="tag-row">{project.tags.map((tag) => <span>{tag}</span>)}</div>
+          <div class="tag-row">{project.data.tags.map((tag) => <span>{tag}</span>)}</div>
           <div class="paper-actions">
-            <a href={project.url} target="_blank" rel="noreferrer">GitHub</a>
-            {project.links.map((link) => <a href={link.href}>{link.label}</a>)}
+            <a href={projectHref(project)}>Details</a>
+            {project.data.url && <a href={project.data.url} target="_blank" rel="noreferrer">GitHub</a>}
+            {project.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
           </div>
         </div>
       </article>
@@ -46,9 +73,37 @@ import { selectedProjects } from "../data/projects";
   </section>
 
   <script is:inline>
-    const projectRows = [...document.querySelectorAll("[data-repo]")];
-    const repos = projectRows.map((row) => row.dataset.repo).filter(Boolean);
+    const projectRows = [...document.querySelectorAll("[data-project-row]")];
+    const statusButtons = [...document.querySelectorAll("[data-project-status] button")];
+    const tagButtons = [...document.querySelectorAll("[data-project-tags] button")];
+    let activeStatus = "all";
+    let activeTag = "";
 
+    statusButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeStatus = button.dataset.status || "all";
+        statusButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        renderProjects();
+      });
+    });
+
+    tagButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeTag = activeTag === button.dataset.tag ? "" : button.dataset.tag || "";
+        tagButtons.forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.tag === activeTag)));
+        renderProjects();
+      });
+    });
+
+    function renderProjects() {
+      projectRows.forEach((row) => {
+        const statusMatch = activeStatus === "all" || row.dataset.status === activeStatus;
+        const tagMatch = !activeTag || (row.dataset.tags || "").split("|").includes(activeTag.toLowerCase());
+        row.hidden = !(statusMatch && tagMatch);
+      });
+    }
+
+    const repos = projectRows.map((row) => row.dataset.repo).filter(Boolean);
     Promise.all(
       repos.map((repo) =>
         fetch(`https://api.github.com/repos/dreamkeeperhu/${repo}`, { headers: { Accept: "application/vnd.github+json" } })

@@ -1,7 +1,6 @@
 import rss from "@astrojs/rss";
 import { getCollection } from "astro:content";
-import { selectedProjects } from "../data/projects";
-import { noteHref, paperHref } from "../utils/content";
+import { noteHref, paperHref, projectHref } from "../utils/content";
 
 export async function GET(context) {
   const notes = (await getCollection("notes"))
@@ -10,6 +9,9 @@ export async function GET(context) {
   const papers = (await getCollection("papers"))
     .filter((paper) => !paper.data.draft)
     .sort((a, b) => b.data.year - a.data.year);
+  const projects = (await getCollection("projects"))
+    .filter((project) => !project.data.draft)
+    .sort((a, b) => a.data.order - b.data.order);
 
   return rss({
     title: "HJH Research & Notes",
@@ -28,11 +30,11 @@ export async function GET(context) {
         pubDate: new Date(`${paper.data.year}-01-01`),
         link: paperHref(paper),
       })),
-      ...selectedProjects.map((project) => ({
-        title: `Project: ${project.name}`,
-        description: project.summary,
+      ...projects.map((project) => ({
+        title: `Project: ${project.data.title}`,
+        description: project.data.summary,
         pubDate: new Date("2026-05-17"),
-        link: `/projects#${project.slug}`,
+        link: projectHref(project),
       })),
     ],
   });

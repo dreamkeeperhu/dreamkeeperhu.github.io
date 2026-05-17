@@ -6,9 +6,7 @@ import ResearchRoadmap from "../components/ResearchRoadmap.astro";
 import { getCollection } from "astro:content";
 import { profile } from "../data/profile";
 import { asset } from "../utils/cdn";
-import { noteHref, paperHref } from "../utils/content";
-import { selectedProjects } from "../data/projects";
-import { milestones } from "../data/timeline";
+import { noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
 
 const rows = Array.from({ length: 11 });
 const copies = Array.from({ length: 18 });
@@ -20,8 +18,14 @@ const latestPapers = (await getCollection("papers"))
   .filter((paper) => !paper.data.draft)
   .sort((a, b) => b.data.year - a.data.year)
   .slice(0, 1);
-const featuredProjects = selectedProjects.filter((project) => project.featured).slice(0, 3);
-const latestMilestones = milestones.slice(0, 3);
+const featuredProjects = (await getCollection("projects"))
+  .filter((project) => !project.data.draft && project.data.featured)
+  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title))
+  .slice(0, 3);
+const latestMilestones = (await getCollection("timeline"))
+  .filter((item) => !item.data.draft && item.data.featured)
+  .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)) || a.data.order - b.data.order)
+  .slice(0, 3);
 ---
 
 <BaseLayout current="Home" title="HJH | dreamkeeperhu">
@@ -149,10 +153,10 @@ const latestMilestones = milestones.slice(0, 3);
     </div>
     <div class="path-grid">
       {featuredProjects.map((project) => (
-        <a href={`/projects#${project.slug}`}>
-          <span>{project.status}</span>
-          <strong>{project.name}</strong>
-          <small>{project.summary}</small>
+        <a href={projectHref(project)}>
+          <span>{project.data.status}</span>
+          <strong>{project.data.title}</strong>
+          <small>{project.data.summary}</small>
         </a>
       ))}
     </div>
@@ -194,12 +198,12 @@ const latestMilestones = milestones.slice(0, 3);
     </div>
     <div class="timeline-list compact-timeline">
       {latestMilestones.map((item, index) => (
-        <a class="timeline-row" href={item.link}>
+        <a class="timeline-row" href={item.data.link}>
           <span>{String(index + 1).padStart(2, "0")}</span>
-          <time>{item.date}</time>
-          <strong>{item.title}</strong>
-          <p>{item.summary}</p>
-          <em>{item.type}</em>
+          <time>{item.data.date}</time>
+          <strong>{item.data.title}</strong>
+          <p>{item.data.summary}</p>
+          <em>{item.data.type}</em>
         </a>
       ))}
     </div>

@@ -39,6 +39,7 @@ The root `wrangler.toml` binds three KV namespaces to the Cloudflare Pages proje
 - `CONTACT_MESSAGES`: stores lightweight contact form backups from `/api/contact`
 
 The admin export endpoint `/api/admin/subscribers` requires the `ADMIN_TOKEN` Pages secret.
+The admin contact export endpoint `/api/admin/contacts` and the newsletter draft endpoint `/api/admin/newsletter-draft?since=YYYY-MM-DD` use the same token.
 
 The public API lives in `public/_worker.js`, which Astro copies into `dist/` during build.
 
@@ -49,6 +50,10 @@ Defaults are already built into the script, so these are optional:
 - `OBSIDIAN_R2_BUCKET`: defaults to `obsidian-sync`
 - `OBSIDIAN_R2_NOTES_PREFIX`: defaults to `Homepage/Notes/`
 - `OBSIDIAN_R2_PAPERS_PREFIX`: defaults to `Homepage/Papers/`
+- `OBSIDIAN_R2_PROJECTS_PREFIX`: defaults to `Homepage/Projects/`
+- `OBSIDIAN_R2_LIBRARY_PREFIX`: defaults to `Homepage/Library/`
+- `OBSIDIAN_R2_TIMELINE_PREFIX`: defaults to `Homepage/Timeline/`
+- `OBSIDIAN_R2_ROADMAP_PREFIX`: defaults to `Homepage/Roadmap/`
 
 ## Publish Rule
 
@@ -76,6 +81,10 @@ The Worker filters for Markdown files under:
 
 - `Homepage/Notes/`
 - `Homepage/Papers/`
+- `Homepage/Projects/`
+- `Homepage/Library/`
+- `Homepage/Timeline/`
+- `Homepage/Roadmap/`
 
 Keep the scheduled 12-hour run as a fallback in case an event is missed.
 

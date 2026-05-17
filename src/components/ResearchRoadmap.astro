@@ -1,11 +1,15 @@
 ---
-import { researchRoadmap } from "../data/roadmap";
+import { getCollection } from "astro:content";
+import { entrySlug } from "../utils/content";
 
 interface Props {
   compact?: boolean;
 }
 
 const { compact = false } = Astro.props;
+const researchRoadmap = (await getCollection("roadmap"))
+  .filter((item) => !item.data.draft)
+  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title));
 ---
 
 <section class={`roadmap-section reveal${compact ? " compact-roadmap" : ""}`} aria-label="Research roadmap">
@@ -15,18 +19,18 @@ const { compact = false } = Astro.props;
   </div>
   <div class="roadmap-grid">
     {researchRoadmap.map((item, index) => (
-      <article id={item.slug}>
+      <article id={entrySlug(item.id)}>
         <span>{String(index + 1).padStart(2, "0")}</span>
-        <h3>{item.title}</h3>
-        <p>{item.question}</p>
+        <h3>{item.data.title}</h3>
+        <p>{item.data.question}</p>
         <dl>
           <dt>Now</dt>
-          <dd>{item.now}</dd>
+          <dd>{item.data.now}</dd>
           <dt>Next</dt>
-          <dd>{item.next}</dd>
+          <dd>{item.data.next}</dd>
         </dl>
         <div class="inline-links">
-          {item.links.map((link) => <a href={link.href}>{link.label}</a>)}
+          {item.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
         </div>
       </article>
     ))}

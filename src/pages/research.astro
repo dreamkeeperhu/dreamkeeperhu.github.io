@@ -7,6 +7,8 @@ import { paperHref } from "../utils/content";
 const papers = (await getCollection("papers"))
   .filter((paper) => !paper.data.draft)
   .sort((a, b) => b.data.year - a.data.year);
+const projects = (await getCollection("projects")).filter((project) => !project.data.draft && project.data.featured);
+const library = (await getCollection("library")).filter((item) => !item.data.draft && item.data.featured).slice(0, 3);
 ---
 
 <BaseLayout
@@ -27,6 +29,35 @@ const papers = (await getCollection("papers"))
 
   <ResearchRoadmap />
 
+  <section class="research-snapshot reveal" aria-label="Research snapshot">
+    <div class="section-head compact-head">
+      <h2>Research Snapshot</h2>
+      <p>The public record is organized around questions, artifacts, and evidence rather than a long list of claims.</p>
+    </div>
+    <div class="snapshot-grid">
+      <article>
+        <span>Papers</span>
+        <strong>{papers.length}</strong>
+        <p>Public paper entries with status, abstract, PDF/code links, BibTeX, and related notes.</p>
+      </article>
+      <article>
+        <span>Projects</span>
+        <strong>{projects.length}</strong>
+        <p>Selected implementation traces connected to research or tooling directions.</p>
+      </article>
+      <article>
+        <span>Library</span>
+        <strong>{library.length}</strong>
+        <p>Reading and resource entries that shape the current research route.</p>
+      </article>
+      <article>
+        <span>Principle</span>
+        <strong>Evidence first</strong>
+        <p>Each research item should make its problem, method, next step, and artifacts inspectable.</p>
+      </article>
+    </div>
+  </section>
+
   <section id="papers" class="paper-list">
     {papers.map((paper, index) => (
       <article class="paper-item">
@@ -40,6 +71,20 @@ const papers = (await getCollection("papers"))
           <h2><a href={paperHref(paper)}>{paper.data.title}</a></h2>
           <p class="paper-authors">{paper.data.authors.join(", ")}</p>
           <p>{paper.data.abstract}</p>
+          <div class="research-brief">
+            {paper.data.problem && (
+              <div>
+                <span class="panel-kicker">Problem</span>
+                <p>{paper.data.problem}</p>
+              </div>
+            )}
+            {paper.data.method && (
+              <div>
+                <span class="panel-kicker">Method</span>
+                <p>{paper.data.method}</p>
+              </div>
+            )}
+          </div>
           <div class="tag-row">
             {paper.data.tags.map((tag) => <span>{tag}</span>)}
           </div>

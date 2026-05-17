@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import yaml from "js-yaml";
 
 const root = process.cwd();
 
@@ -9,10 +10,53 @@ await loadDotEnv(".env");
 
 const sourceMode = process.env.OBSIDIAN_SOURCE || (process.env.R2_ACCESS_KEY_ID ? "r2" : "local");
 const vaultPath = process.env.OBSIDIAN_VAULT_PATH;
-const notesDir = process.env.OBSIDIAN_NOTES_DIR || "Notes";
-const papersDir = process.env.OBSIDIAN_PAPERS_DIR || "Papers";
 const syncDrafts = process.env.OBSIDIAN_SYNC_DRAFTS === "true";
 const cleanSync = process.env.OBSIDIAN_CLEAN_SYNC !== "false";
+
+const collectionConfigs = [
+  {
+    label: "notes",
+    localDir: process.env.OBSIDIAN_NOTES_DIR || "Homepage/Notes",
+    r2Prefix: process.env.OBSIDIAN_R2_NOTES_PREFIX || process.env.R2_NOTES_PREFIX || "Homepage/Notes/",
+    outDir: path.join(root, "src/content/notes/obsidian"),
+    map: mapNote,
+  },
+  {
+    label: "papers",
+    localDir: process.env.OBSIDIAN_PAPERS_DIR || "Homepage/Papers",
+    r2Prefix: process.env.OBSIDIAN_R2_PAPERS_PREFIX || process.env.R2_PAPERS_PREFIX || "Homepage/Papers/",
+    outDir: path.join(root, "src/content/papers/obsidian"),
+    map: mapPaper,
+  },
+  {
+    label: "projects",
+    localDir: process.env.OBSIDIAN_PROJECTS_DIR || "Homepage/Projects",
+    r2Prefix: process.env.OBSIDIAN_R2_PROJECTS_PREFIX || process.env.R2_PROJECTS_PREFIX || "Homepage/Projects/",
+    outDir: path.join(root, "src/content/projects/obsidian"),
+    map: mapProject,
+  },
+  {
+    label: "library",
+    localDir: process.env.OBSIDIAN_LIBRARY_DIR || "Homepage/Library",
+    r2Prefix: process.env.OBSIDIAN_R2_LIBRARY_PREFIX || process.env.R2_LIBRARY_PREFIX || "Homepage/Library/",
+    outDir: path.join(root, "src/content/library/obsidian"),
+    map: mapLibrary,
+  },
+  {
+    label: "timeline",
+    localDir: process.env.OBSIDIAN_TIMELINE_DIR || "Homepage/Timeline",
+    r2Prefix: process.env.OBSIDIAN_R2_TIMELINE_PREFIX || process.env.R2_TIMELINE_PREFIX || "Homepage/Timeline/",
+    outDir: path.join(root, "src/content/timeline/obsidian"),
+    map: mapTimeline,
+  },
+  {
+    label: "roadmap",
+    localDir: process.env.OBSIDIAN_ROADMAP_DIR || "Homepage/Roadmap",
+    r2Prefix: process.env.OBSIDIAN_R2_ROADMAP_PREFIX || process.env.R2_ROADMAP_PREFIX || "Homepage/Roadmap/",
+    outDir: path.join(root, "src/content/roadmap/obsidian"),
+    map: mapRoadmap,
+  },
+];
 
 if (sourceMode === "r2") {
   await syncR2Source();
@@ -27,22 +71,15 @@ async function syncLocalVault() {
   }
 
   const absoluteVault = path.resolve(vaultPath);
-
-  await syncLocalCollection({
-    label: "notes",
-    sourceDir: path.join(absoluteVault, notesDir),
-    outDir: path.join(root, "src/content/notes/obsidian"),
-    map: mapNote,
-    sourcePath: (file) => path.relative(absoluteVault, file).split(path.sep).join("/"),
-  });
-
-  await syncLocalCollection({
-    label: "papers",
-    sourceDir: path.join(absoluteVault, papersDir),
-    outDir: path.join(root, "src/content/papers/obsidian"),
-    map: mapPaper,
-    sourcePath: (file) => path.relative(absoluteVault, file).split(path.sep).join("/"),
-  });
+  const results = [];
+  for (const config of collectionConfigs) {
+    results.push(await syncLocalCollection({
+      ...config,
+      sourceDir: path.join(absoluteVault, config.localDir),
+      sourcePath: (file) => path.relative(absoluteVault, file).split(path.sep).join("/"),
+    }));
+  }
+  printSyncReport("obsidian", results);
 }
 
 async function syncR2Source() {
@@ -67,25 +104,17 @@ async function syncR2Source() {
     credentials: { accessKeyId, secretAccessKey },
   });
 
-  await syncR2Collection({
-    client,
-    bucket,
-    label: "notes",
-    prefix: ensureTrailingSlash(process.env.OBSIDIAN_R2_NOTES_PREFIX || process.env.R2_NOTES_PREFIX || "Homepage/Notes/"),
-    outDir: path.join(root, "src/content/notes/obsidian"),
-    map: mapNote,
-    commands: { ListObjectsV2Command, GetObjectCommand },
-  });
-
-  await syncR2Collection({
-    client,
-    bucket,
-    label: "papers",
-    prefix: ensureTrailingSlash(process.env.OBSIDIAN_R2_PAPERS_PREFIX || process.env.R2_PAPERS_PREFIX || "Homepage/Papers/"),
-    outDir: path.join(root, "src/content/papers/obsidian"),
-    map: mapPaper,
-    commands: { ListObjectsV2Command, GetObjectCommand },
-  });
+  const results = [];
+  for (const config of collectionConfigs) {
+    results.push(await syncR2Collection({
+      ...config,
+      client,
+      bucket,
+      prefix: ensureTrailingSlash(config.r2Prefix),
+      commands: { ListObjectsV2Command, GetObjectCommand },
+    }));
+  }
+  printSyncReport("obsidian-r2", results);
 }
 
 async function loadDotEnv(file) {
@@ -105,17 +134,16 @@ async function loadDotEnv(file) {
 
 async function syncLocalCollection({ label, sourceDir, outDir, map, sourcePath }) {
   if (!(await exists(sourceDir))) {
-    console.log(`[obsidian] ${label} skipped: ${sourceDir} does not exist.`);
-    return;
+    if (cleanSync) await fs.rm(outDir, { recursive: true, force: true });
+    return { label, source: sourceDir, found: false, scanned: 0, written: 0, skipped: 0 };
   }
 
-  if (cleanSync) {
-    await fs.rm(outDir, { recursive: true, force: true });
-  }
+  if (cleanSync) await fs.rm(outDir, { recursive: true, force: true });
   await fs.mkdir(outDir, { recursive: true });
 
-  const files = (await walk(sourceDir)).filter((file) => file.endsWith(".md"));
+  const files = (await walk(sourceDir)).filter((file) => file.endsWith(".md") || file.endsWith(".mdx"));
   let written = 0;
+  let skipped = 0;
 
   for (const file of files) {
     const raw = await fs.readFile(file, "utf8");
@@ -127,7 +155,10 @@ async function syncLocalCollection({ label, sourceDir, outDir, map, sourcePath }
       slugPath: sourceRelative,
       sourcePath: sourcePath(file),
     });
-    if (!mapped || (mapped.data.draft && !syncDrafts)) continue;
+    if (!mapped || (mapped.data.draft && !syncDrafts)) {
+      skipped += 1;
+      continue;
+    }
 
     const target = path.join(outDir, `${mapped.slug}.md`);
     await fs.mkdir(path.dirname(target), { recursive: true });
@@ -135,21 +166,20 @@ async function syncLocalCollection({ label, sourceDir, outDir, map, sourcePath }
     written += 1;
   }
 
-  console.log(`[obsidian] Synced ${written} ${label} from ${sourceDir}.`);
+  return { label, source: sourceDir, found: true, scanned: files.length, written, skipped };
 }
 
 async function syncR2Collection({ client, bucket, label, prefix, outDir, map, commands }) {
-  if (cleanSync) {
-    await fs.rm(outDir, { recursive: true, force: true });
-  }
+  if (cleanSync) await fs.rm(outDir, { recursive: true, force: true });
   await fs.mkdir(outDir, { recursive: true });
 
   const objects = await listR2Objects({ client, bucket, prefix, command: commands.ListObjectsV2Command });
   let written = 0;
+  let skipped = 0;
 
   for (const object of objects) {
     const key = object.Key;
-    if (!key || !key.endsWith(".md") || path.basename(key).startsWith(".")) continue;
+    if (!key || !/\.(md|mdx)$/.test(key) || path.basename(key).startsWith(".")) continue;
 
     const raw = await getR2Text({ client, bucket, key, command: commands.GetObjectCommand });
     const parsed = parseFrontmatter(raw);
@@ -159,7 +189,10 @@ async function syncR2Collection({ client, bucket, label, prefix, outDir, map, co
       slugPath: key.slice(prefix.length),
       sourcePath: key,
     });
-    if (!mapped || (mapped.data.draft && !syncDrafts)) continue;
+    if (!mapped || (mapped.data.draft && !syncDrafts)) {
+      skipped += 1;
+      continue;
+    }
 
     const target = path.join(outDir, `${mapped.slug}.md`);
     await fs.mkdir(path.dirname(target), { recursive: true });
@@ -167,7 +200,7 @@ async function syncR2Collection({ client, bucket, label, prefix, outDir, map, co
     written += 1;
   }
 
-  console.log(`[obsidian-r2] Synced ${written} ${label} from r2://${bucket}/${prefix}.`);
+  return { label, source: `r2://${bucket}/${prefix}`, found: true, scanned: objects.length, written, skipped };
 }
 
 async function listR2Objects({ client, bucket, prefix, command }) {
@@ -194,7 +227,6 @@ async function getR2Text({ client, bucket, key, command }) {
 
 function mapNote({ frontmatter: fm, body, slugPath, sourcePath }) {
   const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
-  const tags = tagList(fm.tags ?? fm.tag);
   return {
     slug: slugFrom(slugPath, fm.slug),
     data: {
@@ -202,7 +234,7 @@ function mapNote({ frontmatter: fm, body, slugPath, sourcePath }) {
       description: stringValue(fm.description) || stringValue(fm.summary) || excerpt(body),
       pubDate: dateValue(fm.pubDate || fm.date || fm.created) || today(),
       updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
-      tags,
+      tags: tagList(fm.tags ?? fm.tag),
       draft: shouldKeepPrivate(fm),
       source: "obsidian",
       obsidianPath: sourcePath,
@@ -212,7 +244,7 @@ function mapNote({ frontmatter: fm, body, slugPath, sourcePath }) {
 
 function mapPaper({ frontmatter: fm, body, slugPath, sourcePath }) {
   const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
-  const status = normalizeStatus(stringValue(fm.status) || "in preparation");
+  const status = normalizePaperStatus(stringValue(fm.status) || "in preparation");
   const year = numberValue(fm.year) || Number((dateValue(fm.date) || today()).slice(0, 4));
   return {
     slug: slugFrom(slugPath, fm.slug),
@@ -223,9 +255,110 @@ function mapPaper({ frontmatter: fm, body, slugPath, sourcePath }) {
       venue: stringValue(fm.venue || fm.journal || fm.target) || undefined,
       year,
       abstract: stringValue(fm.abstract || fm.summary) || excerpt(body),
+      problem: stringValue(fm.problem) || undefined,
+      method: stringValue(fm.method) || undefined,
+      evidence: listValue(fm.evidence) || [],
+      nextStep: stringValue(fm.nextStep || fm.next) || undefined,
       pdf: stringValue(fm.pdf) || undefined,
       code: stringValue(fm.code || fm.repository) || undefined,
+      relatedProjects: listValue(fm.relatedProjects) || [],
+      relatedNotes: listValue(fm.relatedNotes) || [],
+      relatedLibrary: listValue(fm.relatedLibrary) || [],
+      bibtex: stringValue(fm.bibtex) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
+      draft: shouldKeepPrivate(fm),
+      source: "obsidian",
+      obsidianPath: sourcePath,
+    },
+  };
+}
+
+function mapProject({ frontmatter: fm, body, slugPath, sourcePath }) {
+  const title = stringValue(fm.title || fm.name) || titleFromBody(body) || titleFromFile(slugPath);
+  return {
+    slug: slugFrom(slugPath, fm.slug),
+    data: {
+      title,
+      summary: stringValue(fm.summary || fm.description) || excerpt(body),
+      problem: stringValue(fm.problem) || "Problem statement will be expanded from Obsidian.",
+      method: stringValue(fm.method) || "Method notes will be expanded from Obsidian.",
+      status: normalizeProjectStatus(stringValue(fm.status) || "active"),
+      tags: tagList(fm.tags ?? fm.tag),
+      techStack: listValue(fm.techStack || fm.stack) || [],
+      repo: stringValue(fm.repo || fm.repository) || undefined,
+      url: stringValue(fm.url || fm.github) || undefined,
+      links: linkList(fm.links),
+      relatedNotes: listValue(fm.relatedNotes) || [],
+      relatedPapers: listValue(fm.relatedPapers) || [],
+      relatedLibrary: listValue(fm.relatedLibrary) || [],
+      evidence: listValue(fm.evidence) || [],
+      nextStep: stringValue(fm.nextStep || fm.next) || undefined,
+      featured: boolValue(fm.featured),
+      order: numberValue(fm.order) || 99,
+      draft: shouldKeepPrivate(fm),
+      source: "obsidian",
+      obsidianPath: sourcePath,
+    },
+  };
+}
+
+function mapLibrary({ frontmatter: fm, body, slugPath, sourcePath }) {
+  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
+  return {
+    slug: slugFrom(slugPath, fm.slug),
+    data: {
+      title,
+      authors: listValue(fm.authors) || [],
+      type: stringValue(fm.type) || "resource",
+      status: normalizeLibraryStatus(stringValue(fm.status) || "reading"),
+      year: stringValue(fm.year || fm.date) || "ongoing",
+      tags: tagList(fm.tags ?? fm.tag),
+      url: stringValue(fm.url || fm.link) || undefined,
+      note: stringValue(fm.note || fm.summary || fm.description) || excerpt(body),
+      relatedNotes: listValue(fm.relatedNotes) || [],
+      relatedPapers: listValue(fm.relatedPapers) || [],
+      featured: boolValue(fm.featured),
+      order: numberValue(fm.order) || 99,
+      draft: shouldKeepPrivate(fm),
+      source: "obsidian",
+      obsidianPath: sourcePath,
+    },
+  };
+}
+
+function mapTimeline({ frontmatter: fm, body, slugPath, sourcePath }) {
+  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
+  return {
+    slug: slugFrom(slugPath, fm.slug),
+    data: {
+      title,
+      date: dateValue(fm.date || fm.when) || today(),
+      type: normalizeTimelineType(stringValue(fm.type) || "project"),
+      summary: stringValue(fm.summary || fm.description) || excerpt(body),
+      link: stringValue(fm.link || fm.url) || "/",
+      featured: boolValue(fm.featured),
+      order: numberValue(fm.order) || 99,
+      draft: shouldKeepPrivate(fm),
+      source: "obsidian",
+      obsidianPath: sourcePath,
+    },
+  };
+}
+
+function mapRoadmap({ frontmatter: fm, body, slugPath, sourcePath }) {
+  const title = stringValue(fm.title) || titleFromBody(body) || titleFromFile(slugPath);
+  return {
+    slug: slugFrom(slugPath, fm.slug),
+    data: {
+      title,
+      question: stringValue(fm.question) || excerpt(body),
+      now: stringValue(fm.now || fm.current) || "Current work will be updated from Obsidian.",
+      next: stringValue(fm.next || fm.nextStep) || "Next step will be updated from Obsidian.",
+      links: linkList(fm.links),
+      tags: tagList(fm.tags ?? fm.tag),
+      relatedProjects: listValue(fm.relatedProjects) || [],
+      relatedNotes: listValue(fm.relatedNotes) || [],
+      order: numberValue(fm.order) || 99,
       draft: shouldKeepPrivate(fm),
       source: "obsidian",
       obsidianPath: sourcePath,
@@ -261,64 +394,16 @@ function parseFrontmatter(raw) {
   if (!raw.startsWith("---")) return { data: {}, body: raw };
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!match) return { data: {}, body: raw };
-  return { data: parseYamlLite(match[1]), body: raw.slice(match[0].length) };
-}
-
-function parseYamlLite(raw) {
-  const data = {};
-  const lines = raw.split(/\r?\n/);
-  let currentKey = "";
-
-  for (const line of lines) {
-    if (!line.trim() || line.trim().startsWith("#")) continue;
-
-    const listMatch = line.match(/^\s*-\s+(.*)$/);
-    if (listMatch && currentKey) {
-      if (!Array.isArray(data[currentKey])) data[currentKey] = [];
-      data[currentKey].push(cleanScalar(listMatch[1]));
-      continue;
-    }
-
-    const pair = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (!pair) continue;
-    currentKey = pair[1];
-    const value = pair[2];
-    data[currentKey] = value ? cleanScalar(value) : [];
-  }
-
-  return data;
-}
-
-function cleanScalar(value) {
-  const trimmed = String(value).trim();
-  if (trimmed === "true") return true;
-  if (trimmed === "false") return false;
-  if (/^\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
-  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-    return trimmed
-      .slice(1, -1)
-      .split(",")
-      .map((item) => cleanScalar(item))
-      .filter(Boolean);
-  }
-  return trimmed.replace(/^["']|["']$/g, "");
+  return { data: yaml.load(match[1]) || {}, body: raw.slice(match[0].length) };
 }
 
 function frontmatter(data) {
-  const lines = ["---", "# Generated from Obsidian. Edit the source note or copy this file out of the obsidian folder."];
-  for (const [key, value] of Object.entries(data)) {
-    if (value === undefined || value === "") continue;
-    if (Array.isArray(value)) {
-      lines.push(`${key}:`);
-      for (const item of value) lines.push(`  - ${JSON.stringify(item)}`);
-    } else if (typeof value === "string") {
-      lines.push(`${key}: ${JSON.stringify(value)}`);
-    } else {
-      lines.push(`${key}: ${value}`);
-    }
-  }
-  lines.push("---");
-  return lines.join("\n");
+  const clean = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined && value !== ""));
+  return `---\n# Generated from Obsidian. Edit the source note or copy this file out of the obsidian folder.\n${yaml.dump(clean, {
+    lineWidth: 100,
+    noRefs: true,
+    sortKeys: false,
+  }).trim()}\n---`;
 }
 
 function normalizeBody(body) {
@@ -362,6 +447,19 @@ function listValue(value) {
   return text ? text.split(/[,;，、]/).map((item) => item.trim()).filter(Boolean) : undefined;
 }
 
+function linkList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") return { label: item, href: item };
+      return {
+        label: stringValue(item?.label || item?.title || item?.name),
+        href: stringValue(item?.href || item?.url || item?.link),
+      };
+    })
+    .filter((item) => item.label && item.href);
+}
+
 function tagList(value) {
   return (listValue(value) || [])
     .map((tag) => tag.replace(/^#/, "").trim())
@@ -381,7 +479,7 @@ function titleFromBody(body) {
 }
 
 function titleFromFile(file) {
-  return path.basename(file, ".md").replace(/[-_]+/g, " ");
+  return path.basename(file, path.extname(file)).replace(/[-_]+/g, " ");
 }
 
 function excerpt(body) {
@@ -395,7 +493,7 @@ function excerpt(body) {
 }
 
 function slugFrom(slugPath, preferred) {
-  return slugify(preferred || String(slugPath).replace(/\.md$/, ""));
+  return slugify(preferred || String(slugPath).replace(/\.(md|mdx)$/i, ""));
 }
 
 function slugify(value) {
@@ -412,12 +510,52 @@ function ensureTrailingSlash(value) {
   return value.endsWith("/") ? value : `${value}/`;
 }
 
-function normalizeStatus(status) {
+function normalizePaperStatus(status) {
   const lower = status.toLowerCase();
+  if (lower.includes("idea")) return "idea";
+  if (lower.includes("draft")) return "draft";
+  if (lower.includes("archive")) return "archived";
   if (lower.includes("published")) return "published";
   if (lower.includes("review")) return "under review";
   if (lower.includes("preprint")) return "preprint";
   return "in preparation";
+}
+
+function normalizeProjectStatus(status) {
+  const lower = status.toLowerCase();
+  if (lower.includes("research")) return "research";
+  if (lower.includes("utility")) return "utility";
+  if (lower.includes("pause")) return "paused";
+  if (lower.includes("archive")) return "archived";
+  if (lower.includes("idea")) return "idea";
+  return "active";
+}
+
+function normalizeLibraryStatus(status) {
+  const lower = status.toLowerCase();
+  if (lower.includes("planned")) return "planned";
+  if (lower === "read" || lower.includes("finished")) return "read";
+  if (lower.includes("used")) return "used";
+  if (lower.includes("collect")) return "collecting";
+  return "reading";
+}
+
+function normalizeTimelineType(type) {
+  const lower = type.toLowerCase();
+  if (lower.includes("research")) return "research";
+  if (lower.includes("writing") || lower.includes("note")) return "writing";
+  if (lower.includes("site")) return "site";
+  if (lower.includes("education") || lower.includes("school")) return "education";
+  if (lower.includes("background")) return "background";
+  return "project";
+}
+
+function printSyncReport(label, results) {
+  console.log(`[${label}] Sync report`);
+  for (const result of results) {
+    const status = result.found ? `${result.written}/${result.scanned} published, ${result.skipped} private` : "folder not found";
+    console.log(`- ${result.label}: ${status} (${result.source})`);
+  }
 }
 
 function today() {

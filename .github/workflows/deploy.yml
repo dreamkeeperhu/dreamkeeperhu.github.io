@@ -68,6 +68,10 @@ jobs:
           OBSIDIAN_R2_BUCKET: ${{ vars.OBSIDIAN_R2_BUCKET }}
           OBSIDIAN_R2_NOTES_PREFIX: ${{ vars.OBSIDIAN_R2_NOTES_PREFIX }}
           OBSIDIAN_R2_PAPERS_PREFIX: ${{ vars.OBSIDIAN_R2_PAPERS_PREFIX }}
+          OBSIDIAN_R2_PROJECTS_PREFIX: ${{ vars.OBSIDIAN_R2_PROJECTS_PREFIX }}
+          OBSIDIAN_R2_LIBRARY_PREFIX: ${{ vars.OBSIDIAN_R2_LIBRARY_PREFIX }}
+          OBSIDIAN_R2_TIMELINE_PREFIX: ${{ vars.OBSIDIAN_R2_TIMELINE_PREFIX }}
+          OBSIDIAN_R2_ROADMAP_PREFIX: ${{ vars.OBSIDIAN_R2_ROADMAP_PREFIX }}
 
       - name: Deploy to Cloudflare Pages
         if: steps.automation.outputs.ready == 'true'

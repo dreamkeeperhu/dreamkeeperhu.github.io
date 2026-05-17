@@ -1,7 +1,16 @@
 ---
-import { selectedProjects } from "../data/projects";
+import { getCollection } from "astro:content";
 
 const username = "dreamkeeperhu";
+const selectedProjects = (await getCollection("projects"))
+  .filter((project) => !project.data.draft)
+  .sort((a, b) => a.data.order - b.data.order)
+  .map((project) => ({
+    name: project.data.title,
+    summary: project.data.summary,
+    techStack: project.data.techStack,
+    url: project.data.url,
+  }));
 ---
 
 <section id="github" class="split-section reveal">

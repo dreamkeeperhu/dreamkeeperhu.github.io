@@ -1,6 +1,14 @@
 ---
+import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { libraryItems } from "../data/library";
+import { librarySlug } from "../utils/content";
+
+const libraryItems = (await getCollection("library"))
+  .filter((item) => !item.data.draft)
+  .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title));
+const statuses = ["all", "reading", "collecting", "used", "read", "planned"].filter(
+  (status) => status === "all" || libraryItems.some((item) => item.data.status === status)
+);
 ---
 
 <BaseLayout
@@ -14,22 +22,45 @@ import { libraryItems } from "../data/library";
     <p>A small public shelf for papers, topics, tools, and resources that are shaping the research direction.</p>
   </section>
 
-  <section class="library-list">
+  <section class="notes-tools" aria-label="Library filters">
+    <label>Filter library</label>
+    <div class="filter-row" data-library-status>
+      {statuses.map((status) => (
+        <button type="button" data-status={status} aria-pressed={status === "all" ? "true" : "false"}>{status}</button>
+      ))}
+    </div>
+  </section>
+
+  <section class="library-list" data-library-list>
     {libraryItems.map((item, index) => (
-      <a class="library-row" href={item.url}>
+      <a id={librarySlug(item)} class="library-row" href={item.data.url || "/library"} data-library-row data-status={item.data.status}>
         <span>{String(index + 1).padStart(2, "0")}</span>
         <div>
           <div class="paper-meta">
-            <span>{item.status}</span>
-            <span>{item.type}</span>
-            <span>{item.year}</span>
+            <span>{item.data.status}</span>
+            <span>{item.data.type}</span>
+            <span>{item.data.year}</span>
           </div>
-          <h2>{item.title}</h2>
-          <p>{item.note}</p>
-          <em>{item.authors.join(", ")}</em>
-          <div class="tag-row">{item.tags.map((tag) => <span>{tag}</span>)}</div>
+          <h2>{item.data.title}</h2>
+          <p>{item.data.note}</p>
+          {item.data.authors.length > 0 && <em>{item.data.authors.join(", ")}</em>}
+          <div class="tag-row">{item.data.tags.map((tag) => <span>{tag}</span>)}</div>
         </div>
       </a>
     ))}
   </section>
+
+  <script is:inline>
+    const buttons = [...document.querySelectorAll("[data-library-status] button")];
+    const rows = [...document.querySelectorAll("[data-library-row]")];
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const status = button.dataset.status || "all";
+        buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        rows.forEach((row) => {
+          row.hidden = status !== "all" && row.dataset.status !== status;
+        });
+      });
+    });
+  </script>
 </BaseLayout>

@@ -8,7 +8,7 @@ workers_dev = true
 GITHUB_OWNER = "dreamkeeperhu"
 GITHUB_REPO = "dreamkeeperhu.github.io"
 GITHUB_EVENT_TYPE = "obsidian-updated"
-OBSIDIAN_EVENT_PREFIXES = "Homepage/Notes/,Homepage/Papers/"
+OBSIDIAN_EVENT_PREFIXES = "Homepage/Notes/,Homepage/Papers/,Homepage/Projects/,Homepage/Library/,Homepage/Timeline/,Homepage/Roadmap/"
 OBSIDIAN_EVENT_SUFFIXES = ".md,.mdx"
 
 [[queues.consumers]]

@@ -23,6 +23,14 @@ export default {
       return handleSubscriberExport(request, env);
     }
 
+    if (url.pathname === "/api/admin/contacts") {
+      return handleContactExport(request, env);
+    }
+
+    if (url.pathname === "/api/admin/newsletter-draft") {
+      return handleNewsletterDraft(request, env, url);
+    }
+
     if (url.pathname === "/api/contact") {
       return request.method === "POST"
         ? handleContact(request, env, url)
@@ -127,32 +135,97 @@ async function handleSubscriberExport(request, env) {
   if (!env.SUBSCRIBERS) {
     return json({ ok: false, error: "Subscription storage is not configured." }, 503);
   }
-  const auth = request.headers.get("authorization") || "";
-  const expected = env.ADMIN_TOKEN ? `Bearer ${env.ADMIN_TOKEN}` : "";
-  if (!expected || auth !== expected) {
-    return json({ ok: false, error: "Unauthorized." }, 401);
-  }
+  const denied = requireAdmin(request, env);
+  if (denied) return denied;
 
-  const subscribers = [];
-  let cursor;
-  do {
-    const page = await env.SUBSCRIBERS.list({ prefix: SUBSCRIBER_PREFIX, cursor });
-    cursor = page.list_complete ? undefined : page.cursor;
-    for (const key of page.keys) {
-      const record = await env.SUBSCRIBERS.get(key.name, "json");
-      if (record?.email) {
-        subscribers.push({
-          email: record.email,
-          createdAt: record.createdAt,
-          updatedAt: record.updatedAt,
-          source: record.source,
-        });
-      }
-    }
-  } while (cursor);
+  const subscribers = await readSubscribers(env);
 
   return json(
     { ok: true, count: subscribers.length, subscribers },
+    200,
+    { "Cache-Control": "no-store" }
+  );
+}
+
+async function handleContactExport(request, env) {
+  if (!env.CONTACT_MESSAGES) {
+    return json({ ok: false, error: "Contact storage is not configured." }, 503);
+  }
+  const denied = requireAdmin(request, env);
+  if (denied) return denied;
+
+  const contacts = [];
+  let cursor;
+  do {
+    const page = await env.CONTACT_MESSAGES.list({ prefix: CONTACT_PREFIX, cursor });
+    cursor = page.list_complete ? undefined : page.cursor;
+    for (const key of page.keys) {
+      const record = await env.CONTACT_MESSAGES.get(key.name, "json");
+      if (record?.email) contacts.push(record);
+    }
+  } while (cursor);
+
+  contacts.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return json(
+    { ok: true, count: contacts.length, contacts },
+    200,
+    { "Cache-Control": "no-store" }
+  );
+}
+
+async function handleNewsletterDraft(request, env, url) {
+  const denied = requireAdmin(request, env);
+  if (denied) return denied;
+
+  const since = parseSince(url.searchParams.get("since"));
+  const indexRequest = new Request(new URL("/search.json", url.origin).toString(), { headers: { Accept: "application/json" } });
+  const indexResponse = await env.ASSETS.fetch(indexRequest);
+  if (!indexResponse.ok) {
+    return json({ ok: false, error: "Search index is not available." }, 503);
+  }
+
+  const allItems = await indexResponse.json();
+  const publishTypes = new Set(["note", "paper", "project"]);
+  const recent = allItems
+    .filter((item) => publishTypes.has(item.type))
+    .filter((item) => {
+      const date = parseItemDate(item.date);
+      return date && date >= since;
+    })
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const items = (recent.length ? recent : allItems.filter((item) => publishTypes.has(item.type))).slice(0, 8);
+  const subscribers = env.SUBSCRIBERS ? await readSubscribers(env) : [];
+  const today = new Date().toISOString().slice(0, 10);
+  const subject = `HJH research update - ${today}`;
+  const markdown = [
+    `# ${subject}`,
+    "",
+    "Hi,",
+    "",
+    "Here are the latest public notes, research entries, and project traces from jianhenghu.com.",
+    "",
+    ...items.flatMap((item) => [
+      `- ${item.title}`,
+      `  ${url.origin}${item.url}`,
+      `  ${item.description}`,
+    ]),
+    "",
+    "Best,",
+    "Jianheng Hu",
+    "",
+    "You can unsubscribe using the link returned when you subscribed, or reply to this email.",
+  ].join("\n");
+
+  return json(
+    {
+      ok: true,
+      since: since.toISOString().slice(0, 10),
+      subscriberCount: subscribers.length,
+      subject,
+      text: markdown,
+      markdown,
+      items,
+    },
     200,
     { "Cache-Control": "no-store" }
   );
@@ -187,6 +260,28 @@ async function handleContact(request, env, url) {
 
   await bumpMetric(env, "contact:total");
   return json({ ok: true, message: "Contact backup saved." });
+}
+
+async function readSubscribers(env) {
+  const subscribers = [];
+  let cursor;
+  do {
+    const page = await env.SUBSCRIBERS.list({ prefix: SUBSCRIBER_PREFIX, cursor });
+    cursor = page.list_complete ? undefined : page.cursor;
+    for (const key of page.keys) {
+      const record = await env.SUBSCRIBERS.get(key.name, "json");
+      if (record?.email) {
+        subscribers.push({
+          email: record.email,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+          source: record.source,
+        });
+      }
+    }
+  } while (cursor);
+  subscribers.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  return subscribers;
 }
 
 async function recordVisit(request, env) {
@@ -280,6 +375,31 @@ function normalizeEmail(value) {
   const email = String(value || "").trim().toLowerCase();
   if (email.length > 254) return "";
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+function requireAdmin(request, env) {
+  const auth = request.headers.get("authorization") || "";
+  const expected = env.ADMIN_TOKEN ? `Bearer ${env.ADMIN_TOKEN}` : "";
+  if (!expected || auth !== expected) {
+    return json({ ok: false, error: "Unauthorized." }, 401);
+  }
+  return null;
+}
+
+function parseSince(value) {
+  const text = String(value || "").trim();
+  const fallback = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  if (!text) return fallback;
+  const date = new Date(text);
+  return Number.isNaN(date.valueOf()) ? fallback : date;
+}
+
+function parseItemDate(value) {
+  const text = String(value || "").trim();
+  if (!/^\d{4}(-\d{2})?(-\d{2})?$/.test(text)) return null;
+  const normalized = text.length === 4 ? `${text}-01-01` : text.length === 7 ? `${text}-01` : text;
+  const date = new Date(normalized);
+  return Number.isNaN(date.valueOf()) ? null : date;
 }
 
 function sanitizePath(value) {

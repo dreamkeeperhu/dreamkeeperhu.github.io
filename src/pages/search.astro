@@ -18,6 +18,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       ))}
     </div>
     <div class="tool-links" data-dynamic-filters></div>
+    <p class="muted" data-search-count>Loading search index...</p>
   </section>
 
   <section class="notes-list" data-search-results>
@@ -29,16 +30,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const results = document.querySelector("[data-search-results]");
     const filterButtons = [...document.querySelectorAll("[data-type-filters] button")];
     const dynamicFilters = document.querySelector("[data-dynamic-filters]");
+    const count = document.querySelector("[data-search-count]");
+    const params = new URLSearchParams(window.location.search);
     let index = [];
-    let activeType = "all";
-    let activeMeta = "";
+    let activeType = params.get("type") || "all";
+    let activeMeta = params.get("tag") || "";
+    if (!filterButtons.some((button) => button.dataset.filter === activeType)) activeType = "all";
+
+    if (input && params.get("q")) input.value = params.get("q");
+    filterButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.filter === activeType)));
 
     fetch("/search.json")
       .then((response) => response.json())
       .then((items) => {
         index = items.map((item) => ({
           ...item,
-          haystack: `${item.title} ${item.description} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""} ${item.date || ""}`.toLowerCase(),
+          haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""} ${item.date || ""}`.toLowerCase(),
         }));
         renderDynamicFilters();
         render();
@@ -62,6 +69,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       const values = [...new Set(index.flatMap((item) => [...(item.tags || []), item.status].filter(Boolean)))].slice(0, 18);
       dynamicFilters.innerHTML = values.map((value) => `<button type="button" data-meta="${escapeHtml(value)}">${escapeHtml(value)}</button>`).join("");
       dynamicFilters.querySelectorAll("button").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.meta === activeMeta));
         button.addEventListener("click", () => {
           activeMeta = activeMeta === button.dataset.meta ? "" : button.dataset.meta || "";
           dynamicFilters.querySelectorAll("button").forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.meta === activeMeta)));
@@ -72,22 +80,24 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     function render() {
       const query = input?.value.trim().toLowerCase() || "";
+      syncUrl(query);
       const pool = index.filter((item) =>
         (activeType === "all" || item.type === activeType) &&
         (!activeMeta || item.status === activeMeta || (item.tags || []).includes(activeMeta))
       );
       const matches = (query ? pool.map((item) => ({ item, score: fuzzyScore(item.haystack, query) })).filter((row) => row.score > 0).sort((a, b) => b.score - a.score).map((row) => row.item) : pool).slice(0, 18);
+      if (count) count.textContent = `${matches.length} result${matches.length === 1 ? "" : "s"} shown from ${pool.length} candidate${pool.length === 1 ? "" : "s"}.`;
 
       results.innerHTML = matches.length
         ? matches.map((item) => `
           <a class="note-row" href="${item.url}">
             <span>${escapeHtml(item.type)} · ${escapeHtml(item.date || item.status || "")}</span>
-            <strong>${escapeHtml(item.title)}</strong>
-            <p>${escapeHtml(item.description)}</p>
+            <strong>${highlight(item.title, query)}</strong>
+            <p>${highlight(item.description, query)}</p>
             <em>${escapeHtml((item.tags || []).join(" · "))}</em>
           </a>
         `).join("")
-        : '<p class="muted">No results yet.</p>';
+        : `<p class="muted">No results yet. Try a broader term, remove filters, or open <a href="/notes">Notes</a>.</p>`;
     }
 
     function fuzzyScore(text, query) {
@@ -112,6 +122,23 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         '"': "&quot;",
         "'": "&#039;",
       }[char]));
+    }
+
+    function highlight(value, query) {
+      const text = escapeHtml(value);
+      const needle = String(query || "").trim();
+      if (!needle) return text;
+      const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return text.replace(new RegExp(`(${escaped})`, "ig"), "<mark>$1</mark>");
+    }
+
+    function syncUrl(query) {
+      const next = new URLSearchParams();
+      if (query) next.set("q", query);
+      if (activeType !== "all") next.set("type", activeType);
+      if (activeMeta) next.set("tag", activeMeta);
+      const target = next.toString() ? `${location.pathname}?${next}` : location.pathname;
+      history.replaceState(null, "", target);
     }
   </script>
 </BaseLayout>
