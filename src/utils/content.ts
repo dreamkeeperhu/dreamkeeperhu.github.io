@@ -62,8 +62,28 @@ export function sortFeaturedEntries<T extends { data: Record<string, unknown> }>
     if (featuredDelta) return featuredDelta;
     const orderDelta = Number(a.data.order ?? 99) - Number(b.data.order ?? 99);
     if (orderDelta) return orderDelta;
+    const evidenceDelta = evidenceCount(b) - evidenceCount(a);
+    if (evidenceDelta) return evidenceDelta;
     return entryUpdatedValue(b) - entryUpdatedValue(a);
   });
+}
+
+export function sortSelectedWork<T extends { data: Record<string, unknown> }>(entries: T[]) {
+  return [...entries].sort((a, b) => {
+    const featuredDelta = Number(Boolean(b.data.featured)) - Number(Boolean(a.data.featured));
+    if (featuredDelta) return featuredDelta;
+    const orderDelta = Number(a.data.order ?? 99) - Number(b.data.order ?? 99);
+    if (orderDelta) return orderDelta;
+    const updatedDelta = entryUpdatedValue(b) - entryUpdatedValue(a);
+    if (updatedDelta) return updatedDelta;
+    return evidenceCount(b) - evidenceCount(a);
+  });
+}
+
+export function evidenceCount(entry: { data: Record<string, unknown> }) {
+  const artifacts = Array.isArray(entry.data.artifacts) ? entry.data.artifacts.length : 0;
+  const evidence = Array.isArray(entry.data.evidence) ? entry.data.evidence.length : 0;
+  return artifacts + evidence;
 }
 
 export function entrySlug(id: string) {

@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import { profile } from "../data/profile";
 import Analytics from "../components/Analytics.astro";
+import { asset } from "../utils/cdn";
 
 interface Props {
   title?: string;
@@ -74,6 +75,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
     <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="preload" as="image" href={asset("/assets/interface-field.png")} />
     <link rel="alternate" type="application/rss+xml" title="HJH Notes" href="/rss.xml" />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLdPayload)}></script>
     <Analytics />
@@ -195,7 +197,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
             .then((items) => {
               quickSearchIndex = items.map((item) => ({
                 ...item,
-                haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""}`.toLowerCase(),
+                haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.headings || []).join(" ")} ${(item.snippets || []).join(" ")} ${(item.tags || []).join(" ")} ${item.thread || ""} ${item.series || ""} ${item.type} ${item.status || ""}`.toLowerCase(),
               })).sort((a, b) => quickDateRank(b.date) - quickDateRank(a.date));
               renderQuickSearch();
             })
@@ -231,8 +233,18 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
       function paintQuickSearch(query = String(quickSearchInput?.value || "").trim()) {
         if (!quickSearchResults) return;
         quickSearchResults.innerHTML = quickSearchMatches.length
-          ? quickSearchMatches.map((item, index) => `<a href="${item.url}" data-active="${index === quickSearchActive ? "true" : "false"}"><span>${escapeQuick(item.type)} · ${escapeQuick(item.status || item.date || "public")}</span><strong>${highlightQuick(item.title, query)}</strong><small>${highlightQuick(item.description, query)}</small></a>`).join("")
+          ? quickSearchMatches.map((item, index) => `<a href="${item.url}" data-active="${index === quickSearchActive ? "true" : "false"}"><span>${escapeQuick(item.type)} · ${escapeQuick(item.thread || item.status || item.date || "public")}</span><strong>${highlightQuick(item.title, query)}</strong><small>${highlightQuick(quickSnippet(item, query), query)}</small></a>`).join("")
           : '<div class="quick-empty"><p class="muted">No results. Try one of the core paths.</p><a href="/research/map">Research Map</a><a href="/projects">Projects</a><a href="/library">Library</a></div>';
+      }
+
+      function quickSnippet(item, query) {
+        const text = [item.description, ...(item.snippets || []), item.content].filter(Boolean).join(" ");
+        const needle = String(query || "").trim().toLowerCase();
+        if (!needle) return item.description || text.slice(0, 120);
+        const index = text.toLowerCase().indexOf(needle);
+        if (index < 0) return item.description || text.slice(0, 120);
+        const start = Math.max(0, index - 42);
+        return `${start > 0 ? "..." : ""}${text.slice(start, index + needle.length + 86)}`;
       }
 
       function quickScore(text, query) {

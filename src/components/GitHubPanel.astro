@@ -9,6 +9,7 @@ const selectedProjects = (await getCollection("projects"))
     name: project.data.title,
     summary: project.data.summary,
     techStack: project.data.techStack,
+    repo: project.data.repo,
     url: project.data.url,
   }));
 ---
@@ -52,22 +53,22 @@ const selectedProjects = (await getCollection("projects"))
   async function loadRepos() {
     if (!repoTarget) return;
     try {
-      const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=8`, {
-        headers: { Accept: "application/vnd.github+json" },
-      });
-      if (!response.ok) throw new Error("GitHub API unavailable");
+      const repoQuery = selectedProjects.map((project) => project.repo).filter(Boolean).slice(0, 8).map((repo) => `${username}/${repo}`).join(",");
+      const response = await fetch(`/api/github-repos?repos=${encodeURIComponent(repoQuery)}`);
+      if (!response.ok) throw new Error("GitHub cache unavailable");
       const fallbackByName = new Map(selectedProjects.map((project) => [project.name, project]));
-      const repos = (await response.json())
-        .filter((repo) => !repo.fork && /^[A-Za-z0-9_.-]+$/.test(repo.name) && repo.name !== "-")
+      const payload = await response.json();
+      const repos = (payload.repos || [])
+        .filter((repo) => /^[A-Za-z0-9_.-]+$/.test(repo.name) && repo.name !== "-")
         .slice(0, 6)
         .map((repo) => ({ ...repo, fallback: fallbackByName.get(repo.name) }));
 
       repoTarget.innerHTML = repos.map((repo, index) => `
-        <a class="repo-row" href="${repo.html_url}" target="_blank" rel="noreferrer">
+        <a class="repo-row" href="${repo.htmlUrl}" target="_blank" rel="noreferrer">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <strong>${escapeHtml(repo.name)}</strong>
           <small>${escapeHtml(repo.description || repo.fallback?.summary || "Public code and experiment notes.")}</small>
-          <em>${escapeHtml(repo.language || repo.fallback?.techStack?.[0] || "Code")} · ${repo.stargazers_count} stars · ${new Date(repo.updated_at).toISOString().slice(0, 10)}</em>
+          <em>${escapeHtml(repo.language || repo.fallback?.techStack?.[0] || "Code")} · ${repo.stars ?? "?"} stars · ${repo.updatedAt ? new Date(repo.updatedAt).toISOString().slice(0, 10) : repo.source}</em>
         </a>
       `).join("");
     } catch {

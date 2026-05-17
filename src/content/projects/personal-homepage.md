@@ -6,6 +6,8 @@ method: "Use Astro for static-first pages, Obsidian/R2 for writing, GitHub Actio
 status: "active"
 statusDetail: "usable"
 updatedDate: 2026-05-17
+thread: "research-infrastructure"
+audience: "research collaborators and homepage visitors"
 tags:
   - "Astro"
   - "Cloudflare"
@@ -49,6 +51,12 @@ evidence:
   - "Obsidian notes can be promoted into public pages without hand-editing the site."
   - "GitHub Actions rebuilds and deploys the site to Cloudflare Pages."
   - "Cloudflare KV stores subscriptions, contact backups, and aggregate site signals."
+outcome: "The site now functions as a research identity, writing pipeline, project portfolio, and lightweight feedback surface."
+lessons:
+  - "A personal research site works best when the homepage stays restrained and depth moves into secondary pages."
+  - "Obsidian can remain private-first while still publishing selected notes cleanly."
+  - "Small Worker APIs are enough for subscriptions, feedback, stats, and hidden admin tools."
+maturityNote: "Usable production surface with ongoing iteration around research evidence and content maintenance."
 nextStep: "Keep the homepage focused while making deeper research and writing pages easier to maintain."
 featured: true
 order: 1

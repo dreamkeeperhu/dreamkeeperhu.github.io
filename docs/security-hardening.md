@@ -5,7 +5,7 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
 ## Worker protections
 
 - Adds browser security headers to every response: CSP, `X-Frame-Options`, `X-Content-Type-Options`, HSTS on HTTPS, referrer policy, permissions policy, and cross-origin policies.
-- Blocks direct public access to `/content-health.json`; the hidden admin page reads it through `/api/admin/content-health`.
+- Blocks direct public access to `/content-health.json` and `/content-sync-report.json`; the hidden admin page reads them through protected admin APIs.
 - Protects admin APIs with `Authorization: Bearer <ADMIN_TOKEN>` and rate-limits admin attempts.
 - Restricts admin APIs to `GET` and rejects unknown write methods before they reach static assets.
 - Blocks obvious source/config paths such as `/src/`, `/scripts/`, `/.github/`, `/.env`, `package.json`, and `wrangler.toml` if they are ever accidentally published.
@@ -18,6 +18,7 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
 - Rejects oversized request bodies and unexpected content types before parsing form data.
 - Requires same-origin requests for browser-write endpoints.
 - Marks hidden admin/API responses as `no-store` and `noindex`.
+- Keeps GitHub metadata behind `/api/github-repos`, which validates repo names, caps requests to 8 repos, and caches responses in KV for 6 hours.
 
 ## Content protections
 
@@ -35,4 +36,5 @@ This matters because Obsidian content is synced into public Markdown. Keep any e
 - Keep `ADMIN_TOKEN` only in Cloudflare Pages environment variables and local `.env.local`.
 - Rotate `ADMIN_TOKEN` if it is ever pasted into a public page, issue, commit, screenshot, or chat transcript.
 - The hidden `/admin` page is `noindex`, blocked in robots, and absent from sitemap, but it is not a login system. Treat the token as the actual secret.
+- The subscription endpoint does not return an old unsubscribe token for an address that is already subscribed.
 - Cloudflare WAF / Turnstile can be added later if spam grows, but the current setup avoids extra services.

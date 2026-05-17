@@ -4,8 +4,10 @@ const CONTACT_PREFIX = "contact:";
 const FEEDBACK_PREFIX = "feedback:";
 const METRIC_PREFIX = "metric:";
 const RATE_LIMIT_PREFIX = "rate:";
+const GITHUB_CACHE_PREFIX = "github:repos:";
 const MAX_FORM_BYTES = 16 * 1024;
 const MAX_ADMIN_BYTES = 2 * 1024;
+const GITHUB_CACHE_SECONDS = 6 * 60 * 60;
 
 export default {
   async fetch(request, env, context) {
@@ -62,6 +64,12 @@ async function routeRequest(request, env, context, url) {
         : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
+    if (url.pathname === "/api/admin/content-sync-report") {
+      return request.method === "GET"
+        ? handleContentSyncReport(request, env, url)
+        : json({ ok: false, error: "Method not allowed" }, 405);
+    }
+
     if (url.pathname === "/api/feedback") {
       return request.method === "POST"
         ? handleFeedback(request, env, url)
@@ -91,7 +99,13 @@ async function routeRequest(request, env, context, url) {
         : json({ ok: false, error: "Method not allowed" }, 405);
     }
 
-    if (url.pathname === "/content-health.json" || isBlockedPublicPath(url.pathname)) {
+    if (url.pathname === "/api/github-repos") {
+      return request.method === "GET"
+        ? handleGitHubRepos(request, env, url)
+        : json({ ok: false, error: "Method not allowed" }, 405);
+    }
+
+    if (url.pathname === "/content-health.json" || url.pathname === "/content-sync-report.json" || isBlockedPublicPath(url.pathname)) {
       return json({ ok: false, error: "Not found." }, 404);
     }
 
@@ -153,11 +167,16 @@ async function handleSubscribe(request, env, url) {
     await bumpMetric(env, "subscribers:total");
   }
   await env.SUBSCRIBERS.put(tokenKey, key);
-  return json({
-    ok: true,
-    message: existing ? "You are already on the list." : "Subscribed.",
-    unsubscribeUrl: `${url.origin}/api/unsubscribe?token=${encodeURIComponent(token)}`,
-  });
+  return json(existing
+    ? {
+        ok: true,
+        message: "If this address is already subscribed, it will keep receiving occasional updates. Use the original unsubscribe link or email me for help.",
+      }
+    : {
+        ok: true,
+        message: "Subscribed.",
+        unsubscribeUrl: `${url.origin}/api/unsubscribe?token=${encodeURIComponent(token)}`,
+      });
 }
 
 async function handleUnsubscribe(request, env, url) {
@@ -290,6 +309,18 @@ async function handleContentHealth(request, env, url) {
   return json(await healthResponse.json(), 200, { "Cache-Control": "no-store" });
 }
 
+async function handleContentSyncReport(request, env, url) {
+  const denied = await requireAdmin(request, env);
+  if (denied) return denied;
+
+  const reportRequest = new Request(new URL("/content-sync-report.json", url.origin).toString(), { headers: { Accept: "application/json" } });
+  const reportResponse = await env.ASSETS.fetch(reportRequest);
+  if (!reportResponse.ok) {
+    return json({ ok: false, error: "Content sync report is not available." }, 503);
+  }
+  return json(await reportResponse.json(), 200, { "Cache-Control": "no-store" });
+}
+
 async function handleNewsletterDraft(request, env, url) {
   const denied = await requireAdmin(request, env);
   if (denied) return denied;
@@ -302,9 +333,12 @@ async function handleNewsletterDraft(request, env, url) {
   }
 
   const allItems = await indexResponse.json();
-  const publishTypes = new Set(["note", "paper", "project"]);
+  const typeFilter = sanitizeText(url.searchParams.get("type"), 40);
+  const threadFilter = sanitizeText(url.searchParams.get("thread"), 80);
+  const publishTypes = new Set(typeFilter && ["note", "paper", "project"].includes(typeFilter) ? [typeFilter] : ["note", "paper", "project"]);
   const recent = allItems
     .filter((item) => publishTypes.has(item.type))
+    .filter((item) => !threadFilter || item.thread === threadFilter || (item.tags || []).includes(threadFilter))
     .filter((item) => {
       const date = parseItemDate(item.date);
       return date && date >= since;
@@ -314,6 +348,11 @@ async function handleNewsletterDraft(request, env, url) {
   const subscribers = env.SUBSCRIBERS ? await readSubscribers(env) : [];
   const today = new Date().toISOString().slice(0, 10);
   const subject = `HJH research update - ${today}`;
+  const subjectCandidates = [
+    subject,
+    `HJH notes: ${items[0]?.title || today}`,
+    threadFilter ? `HJH research thread: ${threadFilter}` : `HJH public research notes - ${today}`,
+  ];
   const groups = {
     notes: items.filter((item) => item.type === "note"),
     research: items.filter((item) => item.type === "paper"),
@@ -356,14 +395,96 @@ async function handleNewsletterDraft(request, env, url) {
       since: since.toISOString().slice(0, 10),
       subscriberCount: subscribers.length,
       subject,
+      subjectCandidates,
       text,
       markdown,
       groups,
       items,
+      filters: { type: typeFilter || "all", thread: threadFilter || "" },
     },
     200,
     { "Cache-Control": "no-store" }
   );
+}
+
+async function handleGitHubRepos(request, env, url) {
+  const limited = await checkRateLimit(env, request, "github", 60, 300);
+  if (limited) return limited;
+
+  const requested = String(url.searchParams.get("repos") || "")
+    .split(",")
+    .map((repo) => repo.trim())
+    .filter(Boolean)
+    .filter((repo) => /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo))
+    .slice(0, 8);
+  if (!requested.length) {
+    return json({ ok: false, error: "Provide repos=owner/name,owner/name." }, 400);
+  }
+
+  const cacheKey = `${GITHUB_CACHE_PREFIX}${await sha256(requested.join(","))}`;
+  if (env.SITE_METRICS) {
+    const cached = await env.SITE_METRICS.get(cacheKey, "json");
+    if (cached?.repos?.length) {
+      return json({ ...cached, cached: true }, 200, { "Cache-Control": "public, max-age=300" });
+    }
+  }
+
+  const repos = await Promise.all(requested.map(fetchGitHubRepo));
+  const payload = {
+    ok: true,
+    cached: false,
+    fetchedAt: new Date().toISOString(),
+    cacheTtlSeconds: GITHUB_CACHE_SECONDS,
+    repos,
+  };
+  if (env.SITE_METRICS) {
+    await env.SITE_METRICS.put(cacheKey, JSON.stringify(payload), { expirationTtl: GITHUB_CACHE_SECONDS });
+    await env.SITE_METRICS.put(`${METRIC_PREFIX}github:latest`, JSON.stringify({ fetchedAt: payload.fetchedAt, repos: repos.length }));
+  }
+  return json(payload, 200, { "Cache-Control": "public, max-age=300" });
+}
+
+async function fetchGitHubRepo(fullName) {
+  try {
+    const response = await fetch(`https://api.github.com/repos/${fullName}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "jianhenghu-homepage",
+      },
+    });
+    if (!response.ok) throw new Error("GitHub API unavailable");
+    const repo = await response.json();
+    return {
+      ok: true,
+      source: "github",
+      name: repo.name,
+      fullName: repo.full_name,
+      description: repo.description,
+      htmlUrl: repo.html_url,
+      language: repo.language,
+      stars: repo.stargazers_count,
+      forks: repo.forks_count,
+      updatedAt: repo.updated_at,
+      pushedAt: repo.pushed_at,
+      archived: repo.archived,
+    };
+  } catch {
+    const name = fullName.split("/").pop();
+    return {
+      ok: false,
+      source: "curated-fallback",
+      name,
+      fullName,
+      description: "Curated project metadata is available on the local project page.",
+      htmlUrl: `https://github.com/${fullName}`,
+      language: "Code",
+      stars: null,
+      forks: null,
+      updatedAt: null,
+      pushedAt: null,
+      archived: false,
+    };
+  }
 }
 
 function newsletterSection(title, items, origin) {
@@ -543,9 +664,10 @@ async function handleSiteStats(env) {
     readMetric(env, "subscribers:total"),
     readTopPaths(env),
   ]);
+  const githubCache = await env.SITE_METRICS.get(`${METRIC_PREFIX}github:latest`, "json").catch(() => null);
 
   return json(
-    { ok: true, views, viewsToday, subscribers, topPaths, updatedAt: new Date().toISOString() },
+    { ok: true, views, viewsToday, subscribers, topPaths, githubCache, updatedAt: new Date().toISOString() },
     200,
     { "Cache-Control": "public, max-age=60" }
   );
@@ -715,7 +837,7 @@ function isPublicContentPath(path) {
     path.startsWith("/research/") ||
     path.startsWith("/projects/") ||
     path.startsWith("/library/")
-  ) && !path.startsWith("/api/") && !path.startsWith("/admin") && path !== "/content-health.json";
+  ) && !path.startsWith("/api/") && !path.startsWith("/admin") && path !== "/content-health.json" && path !== "/content-sync-report.json";
 }
 
 function isBlockedPublicPath(path) {
@@ -790,14 +912,14 @@ function withSecurityHeaders(response, request, url) {
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       "script-src 'self' 'unsafe-inline' https://plausible.io https://*.plausible.io https://cloud.umami.is",
-      "connect-src 'self' https://api.github.com https://plausible.io https://*.plausible.io https://cloud.umami.is",
+      "connect-src 'self' https://api.github.com https://github-contributions-api.jogruber.de https://plausible.io https://*.plausible.io https://cloud.umami.is",
       "form-action 'self' mailto:",
     ].join("; "));
   }
   if (url.pathname.startsWith("/admin") || url.pathname.startsWith("/api/admin")) {
     headers.set("Cache-Control", "no-store");
     headers.set("X-Robots-Tag", "noindex, nofollow");
-  } else if (url.pathname.startsWith("/api/") && url.pathname !== "/api/site-stats") {
+  } else if (url.pathname.startsWith("/api/") && !["/api/site-stats", "/api/github-repos"].includes(url.pathname)) {
     headers.set("Cache-Control", "no-store");
   }
   if (request.method === "OPTIONS") {

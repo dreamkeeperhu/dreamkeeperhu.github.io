@@ -5,7 +5,7 @@ import EvidencePanel from "../../components/EvidencePanel.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { paperHref, paperSlug } from "../../utils/content";
 import { mergeArtifacts } from "../../utils/artifacts";
-import { collectBacklinks } from "../../utils/relations";
+import { collectRelationGroups } from "../../utils/relations";
 import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
@@ -22,7 +22,12 @@ const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
   getCollection("notes", (item) => !item.data.draft),
   getCollection("library", (item) => !item.data.draft),
 ]);
-const backlinks = collectBacklinks(paperHref(paper), {
+const relationGroups = collectRelationGroups(paperHref(paper), [
+  ...paper.data.relatedProjects,
+  ...paper.data.relatedNotes,
+  ...paper.data.relatedLibrary,
+  ...paper.data.artifacts.map((artifact) => artifact.href),
+], paper.data.tags, {
   papers: allPapers,
   projects: allProjects,
   notes: allNotes,
@@ -67,6 +72,8 @@ const jsonLd = {
   author: paper.data.authors.map((name) => ({ "@type": "Person", name })),
   datePublished: String(paper.data.year),
   abstract: paper.data.abstract,
+  keywords: paper.data.tags,
+  about: paper.data.thread,
   url: new URL(paperHref(paper), profile.site).toString(),
   ...(paper.data.pdf ? { encoding: { "@type": "MediaObject", contentUrl: new URL(paper.data.pdf, profile.site).toString() } } : {}),
 };
@@ -82,6 +89,8 @@ const jsonLd = {
       <div class="paper-meta">
         <span>{paper.data.authors.join(", ")}</span>
         {paper.data.venue && <span>{paper.data.venue}</span>}
+        {paper.data.thread && <span>{paper.data.thread}</span>}
+        <span>{paperArtifacts.length} artifacts</span>
       </div>
       <div class="tag-row">{paper.data.tags.map((tag) => <span>{tag}</span>)}</div>
       <div class="paper-actions">
@@ -104,10 +113,28 @@ const jsonLd = {
           <p>{paper.data.method}</p>
         </section>
       )}
+      {paper.data.contribution.length > 0 && (
+        <section>
+          <span class="panel-kicker">Contribution</span>
+          <ul>{paper.data.contribution.map((item) => <li>{item}</li>)}</ul>
+        </section>
+      )}
       {paper.data.evidence.length > 0 && (
         <section>
           <span class="panel-kicker">Evidence</span>
           <ul>{paper.data.evidence.map((item) => <li>{item}</li>)}</ul>
+        </section>
+      )}
+      {paper.data.limitations.length > 0 && (
+        <section>
+          <span class="panel-kicker">Limitations</span>
+          <ul>{paper.data.limitations.map((item) => <li>{item}</li>)}</ul>
+        </section>
+      )}
+      {paper.data.reviewNote && (
+        <section>
+          <span class="panel-kicker">Review Note</span>
+          <p>{paper.data.reviewNote}</p>
         </section>
       )}
       {paper.data.nextStep && (
@@ -120,24 +147,26 @@ const jsonLd = {
     <EvidencePanel artifacts={paperArtifacts} bibtex={paper.data.bibtex} />
     <div class="article-body">
       <Content />
-      {(paper.data.relatedProjects.length > 0 || paper.data.relatedNotes.length > 0 || paper.data.relatedLibrary.length > 0) && (
-        <section class="related-block">
-          <h2>Related</h2>
-          <div class="inline-links">
-            {paper.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
-            {paper.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
-            {paper.data.relatedLibrary.map((href) => <a href={href}>Library</a>)}
+      <section class="related-block relation-groups">
+        <h2>Related Graph</h2>
+        <div class="relation-group-grid">
+          <div>
+            <h3>Upstream</h3>
+            <p>Items this page explicitly uses or points to.</p>
+            <div class="inline-links">{relationGroups.upstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
           </div>
-        </section>
-      )}
-      {backlinks.length > 0 && (
-        <section class="related-block">
-          <h2>Referenced By</h2>
-          <div class="inline-links">
-            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
+          <div>
+            <h3>Downstream</h3>
+            <p>Items that reference this page back.</p>
+            <div class="inline-links">{relationGroups.downstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
           </div>
-        </section>
-      )}
+          <div>
+            <h3>Sibling</h3>
+            <p>Items sharing research tags.</p>
+            <div class="inline-links">{relationGroups.siblings.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
+          </div>
+        </div>
+      </section>
       <FeedbackForm targetType="paper" targetTitle={paper.data.title} targetUrl={paperHref(paper)} />
     </div>
   </article>

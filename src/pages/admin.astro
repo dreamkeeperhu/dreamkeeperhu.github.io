@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-const panels = ["site-stats", "content-health", "subscribers", "contacts", "feedback", "newsletter-draft"];
+const panels = ["site-stats", "content-health", "content-sync-report", "subscribers", "contacts", "feedback", "newsletter-draft"];
 ---
 
 <BaseLayout
@@ -137,10 +137,11 @@ const panels = ["site-stats", "content-health", "subscribers", "contacts", "feed
       await Promise.all([
         loadPanel("site-stats", "/api/site-stats"),
         loadPanel("content-health", "/api/admin/content-health", token),
+        loadPanel("content-sync-report", "/api/admin/content-sync-report", token),
         loadPanel("subscribers", "/api/admin/subscribers", token),
         loadPanel("contacts", "/api/admin/contacts", token),
         loadPanel("feedback", `/api/admin/feedback?since=${encodeURIComponent(since)}`, token),
-        loadPanel("newsletter-draft", `/api/admin/newsletter-draft?since=${encodeURIComponent(since)}`, token),
+        loadPanel("newsletter-draft", `/api/admin/newsletter-draft?since=${encodeURIComponent(since)}&thread=${encodeURIComponent(cache["content-health"]?.latestPublic?.[0]?.thread || "")}`, token),
       ]);
       renderSummary();
       setStatus("Admin data loaded.");
@@ -157,7 +158,7 @@ const panels = ["site-stats", "content-health", "subscribers", "contacts", "feed
         cache[key] = json;
         const countNode = panelCounts.get(key);
         if (countNode) countNode.textContent = String(panelCount(key, json));
-        if (node) node.textContent = JSON.stringify(json, null, 2);
+        if (node) node.textContent = JSON.stringify(key === "feedback" ? { ...json, groupedByPage: feedbackByPage(json) } : json, null, 2);
       } catch (error) {
         const payload = { ok: false, error: error.message || "Request failed." };
         cache[key] = payload;
@@ -175,6 +176,7 @@ const panels = ["site-stats", "content-health", "subscribers", "contacts", "feed
       if (key === "site-stats") return json.views || 0;
       if (key === "newsletter-draft") return json.items?.length || 0;
       if (key === "content-health") return Object.values(json.counts || {}).reduce((sum, item) => sum + (item.public || 0), 0);
+      if (key === "content-sync-report") return json.totals?.published || 0;
       return 0;
     }
 
@@ -183,7 +185,9 @@ const panels = ["site-stats", "content-health", "subscribers", "contacts", "feed
       const subscribers = cache.subscribers?.count || 0;
       const feedback = cache.feedback?.count || 0;
       const content = panelCount("content-health", cache["content-health"]);
-      summaryNode.innerHTML = `<span>${content} public items</span><span>${subscribers} subscribers</span><span>${feedback} recent feedback</span>`;
+      const missingEvidence = cache["content-health"]?.quality?.missingEvidence || 0;
+      const sync = cache["content-sync-report"]?.totals?.published || 0;
+      summaryNode.innerHTML = `<span>${content} public items</span><span>${subscribers} subscribers</span><span>${feedback} recent feedback</span><span>${missingEvidence} evidence gaps</span><span>${sync} synced items</span>`;
     }
 
     function toCsv(key, json) {
@@ -191,6 +195,7 @@ const panels = ["site-stats", "content-health", "subscribers", "contacts", "feed
         : key === "contacts" ? json?.contacts
           : key === "feedback" ? json?.feedback
             : key === "content-health" ? json?.missingArtifacts
+              : key === "content-sync-report" ? json?.collections
               : [];
       if (!rows?.length) return "";
       const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
@@ -203,6 +208,17 @@ const panels = ["site-stats", "content-health", "subscribers", "contacts", "feed
     function csvCell(value) {
       const text = typeof value === "object" ? JSON.stringify(value || "") : String(value ?? "");
       return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function feedbackByPage(json) {
+      const rows = json?.feedback || [];
+      return rows.reduce((acc, item) => {
+        const key = item.targetUrl || "unknown";
+        acc[key] ||= { targetUrl: key, useful: 0, confusing: 0, question: 0, collaboration: 0, total: 0 };
+        acc[key][item.type] = (acc[key][item.type] || 0) + 1;
+        acc[key].total += 1;
+        return acc;
+      }, {});
     }
   </script>
 </BaseLayout>

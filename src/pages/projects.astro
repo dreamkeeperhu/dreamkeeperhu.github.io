@@ -49,11 +49,13 @@ const tags = [...new Set(projects.flatMap((project) => project.data.tags))].slic
           <div class="paper-meta">
             <span>{project.data.status}</span>
             <span>{project.data.statusDetail}</span>
+            {project.data.thread && <span>{project.data.thread}</span>}
             {project.data.artifacts.length > 0 && <span>{project.data.artifacts.length} artifacts</span>}
             <span data-repo-meta>{project.data.repo ? "GitHub metadata loading" : "Curated project"}</span>
           </div>
           <h2><a href={projectHref(project)}>{project.data.title}</a></h2>
           <p>{project.data.summary}</p>
+          {project.data.outcome && <p class="project-outcome"><strong>Outcome:</strong> {project.data.outcome}</p>}
           <div class="project-columns">
             <div>
               <span class="panel-kicker">Problem</span>
@@ -107,23 +109,19 @@ const tags = [...new Set(projects.flatMap((project) => project.data.tags))].slic
       });
     }
 
-    const repos = projectRows.map((row) => row.dataset.repo).filter(Boolean);
-    Promise.all(
-      repos.map((repo) =>
-        fetch(`https://api.github.com/repos/dreamkeeperhu/${repo}`, { headers: { Accept: "application/vnd.github+json" } })
-          .then((response) => (response.ok ? response.json() : null))
-          .catch(() => null)
-      )
-    ).then((items) => {
-      const byName = new Map(items.filter(Boolean).map((repo) => [repo.name, repo]));
+    const repos = projectRows.map((row) => row.dataset.repo).filter(Boolean).map((repo) => `dreamkeeperhu/${repo}`);
+    if (repos.length) fetch(`/api/github-repos?repos=${encodeURIComponent(repos.slice(0, 8).join(","))}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+      const byName = new Map((payload?.repos || []).filter(Boolean).map((repo) => [repo.name, repo]));
       projectRows.forEach((row) => {
         const meta = row.querySelector("[data-repo-meta]");
         const repo = byName.get(row.dataset.repo);
         if (!meta) return;
         meta.textContent = repo
-          ? `${repo.language || "Code"} · ${repo.stargazers_count} stars · updated ${new Date(repo.updated_at).toISOString().slice(0, 10)}`
+          ? `${repo.language || "Code"} · ${repo.stars ?? "?"} stars · ${repo.updatedAt ? `updated ${new Date(repo.updatedAt).toISOString().slice(0, 10)}` : repo.source}`
           : "Curated project";
       });
-    });
+    }).catch(() => {});
   </script>
 </BaseLayout>

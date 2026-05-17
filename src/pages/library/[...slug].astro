@@ -5,7 +5,7 @@ import EvidencePanel from "../../components/EvidencePanel.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { libraryHref, librarySlug } from "../../utils/content";
 import { mergeArtifacts } from "../../utils/artifacts";
-import { collectBacklinks } from "../../utils/relations";
+import { collectRelationGroups } from "../../utils/relations";
 import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
@@ -21,7 +21,13 @@ const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
   getCollection("notes", (entry) => !entry.data.draft),
   getCollection("library", (entry) => !entry.data.draft),
 ]);
-const backlinks = collectBacklinks(libraryHref(item), {
+const relationGroups = collectRelationGroups(libraryHref(item), [
+  ...item.data.relatedPapers,
+  ...item.data.relatedProjects,
+  ...item.data.relatedNotes,
+  ...item.data.artifacts.map((artifact) => artifact.href),
+  item.data.url || "",
+].filter(Boolean), item.data.tags, {
   papers: allPapers,
   projects: allProjects,
   notes: allNotes,
@@ -65,6 +71,7 @@ const jsonLd = {
   description: item.data.note,
   url: new URL(libraryHref(item), profile.site).toString(),
   keywords: item.data.tags,
+  articleSection: item.data.thread || item.data.type,
   author: { "@type": "Person", name: profile.name },
 };
 ---
@@ -100,9 +107,15 @@ const jsonLd = {
         <p>{item.data.type}</p>
       </section>
       <section>
-        <span class="panel-kicker">Why this matters to my current research</span>
-        <p>{item.data.note}</p>
+          <span class="panel-kicker">Why this matters to my current research</span>
+          <p>{item.data.whyItMatters || item.data.note}</p>
       </section>
+      {item.data.takeaways.length > 0 && (
+        <section>
+          <span class="panel-kicker">Takeaways</span>
+          <ul>{item.data.takeaways.map((takeaway) => <li>{takeaway}</li>)}</ul>
+        </section>
+      )}
       <section>
         <span class="panel-kicker">Connections</span>
         <p>{[...item.data.relatedPapers, ...item.data.relatedProjects, ...item.data.relatedNotes].length} linked research item(s).</p>
@@ -113,24 +126,26 @@ const jsonLd = {
 
     <div class="article-body">
       <Content />
-      {(item.data.relatedPapers.length > 0 || item.data.relatedProjects.length > 0 || item.data.relatedNotes.length > 0) && (
-        <section class="related-block">
-          <h2>Related</h2>
-          <div class="inline-links">
-            {item.data.relatedPapers.map((href) => <a href={href}>Research</a>)}
-            {item.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
-            {item.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
+      <section class="related-block relation-groups">
+        <h2>Related Graph</h2>
+        <div class="relation-group-grid">
+          <div>
+            <h3>Upstream</h3>
+            <p>Sources and pages this reading item depends on.</p>
+            <div class="inline-links">{relationGroups.upstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
           </div>
-        </section>
-      )}
-      {backlinks.length > 0 && (
-        <section class="related-block">
-          <h2>Referenced By</h2>
-          <div class="inline-links">
-            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
+          <div>
+            <h3>Downstream</h3>
+            <p>Pages that reference this reading item.</p>
+            <div class="inline-links">{relationGroups.downstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
           </div>
-        </section>
-      )}
+          <div>
+            <h3>Sibling</h3>
+            <p>Reading or work with shared tags.</p>
+            <div class="inline-links">{relationGroups.siblings.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
+          </div>
+        </div>
+      </section>
       <FeedbackForm targetType="library" targetTitle={item.data.title} targetUrl={libraryHref(item)} />
     </div>
   </article>

@@ -6,12 +6,19 @@ type: "topic map"
 status: "collecting"
 year: "ongoing"
 updatedDate: 2026-05-17
+thread: "next-robotics-paradigm"
+audience: "robotics and embodied AI readers"
 tags:
   - "embodied intelligence"
   - "robotics"
   - "paradigm"
 url: "/research"
 note: "A long-running collection around instruction, action, memory, feedback, and physical reliability."
+whyItMatters: "This keeps the broad research aim from becoming a slogan by tying it to instruction, transfer, feedback, and real-world reliability."
+takeaways:
+  - "Embodied intelligence needs task understanding and physical feedback in the same frame."
+  - "The next robotics paradigm should make reliability inspectable, not only demos impressive."
+  - "A research map helps keep broad ideas connected to public artifacts."
 relatedNotes: []
 relatedProjects:
   - "/projects/personal-homepage"

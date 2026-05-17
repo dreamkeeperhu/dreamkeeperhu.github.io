@@ -79,6 +79,7 @@ async function syncLocalVault() {
       sourcePath: (file) => path.relative(absoluteVault, file).split(path.sep).join("/"),
     }));
   }
+  await writeSyncReport("obsidian", results);
   printSyncReport("obsidian", results);
 }
 
@@ -114,6 +115,7 @@ async function syncR2Source() {
       commands: { ListObjectsV2Command, GetObjectCommand },
     }));
   }
+  await writeSyncReport("obsidian-r2", results);
   printSyncReport("obsidian-r2", results);
 }
 
@@ -234,6 +236,10 @@ function mapNote({ frontmatter: fm, body, slugPath, sourcePath }) {
       description: stringValue(fm.description) || stringValue(fm.summary) || excerpt(body),
       pubDate: dateValue(fm.pubDate || fm.date || fm.created) || today(),
       updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
+      thread: stringValue(fm.thread) || undefined,
+      series: stringValue(fm.series) || undefined,
+      audience: stringValue(fm.audience) || undefined,
+      difficulty: normalizeDifficulty(stringValue(fm.difficulty) || "working"),
       category: normalizeNoteCategory(stringValue(fm.category || fm.type) || "research"),
       tags: tagList(fm.tags ?? fm.tag),
       draft: shouldKeepPrivate(fm),
@@ -259,8 +265,14 @@ function mapPaper({ frontmatter: fm, body, slugPath, sourcePath }) {
       abstract: stringValue(fm.abstract || fm.summary) || excerpt(body),
       problem: stringValue(fm.problem) || undefined,
       method: stringValue(fm.method) || undefined,
+      contribution: listValue(fm.contribution || fm.contributions) || [],
+      limitations: listValue(fm.limitations || fm.limits) || [],
+      reviewNote: stringValue(fm.reviewNote || fm.review) || undefined,
       evidence: listValue(fm.evidence) || [],
       nextStep: stringValue(fm.nextStep || fm.next) || undefined,
+      thread: stringValue(fm.thread) || undefined,
+      series: stringValue(fm.series) || undefined,
+      audience: stringValue(fm.audience) || undefined,
       pdf: stringValue(fm.pdf) || undefined,
       code: stringValue(fm.code || fm.repository) || undefined,
       relatedProjects: listValue(fm.relatedProjects) || [],
@@ -288,6 +300,9 @@ function mapProject({ frontmatter: fm, body, slugPath, sourcePath }) {
       status: normalizeProjectStatus(stringValue(fm.status) || "active"),
       statusDetail: normalizeProjectStatusDetail(stringValue(fm.statusDetail || fm.maturity) || "prototype"),
       updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
+      thread: stringValue(fm.thread) || undefined,
+      series: stringValue(fm.series) || undefined,
+      audience: stringValue(fm.audience) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
       techStack: listValue(fm.techStack || fm.stack) || [],
       repo: stringValue(fm.repo || fm.repository) || undefined,
@@ -298,6 +313,9 @@ function mapProject({ frontmatter: fm, body, slugPath, sourcePath }) {
       relatedLibrary: listValue(fm.relatedLibrary) || [],
       artifacts: artifactList(fm.artifacts),
       evidence: listValue(fm.evidence) || [],
+      outcome: stringValue(fm.outcome || fm.result) || undefined,
+      lessons: listValue(fm.lessons || fm.learned) || [],
+      maturityNote: stringValue(fm.maturityNote || fm.maturity_note) || undefined,
       nextStep: stringValue(fm.nextStep || fm.next) || undefined,
       featured: boolValue(fm.featured),
       order: numberValue(fm.order) || 99,
@@ -319,9 +337,14 @@ function mapLibrary({ frontmatter: fm, body, slugPath, sourcePath }) {
       status: normalizeLibraryStatus(stringValue(fm.status) || "reading"),
       year: stringValue(fm.year || fm.date) || "ongoing",
       updatedDate: dateValue(fm.updatedDate || fm.updated) || undefined,
+      thread: stringValue(fm.thread) || undefined,
+      series: stringValue(fm.series) || undefined,
+      audience: stringValue(fm.audience) || undefined,
       tags: tagList(fm.tags ?? fm.tag),
       url: stringValue(fm.url || fm.link) || undefined,
       note: stringValue(fm.note || fm.summary || fm.description) || excerpt(body),
+      whyItMatters: stringValue(fm.whyItMatters || fm.why || fm.relevance) || undefined,
+      takeaways: listValue(fm.takeaways || fm.keyTakeaways) || [],
       relatedNotes: listValue(fm.relatedNotes) || [],
       relatedPapers: listValue(fm.relatedPapers) || [],
       relatedProjects: listValue(fm.relatedProjects) || [],
@@ -589,6 +612,13 @@ function normalizeLibraryStatus(status) {
   return "reading";
 }
 
+function normalizeDifficulty(value) {
+  const lower = value.toLowerCase();
+  if (lower.includes("intro") || lower.includes("beginner")) return "intro";
+  if (lower.includes("deep") || lower.includes("advanced")) return "deep";
+  return "working";
+}
+
 function normalizeTimelineType(type) {
   const lower = type.toLowerCase();
   if (lower.includes("research")) return "research";
@@ -605,6 +635,32 @@ function printSyncReport(label, results) {
     const status = result.found ? `${result.written}/${result.scanned} published, ${result.skipped} private` : "folder not found";
     console.log(`- ${result.label}: ${status} (${result.source})`);
   }
+}
+
+async function writeSyncReport(label, results) {
+  const report = {
+    ok: true,
+    source: label,
+    generatedAt: new Date().toISOString(),
+    totals: results.reduce((acc, item) => {
+      acc.scanned += item.scanned || 0;
+      acc.published += item.written || 0;
+      acc.private += item.skipped || 0;
+      acc.missingFolders += item.found ? 0 : 1;
+      return acc;
+    }, { scanned: 0, published: 0, private: 0, missingFolders: 0 }),
+    collections: results.map((item) => ({
+      name: item.label,
+      source: item.source,
+      found: item.found,
+      scanned: item.scanned,
+      published: item.written,
+      private: item.skipped,
+    })),
+  };
+  const target = path.join(root, ".cache", "content-sync-report.json");
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 }
 
 function today() {

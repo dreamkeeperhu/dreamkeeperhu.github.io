@@ -133,6 +133,26 @@ function validateCollection(collection, rule) {
     }
 
     validateUnsafeMarkdown(relative, body);
+    validateContentQuality(collection, relative, data, body);
+  }
+}
+
+function validateContentQuality(collection, relative, data, body) {
+  const text = String(body || "").replace(/<!--[\s\S]*?-->/g, "").trim();
+  if (!text) errors.push(`${relative} has an empty Markdown body.`);
+  if (/\[\[[^\]]+\]\]/.test(body || "")) errors.push(`${relative} contains unresolved Obsidian wiki links.`);
+
+  const updated = data.updatedDate || data.pubDate || data.date || "";
+  if (updated && isStaleDate(updated)) warnings.push(`${relative} has not been updated for more than 180 days.`);
+
+  if ((collection === "papers" || collection === "projects") && data.draft !== true) {
+    if (!data.artifacts?.length) warnings.push(`${relative} has no evidence artifacts.`);
+    if (!data.thread && !data.tags?.length) warnings.push(`${relative} has no thread or tags for research map grouping.`);
+  }
+
+  if (collection === "library" && data.draft !== true) {
+    if (!data.whyItMatters) warnings.push(`${relative} is missing whyItMatters.`);
+    if (!Array.isArray(data.takeaways) || data.takeaways.length < 3) warnings.push(`${relative} should have at least 3 takeaways.`);
   }
 }
 
@@ -187,6 +207,12 @@ function isLocalMissing(href) {
   if (href.startsWith("/notes/") || href.startsWith("/research/") || href.startsWith("/projects") || href.startsWith("/library") || href.startsWith("/timeline")) return false;
   const target = path.join(root, "public", clean.replace(/^\//, ""));
   return clean.startsWith("/") && !fs.existsSync(target);
+}
+
+function isStaleDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return false;
+  return Date.now() - date.valueOf() > 180 * 24 * 60 * 60 * 1000;
 }
 
 function slugFor(collection, file) {

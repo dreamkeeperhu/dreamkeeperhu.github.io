@@ -44,6 +44,8 @@ const statuses = ["all", "reading", "collecting", "used", "read", "planned"].fil
           </div>
           <h2>{item.data.title}</h2>
           <p>{item.data.note}</p>
+          {item.data.whyItMatters && <p class="library-why"><strong>Why it matters:</strong> {item.data.whyItMatters}</p>}
+          {item.data.takeaways.length > 0 && <em>{item.data.takeaways.slice(0, 2).join(" · ")}</em>}
           {item.data.authors.length > 0 && <em>{item.data.authors.join(", ")}</em>}
           <div class="tag-row">{item.data.tags.map((tag) => <span>{tag}</span>)}</div>
           <EvidenceBadges artifacts={item.data.artifacts} />

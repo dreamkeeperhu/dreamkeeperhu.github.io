@@ -204,11 +204,14 @@ function inferThread(text) {
             <line
               class="map-edge"
               data-thread={edge.thread}
+              data-label={edge.label}
               x1={edge.sourceNode!.x + 190}
               y1={edge.sourceNode!.y + 44}
               x2={edge.targetNode!.x}
               y2={edge.targetNode!.y + 44}
-            />
+            >
+              <title>{edge.label}: {edge.sourceNode!.title} to {edge.targetNode!.title}</title>
+            </line>
           ))}
         </svg>
         {positioned.map((node) => (
@@ -236,12 +239,36 @@ function inferThread(text) {
       <strong>Select a node</strong>
       <p>Hover or tab through the map to preview why a node is present.</p>
     </div>
+    <details class="map-table-fallback">
+      <summary>Accessible relationship table</summary>
+      <table>
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Relation</th>
+            <th>Target</th>
+            <th>Thread</th>
+          </tr>
+        </thead>
+        <tbody>
+          {drawnEdges.map((edge) => (
+            <tr data-map-row data-thread={edge.thread}>
+              <td><a href={edge.sourceNode!.href}>{edge.sourceNode!.title}</a></td>
+              <td>{edge.label}</td>
+              <td><a href={edge.targetNode!.href}>{edge.targetNode!.title}</a></td>
+              <td><a href={`/research/map?thread=${edge.thread}`}>{edge.thread}</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   </section>
 
   <script is:inline>
     const filterButtons = [...document.querySelectorAll("[data-map-filters] button")];
     const mapNodes = [...document.querySelectorAll(".map-node")];
     const mapEdges = [...document.querySelectorAll(".map-edge")];
+    const mapRows = [...document.querySelectorAll("[data-map-row]")];
     const mapCount = document.querySelector("[data-map-count]");
     const mapPreview = document.querySelector("[data-map-preview]");
     const initialThread = new URLSearchParams(window.location.search).get("thread") || "all";
@@ -257,6 +284,9 @@ function inferThread(text) {
       mapEdges.forEach((edge) => {
         edge.hidden = thread !== "all" && edge.dataset.thread !== thread;
         if (!edge.hidden) visibleEdges += 1;
+      });
+      mapRows.forEach((row) => {
+        row.hidden = thread !== "all" && row.dataset.thread !== thread;
       });
       if (mapCount) mapCount.textContent = `${visibleNodes} nodes · ${visibleEdges} links`;
     }

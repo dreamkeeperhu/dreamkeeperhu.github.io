@@ -8,12 +8,19 @@ type: "paper"
 status: "used"
 year: "2026"
 updatedDate: 2026-05-17
+thread: "distributed-cooperation"
+audience: "paper readers"
 tags:
   - "scheduling"
   - "cooperative coevolution"
   - "contextual bandits"
 url: "/research/cchihh"
 note: "The current paper project; useful as a second lens on distributed cooperation under uncertainty."
+whyItMatters: "Although it is not robotics, this paper keeps a parallel question visible: how distributed decision makers cooperate under uncertainty."
+takeaways:
+  - "Cooperation under uncertainty is a shared problem across scheduling systems and robotics."
+  - "Public paper pages should expose status, evidence, artifacts, and limitations together."
+  - "A side research thread can still strengthen the site if its boundary is explicit."
 relatedPapers:
   - "/research/cchihh"
 relatedProjects:

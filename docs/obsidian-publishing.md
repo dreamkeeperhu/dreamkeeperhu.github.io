@@ -97,3 +97,19 @@ Timeline type must be one of `research`, `project`, `writing`, `site`, `educatio
 Drafts are skipped unless `OBSIDIAN_SYNC_DRAFTS=true`.
 
 Notes are private by default. A file is published only when its frontmatter explicitly contains `draft: false`, `publish: true`, `public: true`, or `status: public`.
+
+## V7 Content Fields
+
+Use these optional fields when a page should appear in search, roadmap, and admin health reports with richer context:
+
+- Common: `thread`, `series`, `audience`, `updatedDate`
+- Notes: `difficulty`
+- Papers: `contribution`, `limitations`, `reviewNote`
+- Projects: `outcome`, `lessons`, `maturityNote`
+- Library: `whyItMatters`, `takeaways`
+
+The build writes a local `.cache/content-sync-report.json`, then Astro emits `/content-sync-report.json`. The Worker blocks direct public access to that JSON; the hidden admin page reads it through `/api/admin/content-sync-report`.
+
+## Content Health Rules
+
+`npm run validate:content` checks required fields, duplicate slugs, missing local files, unsafe Markdown, unresolved wiki links, stale update dates, missing artifacts, and library entries without enough takeaways. Warnings are meant to guide cleanup; unsafe or broken content fails the build.

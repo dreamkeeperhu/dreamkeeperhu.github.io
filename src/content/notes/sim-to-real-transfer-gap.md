@@ -3,6 +3,10 @@ title: "The Sim-to-real Gap I Care About"
 description: "A short note on why sim-to-real is less about one perfect simulator and more about reliable transfer under mismatch."
 pubDate: 2026-05-16
 updatedDate: 2026-05-17
+thread: "sim-to-real"
+series: "Robotics notes"
+audience: "robotics readers"
+difficulty: "intro"
 category: research
 tags:
   - robotics

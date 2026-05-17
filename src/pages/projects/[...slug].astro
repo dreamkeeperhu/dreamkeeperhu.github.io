@@ -5,7 +5,7 @@ import EvidencePanel from "../../components/EvidencePanel.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { projectHref, projectSlug } from "../../utils/content";
 import { mergeArtifacts } from "../../utils/artifacts";
-import { collectBacklinks } from "../../utils/relations";
+import { collectRelationGroups } from "../../utils/relations";
 import { profile } from "../../data/profile";
 
 export async function getStaticPaths() {
@@ -21,7 +21,13 @@ const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
   getCollection("notes", (item) => !item.data.draft),
   getCollection("library", (item) => !item.data.draft),
 ]);
-const backlinks = collectBacklinks(projectHref(project), {
+const relationGroups = collectRelationGroups(projectHref(project), [
+  ...project.data.relatedPapers,
+  ...project.data.relatedNotes,
+  ...project.data.relatedLibrary,
+  ...project.data.artifacts.map((artifact) => artifact.href),
+  ...project.data.links.map((link) => link.href),
+], project.data.tags, {
   papers: allPapers,
   projects: allProjects,
   notes: allNotes,
@@ -67,6 +73,7 @@ const jsonLd = {
   codeRepository: project.data.url,
   programmingLanguage: project.data.techStack,
   keywords: project.data.tags,
+  about: project.data.thread,
 };
 ---
 
@@ -84,6 +91,11 @@ const jsonLd = {
       <h1>{project.data.title}</h1>
       <p>{project.data.summary}</p>
       <div class="tag-row">{project.data.tags.map((tag) => <span>{tag}</span>)}</div>
+      <div class="paper-meta">
+        {project.data.thread && <span>{project.data.thread}</span>}
+        <span>{projectArtifacts.length} artifacts</span>
+        {project.data.updatedDate && <span>updated {project.data.updatedDate.toISOString().slice(0, 10)}</span>}
+      </div>
       <div class="paper-actions">
         {project.data.url && <a href={project.data.url} target="_blank" rel="noreferrer">GitHub</a>}
         {project.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
@@ -105,9 +117,33 @@ const jsonLd = {
           <ul>{project.data.evidence.map((item) => <li>{item}</li>)}</ul>
         </section>
       )}
+      {project.data.outcome && (
+        <section>
+          <span class="panel-kicker">Outcome</span>
+          <p>{project.data.outcome}</p>
+        </section>
+      )}
+      {project.data.lessons.length > 0 && (
+        <section>
+          <span class="panel-kicker">Lessons Learned</span>
+          <ul>{project.data.lessons.map((item) => <li>{item}</li>)}</ul>
+        </section>
+      )}
+      {project.data.maturityNote && (
+        <section>
+          <span class="panel-kicker">Maturity</span>
+          <p>{project.data.maturityNote}</p>
+        </section>
+      )}
+      {project.data.techStack.length > 0 && (
+        <section>
+          <span class="panel-kicker">Used Technologies</span>
+          <p>{project.data.techStack.join(" / ")}</p>
+        </section>
+      )}
       {project.data.nextStep && (
         <section>
-          <span class="panel-kicker">Next</span>
+          <span class="panel-kicker">Next Checkpoint</span>
           <p>{project.data.nextStep}</p>
         </section>
       )}
@@ -117,23 +153,26 @@ const jsonLd = {
 
     <div class="article-body">
       <Content />
-      <section class="related-block">
-        <h2>Related</h2>
-        <div class="inline-links">
-          {project.data.relatedPapers.map((href) => <a href={href}>Research</a>)}
-          {project.data.relatedNotes.map((href) => <a href={href}>Note</a>)}
-          {project.data.relatedLibrary.map((href) => <a href={href}>Library</a>)}
-          <a href={projectHref(project)}>Canonical project link</a>
+      <section class="related-block relation-groups">
+        <h2>Related Graph</h2>
+        <div class="relation-group-grid">
+          <div>
+            <h3>Upstream</h3>
+            <p>Research, notes, and artifacts this project points to.</p>
+            <div class="inline-links">{relationGroups.upstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
+          </div>
+          <div>
+            <h3>Downstream</h3>
+            <p>Pages that link back to this project.</p>
+            <div class="inline-links">{relationGroups.downstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
+          </div>
+          <div>
+            <h3>Sibling</h3>
+            <p>Nearby work with shared tags.</p>
+            <div class="inline-links">{relationGroups.siblings.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
+          </div>
         </div>
       </section>
-      {backlinks.length > 0 && (
-        <section class="related-block">
-          <h2>Referenced By</h2>
-          <div class="inline-links">
-            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
-          </div>
-        </section>
-      )}
       <FeedbackForm targetType="project" targetTitle={project.data.title} targetUrl={projectHref(project)} />
     </div>
   </article>

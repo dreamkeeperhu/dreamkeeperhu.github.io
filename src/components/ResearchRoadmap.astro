@@ -1,6 +1,6 @@
 ---
 import { getCollection } from "astro:content";
-import { entrySlug } from "../utils/content";
+import { entrySlug, entryUpdatedValue, paperHref, projectHref, noteHref } from "../utils/content";
 
 interface Props {
   compact?: boolean;
@@ -10,6 +10,24 @@ const { compact = false } = Astro.props;
 const researchRoadmap = (await getCollection("roadmap"))
   .filter((item) => !item.data.draft)
   .sort((a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title));
+const [papers, projects, notes] = await Promise.all([
+  getCollection("papers", (item) => !item.data.draft),
+  getCollection("projects", (item) => !item.data.draft),
+  getCollection("notes", (item) => !item.data.draft),
+]);
+const evidenceRows = [
+  ...papers.map((item) => ({ title: item.data.title, href: paperHref(item), tags: item.data.tags, date: entryUpdatedValue(item), kind: "paper", evidence: item.data.artifacts.length + item.data.evidence.length })),
+  ...projects.map((item) => ({ title: item.data.title, href: projectHref(item), tags: item.data.tags, date: entryUpdatedValue(item), kind: "project", evidence: item.data.artifacts.length + item.data.evidence.length })),
+  ...notes.map((item) => ({ title: item.data.title, href: noteHref(item), tags: item.data.tags, date: entryUpdatedValue(item), kind: "note", evidence: 0 })),
+];
+
+function relatedEvidence(tags: string[]) {
+  const set = new Set((tags || []).map((tag) => tag.toLowerCase()));
+  return evidenceRows
+    .filter((row) => row.tags.some((tag) => set.has(tag.toLowerCase())))
+    .sort((a, b) => b.evidence - a.evidence || b.date - a.date)
+    .slice(0, compact ? 1 : 2);
+}
 ---
 
 <section class={`roadmap-section reveal${compact ? " compact-roadmap" : ""}`} aria-label="Research roadmap">
@@ -23,14 +41,23 @@ const researchRoadmap = (await getCollection("roadmap"))
         <span>{String(index + 1).padStart(2, "0")}</span>
         <h3>{item.data.title}</h3>
         <p>{item.data.question}</p>
+        <p class="roadmap-open-question"><strong>Open question:</strong> {item.data.question}</p>
         <dl>
           <dt>Now</dt>
           <dd>{item.data.now}</dd>
           <dt>Next</dt>
           <dd>{item.data.next}</dd>
         </dl>
+        <div class="roadmap-evidence">
+          <span class="panel-kicker">Current evidence</span>
+          {relatedEvidence(item.data.tags).map((row) => (
+            <a href={row.href}>{row.kind}: {row.title}</a>
+          ))}
+          {relatedEvidence(item.data.tags).length === 0 && <small>No public evidence linked yet.</small>}
+        </div>
         <div class="inline-links">
           {item.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
+          <a href={`/research/map?thread=${entrySlug(item.id)}`}>Map view</a>
         </div>
       </article>
     ))}

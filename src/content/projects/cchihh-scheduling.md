@@ -6,6 +6,8 @@ method: "Decompose the scheduling decision into coherent blocks, assign adaptive
 status: "research"
 statusDetail: "research trace"
 updatedDate: 2026-05-17
+thread: "distributed-cooperation"
+audience: "paper readers and implementation reviewers"
 tags:
   - "Scheduling"
   - "Cooperative coevolution"
@@ -45,6 +47,11 @@ artifacts:
 evidence:
   - "Connects a paper, implementation, and experiment narrative in one public trace."
   - "Uses adaptive decomposition as a lens on distributed cooperation under uncertainty."
+outcome: "Keeps the scheduling paper, code, PDF, and implementation context connected as one inspectable research trace."
+lessons:
+  - "Research code becomes more useful when the page states the exact problem-method-evidence chain."
+  - "A non-robotics project can still clarify how distributed systems cooperate under uncertainty."
+maturityNote: "Research trace: useful for inspection, not yet presented as a polished external package."
 nextStep: "Make the experiment story easier to inspect when the paper status changes."
 featured: true
 order: 2

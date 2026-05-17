@@ -45,7 +45,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       .then((items) => {
         index = items.map((item) => ({
           ...item,
-          haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""} ${item.date || ""}`.toLowerCase(),
+          haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.headings || []).join(" ")} ${(item.snippets || []).join(" ")} ${(item.tags || []).join(" ")} ${item.thread || ""} ${item.series || ""} ${item.type} ${item.status || ""} ${item.date || ""}`.toLowerCase(),
         })).sort((a, b) => dateRank(b.date) - dateRank(a.date));
         renderDynamicFilters();
         render();
@@ -66,7 +66,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     function renderDynamicFilters() {
       if (!dynamicFilters) return;
-      const values = [...new Set(index.flatMap((item) => [...(item.tags || []), item.status].filter(Boolean)))].slice(0, 18);
+      const values = [...new Set(index.flatMap((item) => [...(item.tags || []), item.status, item.thread, item.series].filter(Boolean)))].slice(0, 24);
       dynamicFilters.innerHTML = values.map((value) => `<button type="button" data-meta="${escapeHtml(value)}">${escapeHtml(value)}</button>`).join("");
       dynamicFilters.querySelectorAll("button").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.meta === activeMeta));
@@ -83,7 +83,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       syncUrl(query);
       const pool = index.filter((item) =>
         (activeType === "all" || item.type === activeType) &&
-        (!activeMeta || item.status === activeMeta || (item.tags || []).includes(activeMeta))
+        (!activeMeta || item.status === activeMeta || item.thread === activeMeta || item.series === activeMeta || (item.tags || []).includes(activeMeta))
       );
       const matches = (query ? pool.map((item) => ({ item, score: fuzzyScore(item.haystack, query) })).filter((row) => row.score > 0).sort((a, b) => b.score - a.score).map((row) => row.item) : pool).slice(0, 18);
       if (count) count.textContent = `${matches.length} result${matches.length === 1 ? "" : "s"} shown from ${pool.length} candidate${pool.length === 1 ? "" : "s"}.`;
@@ -95,7 +95,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             <strong>${highlight(item.title, query)}</strong>
             <p>${highlight(snippet(item, query), query)}</p>
             <em>${escapeHtml([
+              matchReason(item, query),
               item.date,
+              item.thread,
+              item.series,
               ...(item.evidenceTypes || []),
               ...(item.tags || []).slice(0, 5),
             ].filter(Boolean).join(" · "))}</em>
@@ -138,13 +141,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     function snippet(item, query) {
       const content = String(item.content || item.description || "");
+      const candidate = [item.description, ...(item.snippets || []), item.content].filter(Boolean).join(" ");
+      const source = String(candidate || content);
       const needle = String(query || "").toLowerCase();
       if (!needle) return item.description || content.slice(0, 180);
-      const index = content.toLowerCase().indexOf(needle);
+      const index = source.toLowerCase().indexOf(needle);
       if (index < 0) return item.description || content.slice(0, 180);
       const start = Math.max(0, index - 70);
-      const end = Math.min(content.length, index + needle.length + 110);
-      return `${start > 0 ? "..." : ""}${content.slice(start, end)}${end < content.length ? "..." : ""}`;
+      const end = Math.min(source.length, index + needle.length + 110);
+      return `${start > 0 ? "..." : ""}${source.slice(start, end)}${end < source.length ? "..." : ""}`;
+    }
+
+    function matchReason(item, query) {
+      const needle = String(query || "").trim().toLowerCase();
+      if (!needle) return "recent";
+      if (String(item.title || "").toLowerCase().includes(needle)) return "title match";
+      if ((item.headings || []).some((heading) => String(heading).toLowerCase().includes(needle))) return "heading match";
+      if ((item.tags || []).some((tag) => String(tag).toLowerCase().includes(needle))) return "tag match";
+      if (String(item.thread || "").toLowerCase().includes(needle)) return "thread match";
+      if ((item.evidenceTypes || []).some((type) => String(type).toLowerCase().includes(needle))) return "evidence match";
+      return "body match";
     }
 
     function dateRank(value) {

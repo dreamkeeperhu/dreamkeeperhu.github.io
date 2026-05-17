@@ -7,7 +7,7 @@ import EvidenceBadges from "../components/EvidenceBadges.astro";
 import { getCollection } from "astro:content";
 import { profile } from "../data/profile";
 import { asset } from "../utils/cdn";
-import { entryUpdatedValue, noteHref, paperHref, projectHref, sortFeaturedEntries, timelineSortValue } from "../utils/content";
+import { entryUpdatedValue, evidenceCount, noteHref, paperHref, projectHref, sortSelectedWork, timelineSortValue } from "../utils/content";
 
 const rows = Array.from({ length: 11 });
 const copies = Array.from({ length: 18 });
@@ -15,14 +15,61 @@ const latestNotes = (await getCollection("notes"))
   .filter((note) => !note.data.draft)
   .sort((a, b) => entryUpdatedValue(b) - entryUpdatedValue(a))
   .slice(0, 2);
-const latestPapers = (await getCollection("papers"))
+const allPapers = (await getCollection("papers"))
+  .filter((paper) => !paper.data.draft);
+const allProjects = (await getCollection("projects"))
+  .filter((project) => !project.data.draft);
+const allLibrary = (await getCollection("library"))
+  .filter((item) => !item.data.draft);
+const latestPapers = allPapers
   .filter((paper) => !paper.data.draft)
   .sort((a, b) => entryUpdatedValue(b) - entryUpdatedValue(a))
   .slice(0, 1);
-const featuredProjects = sortFeaturedEntries((await getCollection("projects"))
-  .filter((project) => !project.data.draft && project.data.featured))
+const featuredProjects = sortSelectedWork(allProjects.filter((project) => project.data.featured))
   .slice(0, 3);
 const currentSignal = latestPapers[0] || featuredProjects[0];
+const totalArtifacts = [
+  ...allPapers.flatMap((paper) => paper.data.artifacts),
+  ...allProjects.flatMap((project) => project.data.artifacts),
+  ...allLibrary.flatMap((item) => item.data.artifacts),
+].length;
+const latestUpdated = [...latestNotes, ...allPapers, ...allProjects, ...allLibrary]
+  .sort((a, b) => entryUpdatedValue(b) - entryUpdatedValue(a))[0];
+const latestWork = [
+  ...latestNotes.map((note) => ({
+    type: "note",
+    title: note.data.title,
+    description: note.data.description,
+    href: noteHref(note),
+    date: note.data.updatedDate || note.data.pubDate,
+    meta: `${note.data.category}${note.data.series ? ` · ${note.data.series}` : ""}`,
+    evidence: 0,
+  })),
+  ...allPapers.map((paper) => ({
+    type: "research",
+    title: paper.data.title,
+    description: paper.data.abstract,
+    href: paperHref(paper),
+    date: paper.data.updatedDate || new Date(`${paper.data.year}-01-01`),
+    meta: `${paper.data.status} · ${paper.data.year}`,
+    evidence: evidenceCount(paper),
+  })),
+  ...allProjects.map((project) => ({
+    type: "project",
+    title: project.data.title,
+    description: project.data.summary,
+    href: projectHref(project),
+    date: project.data.updatedDate || new Date("2026-01-01"),
+    meta: `${project.data.status} · ${project.data.statusDetail}`,
+    evidence: evidenceCount(project),
+  })),
+].sort((a, b) => new Date(b.date).valueOf() - new Date(a.date).valueOf()).slice(0, 6);
+const contactIntents = [
+  ["research", "Research", "Robotics / sim-to-real discussion"],
+  ["project", "Project", "Tooling or implementation feedback"],
+  ["paper feedback", "Paper Feedback", "Questions about CCHIHH or drafts"],
+  ["general", "General", "A direct note or conversation"],
+];
 const latestMilestones = (await getCollection("timeline"))
   .filter((item) => !item.data.draft && item.data.featured)
   .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)) || a.data.order - b.data.order)
@@ -44,9 +91,10 @@ const latestMilestones = (await getCollection("timeline"))
             <div class="hero-focus">
               <span>Research direction</span>
               <strong>General physical intelligence</strong>
-              <p>Better instructing robotics, sim-to-real generalization, and the next robotics paradigm.</p>
+              <p>Better instructing robotics, sim-to-real generalization, and the next robotics paradigm. Public work here is organized by evidence, artifacts, and notes.</p>
               <div class="hero-actions">
                 <a class="button-primary" href="/research">Research</a>
+                <a class="button-secondary" href="/research/map">Map</a>
                 <a class="button-secondary" href={`mailto:${profile.email}`}>Email</a>
               </div>
             </div>
@@ -85,7 +133,7 @@ const latestMilestones = (await getCollection("timeline"))
 
   <section class="showcase" aria-label="Selected directions">
     <a class="showcase-card" href="/research">
-      <img src={asset("/assets/interface-field.png")} alt="Interface structure and flowing curves" />
+      <img src={asset("/assets/interface-field.png")} alt="Interface structure and flowing curves" width="1200" height="700" decoding="async" fetchpriority="high" />
       <span class="showcase-overlay"></span>
       <span class="showcase-info">
         <strong>Robotics Instruction</strong>
@@ -93,7 +141,7 @@ const latestMilestones = (await getCollection("timeline"))
       </span>
     </a>
     <a class="showcase-card" href="/research">
-      <img src={asset("/assets/agent-map.png")} alt="Node network and automation workflow" />
+      <img src={asset("/assets/agent-map.png")} alt="Node network and automation workflow" width="1200" height="700" loading="lazy" decoding="async" />
       <span class="showcase-overlay"></span>
       <span class="showcase-info">
         <strong>Sim-to-real</strong>
@@ -101,7 +149,7 @@ const latestMilestones = (await getCollection("timeline"))
       </span>
     </a>
     <a class="showcase-card" href="/notes">
-      <img src={asset("/assets/signal-wave.png")} alt="Waveform and signal record" />
+      <img src={asset("/assets/signal-wave.png")} alt="Waveform and signal record" width="1200" height="700" loading="lazy" decoding="async" />
       <span class="showcase-overlay"></span>
       <span class="showcase-info">
         <strong>New Robotics Paradigm</strong>
@@ -147,9 +195,19 @@ const latestMilestones = (await getCollection("timeline"))
         <p>Look for better diagrams for embodied intelligence after demos stop being enough.</p>
       </article>
       <article>
-        <span>Current public signal</span>
+        <span>Current signal</span>
         <strong>{currentSignal?.data.title}</strong>
         <p>{currentSignal?.data.abstract || currentSignal?.data.summary}</p>
+      </article>
+      <article>
+        <span>Public artifacts</span>
+        <strong>{totalArtifacts}</strong>
+        <p>PDFs, code, project traces, notes, maps, and other evidence links attached to public research items.</p>
+      </article>
+      <article>
+        <span>Latest update</span>
+        <strong>{latestUpdated ? new Date(entryUpdatedValue(latestUpdated)).toISOString().slice(0, 10) : "2026"}</strong>
+        <p>Content is sorted by explicit update dates so stale pages are easier to notice and revise.</p>
       </article>
     </div>
   </section>
@@ -167,38 +225,28 @@ const latestMilestones = (await getCollection("timeline"))
           <span>{project.data.status}</span>
           <strong>{project.data.title}</strong>
           <small>{project.data.summary}</small>
+          {project.data.outcome && <em>{project.data.outcome}</em>}
           <EvidenceBadges artifacts={project.data.artifacts} compact />
         </a>
       ))}
     </div>
   </section>
 
-  <section class="latest-board reveal" aria-label="Latest public work">
+  <section class="latest-board latest-work-stream reveal" aria-label="Latest public work">
     <div class="section-head compact-head">
       <h2>Latest Work</h2>
-      <p>最近公开的文章、研究条目和阶段性想法会在这里汇总。它不追求频繁更新，只保留值得被看见的部分。</p>
+      <p>最近公开的 notes、research 和 projects 放在同一条工作流里，减少首页的入口堆叠。</p>
     </div>
-    <div class="latest-grid">
-      <article>
-        <span class="panel-kicker">Notes</span>
-        {latestNotes.map((note) => (
-          <a class="mini-entry" href={noteHref(note)}>
-            <time datetime={note.data.pubDate.toISOString()}>{note.data.pubDate.toISOString().slice(0, 10)}</time>
-            <strong>{note.data.title}</strong>
-            <p>{note.data.description}</p>
-          </a>
-        ))}
-      </article>
-      <article>
-        <span class="panel-kicker">Research</span>
-        {latestPapers.map((paper) => (
-          <a class="mini-entry" href={paperHref(paper)}>
-            <time>{paper.data.status} · {paper.data.year}{paper.data.artifacts.length > 0 ? ` · ${paper.data.artifacts.length} artifacts` : ""}</time>
-            <strong>{paper.data.title}</strong>
-            <p>{paper.data.abstract}</p>
-          </a>
-        ))}
-      </article>
+    <div class="latest-stream">
+      {latestWork.map((item, index) => (
+        <a class="timeline-row latest-row" href={item.href}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <time>{new Date(item.date).toISOString().slice(0, 10)}</time>
+          <strong>{item.title}</strong>
+          <p>{item.description}</p>
+          <em>{item.type} · {item.meta}{item.evidence ? ` · ${item.evidence} evidence signals` : ""}</em>
+        </a>
+      ))}
     </div>
   </section>
 
@@ -232,6 +280,14 @@ const latestMilestones = (await getCollection("timeline"))
       <span>→</span>
     </a>
     <a class="button-secondary" href="/contact">Contact form</a>
+    <div class="contact-intents" aria-label="Contact intent shortcuts">
+      {contactIntents.map(([intent, label, description]) => (
+        <a href={`mailto:${profile.email}?subject=${encodeURIComponent(`[${label}] jianhenghu.com`)}&body=${encodeURIComponent(`${description}\n\n`)}`}>
+          <span>{label}</span>
+          <small>{description}</small>
+        </a>
+      ))}
+    </div>
   </section>
 
   <section class="subscribe-section reveal">

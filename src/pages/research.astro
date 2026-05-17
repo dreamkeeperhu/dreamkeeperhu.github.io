@@ -69,6 +69,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
             <span>{paper.data.status}</span>
             <span>{paper.data.year}</span>
             {paper.data.venue && <span>{paper.data.venue}</span>}
+            {paper.data.thread && <span>{paper.data.thread}</span>}
             {paper.data.artifacts.length > 0 && <span>{paper.data.artifacts.length} artifacts</span>}
           </div>
           <h2><a href={paperHref(paper)}>{paper.data.title}</a></h2>
@@ -85,6 +86,18 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
               <div>
                 <span class="panel-kicker">Method</span>
                 <p>{paper.data.method}</p>
+              </div>
+            )}
+            {paper.data.contribution.length > 0 && (
+              <div>
+                <span class="panel-kicker">Contribution</span>
+                <p>{paper.data.contribution[0]}</p>
+              </div>
+            )}
+            {paper.data.nextStep && (
+              <div>
+                <span class="panel-kicker">Next public update</span>
+                <p>{paper.data.nextStep}</p>
               </div>
             )}
           </div>

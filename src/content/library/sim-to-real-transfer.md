@@ -6,12 +6,19 @@ type: "paper cluster"
 status: "reading"
 year: "ongoing"
 updatedDate: 2026-05-17
+thread: "sim-to-real"
+audience: "robotics and embodied AI readers"
 tags:
   - "sim-to-real"
   - "robotics"
   - "generalization"
 url: "/notes/sim-to-real-transfer-gap"
 note: "Tracking why transfer fails and what kinds of mismatch a practical robot must survive."
+whyItMatters: "Sim-to-real is the most concrete current bridge between my long-term goal of general physical intelligence and real robot deployment."
+takeaways:
+  - "Transfer failure is not only a visual realism problem."
+  - "Instruction clarity and transfer robustness should be studied together."
+  - "A useful robot must know when mismatch makes confident action unsafe."
 relatedNotes:
   - "/notes/sim-to-real-transfer-gap"
 artifacts:

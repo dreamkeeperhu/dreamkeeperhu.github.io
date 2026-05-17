@@ -16,6 +16,8 @@ const categoryLabels = {
 const categories = ["research", "site", "personal", "log"].filter((category) =>
   notes.some((note) => note.data.category === category)
 );
+const threads = [...new Set(notes.map((note) => note.data.thread).filter(Boolean))];
+const seriesList = [...new Set(notes.map((note) => note.data.series).filter(Boolean))];
 ---
 
 <BaseLayout current="Notes" title="Notes | HJH">
@@ -37,6 +39,15 @@ const categories = ["research", "site", "personal", "log"].filter((category) =>
       <button type="button" data-category="all" aria-pressed="true">all</button>
       {categories.map((category) => <button type="button" data-category={category}>{category}</button>)}
     </div>
+    <div class="filter-row" data-note-threads>
+      <button type="button" data-thread="all" aria-pressed="true">all threads</button>
+      {threads.map((thread) => <button type="button" data-thread={thread}>{thread}</button>)}
+    </div>
+    {seriesList.length > 0 && (
+      <div class="tool-links" data-note-series>
+        {seriesList.map((series) => <button type="button" data-series={series}>{series}</button>)}
+      </div>
+    )}
   </section>
 
   <section class="notes-list grouped-notes" data-notes-list>
@@ -48,12 +59,14 @@ const categories = ["research", "site", "personal", "log"].filter((category) =>
             class="note-row"
             href={noteHref(note)}
             data-category={note.data.category}
-            data-title={`${note.data.title} ${note.data.description} ${note.data.tags.join(" ")}`.toLowerCase()}
+            data-thread={note.data.thread || ""}
+            data-series={note.data.series || ""}
+            data-title={`${note.data.title} ${note.data.description} ${note.data.tags.join(" ")} ${note.data.thread || ""} ${note.data.series || ""}`.toLowerCase()}
           >
-            <span>{note.data.pubDate.toISOString().slice(0, 10)}</span>
+            <span>{(note.data.updatedDate || note.data.pubDate).toISOString().slice(0, 10)}</span>
             <strong>{note.data.title}</strong>
             <p>{note.data.description}</p>
-            <em>{note.data.category} · {note.data.tags.join(" · ")}</em>
+            <em>{[note.data.category, note.data.thread, note.data.series, ...note.data.tags].filter(Boolean).join(" · ")}</em>
           </a>
         ))}
       </div>
@@ -69,12 +82,32 @@ const categories = ["research", "site", "personal", "log"].filter((category) =>
     const rows = [...document.querySelectorAll("[data-notes-list] .note-row")];
     const groups = [...document.querySelectorAll("[data-note-group]")];
     const categoryButtons = [...document.querySelectorAll("[data-note-categories] button")];
+    const threadButtons = [...document.querySelectorAll("[data-note-threads] button")];
+    const seriesButtons = [...document.querySelectorAll("[data-note-series] button")];
     let activeCategory = "all";
+    let activeThread = "all";
+    let activeSeries = "";
 
     categoryButtons.forEach((button) => {
       button.addEventListener("click", () => {
         activeCategory = button.dataset.category || "all";
         categoryButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        renderNotes();
+      });
+    });
+
+    threadButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeThread = button.dataset.thread || "all";
+        threadButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        renderNotes();
+      });
+    });
+
+    seriesButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeSeries = activeSeries === button.dataset.series ? "" : button.dataset.series || "";
+        seriesButtons.forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.series === activeSeries)));
         renderNotes();
       });
     });
@@ -86,7 +119,9 @@ const categories = ["research", "site", "personal", "log"].filter((category) =>
       rows.forEach((row) => {
         const queryMatch = !query || row.dataset.title.includes(query);
         const categoryMatch = activeCategory === "all" || row.dataset.category === activeCategory;
-        row.hidden = !(queryMatch && categoryMatch);
+        const threadMatch = activeThread === "all" || row.dataset.thread === activeThread;
+        const seriesMatch = !activeSeries || row.dataset.series === activeSeries;
+        row.hidden = !(queryMatch && categoryMatch && threadMatch && seriesMatch);
       });
       groups.forEach((group) => {
         group.hidden = ![...group.querySelectorAll(".note-row")].some((row) => !row.hidden);

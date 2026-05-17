@@ -39,7 +39,7 @@ The root `wrangler.toml` binds three KV namespaces to the Cloudflare Pages proje
 - `CONTACT_MESSAGES`: stores lightweight contact form backups from `/api/contact`
 
 The admin export endpoint `/api/admin/subscribers` requires the `ADMIN_TOKEN` Pages secret.
-The admin contact export endpoint `/api/admin/contacts` and the newsletter draft endpoint `/api/admin/newsletter-draft?since=YYYY-MM-DD` use the same token.
+The admin contact export endpoint `/api/admin/contacts`, sync report endpoint `/api/admin/content-sync-report`, and newsletter draft endpoint `/api/admin/newsletter-draft?since=YYYY-MM-DD` use the same token.
 
 The public API lives in `public/_worker.js`, which Astro copies into `dist/` during build.
 

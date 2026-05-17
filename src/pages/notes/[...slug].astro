@@ -3,7 +3,7 @@ import { getCollection, render } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import FeedbackForm from "../../components/FeedbackForm.astro";
 import { noteHref, noteSlug } from "../../utils/content";
-import { collectBacklinks } from "../../utils/relations";
+import { collectRelationGroups } from "../../utils/relations";
 
 export async function getStaticPaths() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
@@ -18,7 +18,7 @@ const [allPapers, allProjects, allNotes, allLibrary] = await Promise.all([
   getCollection("notes", (item) => !item.data.draft),
   getCollection("library", (item) => !item.data.draft),
 ]);
-const backlinks = collectBacklinks(noteHref(note), {
+const relationGroups = collectRelationGroups(noteHref(note), [], note.data.tags, {
   papers: allPapers,
   projects: allProjects,
   notes: allNotes,
@@ -33,18 +33,31 @@ const backlinks = collectBacklinks(noteHref(note), {
       <time datetime={note.data.pubDate.toISOString()}>{note.data.pubDate.toISOString().slice(0, 10)}</time>
       <h1>{note.data.title}</h1>
       <p>{note.data.description}</p>
+      <div class="paper-meta">
+        <span>{note.data.category}</span>
+        {note.data.thread && <span>{note.data.thread}</span>}
+        {note.data.series && <span>{note.data.series}</span>}
+        <span>{note.data.difficulty}</span>
+      </div>
       <div class="tag-row">{note.data.tags.map((tag) => <span>{tag}</span>)}</div>
     </header>
     <div class="article-body">
       <Content />
-      {backlinks.length > 0 && (
-        <section class="related-block">
-          <h2>Referenced By</h2>
-          <div class="inline-links">
-            {backlinks.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}
+      <section class="related-block relation-groups">
+        <h2>Related Graph</h2>
+        <div class="relation-group-grid">
+          <div>
+            <h3>Downstream</h3>
+            <p>Research, projects, or library entries that reference this note.</p>
+            <div class="inline-links">{relationGroups.downstream.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
           </div>
-        </section>
-      )}
+          <div>
+            <h3>Sibling</h3>
+            <p>Other public items with shared tags.</p>
+            <div class="inline-links">{relationGroups.siblings.map((link) => <a href={link.href}>{link.type}: {link.title}</a>)}</div>
+          </div>
+        </div>
+      </section>
       <FeedbackForm targetType="note" targetTitle={note.data.title} targetUrl={noteHref(note)} />
     </div>
   </article>

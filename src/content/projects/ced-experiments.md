@@ -6,6 +6,8 @@ method: "Keep runnable experiment scripts and data traces close to the research 
 status: "active"
 statusDetail: "prototype"
 updatedDate: 2026-05-17
+thread: "distributed-cooperation"
+audience: "experiment readers"
 tags:
   - "Cloud-edge-device"
   - "Scheduling"
@@ -34,6 +36,11 @@ artifacts:
     status: "available"
 evidence:
   - "Maintains a runnable workspace adjacent to the paper direction."
+outcome: "Preserves experiment scripts and simulation traces that can support future scheduling comparisons."
+lessons:
+  - "Small experiment repos need clearer boundaries between reusable baselines and scratch traces."
+  - "The public page should say what is currently runnable before asking visitors to inspect code."
+maturityNote: "Prototype: useful as a working lab record, not a polished tool."
 nextStep: "Separate reusable baselines from one-off experiment traces."
 featured: true
 order: 3
