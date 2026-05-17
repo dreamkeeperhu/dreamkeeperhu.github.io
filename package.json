@@ -8,14 +8,16 @@
     "obsidian:sync": "node scripts/sync-obsidian.mjs",
     "obsidian:sync:r2": "OBSIDIAN_SOURCE=r2 node scripts/sync-obsidian.mjs",
     "content:sync": "node scripts/sync-obsidian.mjs",
-    "prebuild": "node scripts/sync-obsidian.mjs",
+    "validate:content": "node scripts/validate-content.mjs",
+    "prebuild": "node scripts/sync-obsidian.mjs && node scripts/validate-content.mjs",
     "build": "astro build",
     "preview": "astro preview"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.1048.0",
     "@astrojs/rss": "^4.0.18",
+    "@aws-sdk/client-s3": "^3.1048.0",
     "astro": "^6.3.3",
+    "js-yaml": "^4.1.1",
     "typescript": "^5.9.3"
   }
 }

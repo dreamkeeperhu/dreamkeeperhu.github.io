@@ -8,6 +8,14 @@ export function noteHref(note: CollectionEntry<"notes">) {
   return `/notes/${noteSlug(note)}`;
 }
 
+export function paperSlug(paper: CollectionEntry<"papers">) {
+  return paper.id.replace(/^obsidian\//, "").replace(/\.(md|mdx)$/i, "");
+}
+
+export function paperHref(paper: CollectionEntry<"papers">) {
+  return `/research/${paperSlug(paper)}`;
+}
+
 export function tagSlug(tag: string) {
   return tag
     .normalize("NFKD")

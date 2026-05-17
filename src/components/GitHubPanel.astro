@@ -57,8 +57,8 @@ const username = "dreamkeeperhu";
         <a class="repo-row" href="${repo.html_url}" target="_blank" rel="noreferrer">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <strong>${escapeHtml(repo.name)}</strong>
-          <small>${escapeHtml(repo.description || repo.fallback?.description || "Public code and experiment notes.")}</small>
-          <em>${escapeHtml(repo.language || repo.fallback?.language || "Code")} · ${repo.stargazers_count} stars · ${new Date(repo.updated_at).toISOString().slice(0, 10)}</em>
+          <small>${escapeHtml(repo.description || repo.fallback?.summary || "Public code and experiment notes.")}</small>
+          <em>${escapeHtml(repo.language || repo.fallback?.techStack?.[0] || "Code")} · ${repo.stargazers_count} stars · ${new Date(repo.updated_at).toISOString().slice(0, 10)}</em>
         </a>
       `).join("");
     } catch {
@@ -66,8 +66,8 @@ const username = "dreamkeeperhu";
         <a class="repo-row" href="${repo.url}" target="_blank" rel="noreferrer">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <strong>${escapeHtml(repo.name)}</strong>
-          <small>${escapeHtml(repo.description)}</small>
-          <em>${escapeHtml(repo.language)} · curated fallback</em>
+          <small>${escapeHtml(repo.summary)}</small>
+          <em>${escapeHtml(repo.techStack?.[0] || "Code")} · curated fallback</em>
         </a>
       `).join("");
     }

@@ -2,16 +2,22 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout current="Search" title="Search | HJH">
+<BaseLayout current="Search" title="Search | HJH" description="Search notes, papers, projects, library items, timeline entries, and pages on Jianheng Hu's personal site.">
   <section class="content-hero">
     <span class="eyebrow">Search</span>
-    <h1>Find notes, papers, and pages</h1>
-    <p>A small local search over generated site content. It works from a static JSON index, so there is no search server to maintain.</p>
+    <h1>Find notes, papers, projects, and pages</h1>
+    <p>Fuzzy local search over generated site content. Use filters to narrow by content type, status, or tag.</p>
   </section>
 
-  <section class="notes-tools">
+  <section class="notes-tools search-tools">
     <label for="global-search">Search site</label>
-    <input id="global-search" type="search" placeholder="Try sim-to-real, Astro, CV, robotics..." data-global-search />
+    <input id="global-search" type="search" placeholder="Try sim-to-real, CCHIHH, robotics, Obsidian..." data-global-search autofocus />
+    <div class="filter-row" data-type-filters>
+      {["all", "note", "paper", "project", "library", "timeline", "page"].map((type) => (
+        <button type="button" data-filter={type} aria-pressed={type === "all" ? "true" : "false"}>{type}</button>
+      ))}
+    </div>
+    <div class="tool-links" data-dynamic-filters></div>
   </section>
 
   <section class="notes-list" data-search-results>
@@ -21,39 +27,82 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   <script is:inline>
     const input = document.querySelector("[data-global-search]");
     const results = document.querySelector("[data-search-results]");
+    const filterButtons = [...document.querySelectorAll("[data-type-filters] button")];
+    const dynamicFilters = document.querySelector("[data-dynamic-filters]");
     let index = [];
+    let activeType = "all";
+    let activeMeta = "";
 
     fetch("/search.json")
       .then((response) => response.json())
       .then((items) => {
         index = items.map((item) => ({
           ...item,
-          haystack: `${item.title} ${item.description} ${(item.tags || []).join(" ")} ${item.type}`.toLowerCase(),
+          haystack: `${item.title} ${item.description} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""} ${item.date || ""}`.toLowerCase(),
         }));
+        renderDynamicFilters();
+        render();
       })
       .catch(() => {
         results.innerHTML = '<p class="muted">Search index is not available right now.</p>';
       });
 
-    input?.addEventListener("input", () => {
-      const query = input.value.trim().toLowerCase();
-      if (!query) {
-        results.innerHTML = '<p class="muted">Start typing to search generated content.</p>';
-        return;
-      }
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeType = button.dataset.filter || "all";
+        filterButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        render();
+      });
+    });
 
-      const matches = index.filter((item) => item.haystack.includes(query)).slice(0, 12);
+    input?.addEventListener("input", render);
+
+    function renderDynamicFilters() {
+      if (!dynamicFilters) return;
+      const values = [...new Set(index.flatMap((item) => [...(item.tags || []), item.status].filter(Boolean)))].slice(0, 18);
+      dynamicFilters.innerHTML = values.map((value) => `<button type="button" data-meta="${escapeHtml(value)}">${escapeHtml(value)}</button>`).join("");
+      dynamicFilters.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          activeMeta = activeMeta === button.dataset.meta ? "" : button.dataset.meta || "";
+          dynamicFilters.querySelectorAll("button").forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.meta === activeMeta)));
+          render();
+        });
+      });
+    }
+
+    function render() {
+      const query = input?.value.trim().toLowerCase() || "";
+      const pool = index.filter((item) =>
+        (activeType === "all" || item.type === activeType) &&
+        (!activeMeta || item.status === activeMeta || (item.tags || []).includes(activeMeta))
+      );
+      const matches = (query ? pool.map((item) => ({ item, score: fuzzyScore(item.haystack, query) })).filter((row) => row.score > 0).sort((a, b) => b.score - a.score).map((row) => row.item) : pool).slice(0, 18);
+
       results.innerHTML = matches.length
         ? matches.map((item) => `
           <a class="note-row" href="${item.url}">
-            <span>${item.type} · ${item.date}</span>
+            <span>${escapeHtml(item.type)} · ${escapeHtml(item.date || item.status || "")}</span>
             <strong>${escapeHtml(item.title)}</strong>
             <p>${escapeHtml(item.description)}</p>
             <em>${escapeHtml((item.tags || []).join(" · "))}</em>
           </a>
         `).join("")
         : '<p class="muted">No results yet.</p>';
-    });
+    }
+
+    function fuzzyScore(text, query) {
+      if (!query) return 1;
+      if (text.includes(query)) return 100 + query.length;
+      let score = 0;
+      let cursor = 0;
+      for (const char of query) {
+        const found = text.indexOf(char, cursor);
+        if (found === -1) return 0;
+        score += Math.max(1, 12 - (found - cursor));
+        cursor = found + 1;
+      }
+      return score;
+    }
 
     function escapeHtml(value) {
       return String(value || "").replace(/[&<>"']/g, (char) => ({

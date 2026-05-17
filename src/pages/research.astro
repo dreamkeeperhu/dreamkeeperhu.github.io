@@ -1,20 +1,33 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ResearchRoadmap from "../components/ResearchRoadmap.astro";
+import { paperHref } from "../utils/content";
 
 const papers = (await getCollection("papers"))
   .filter((paper) => !paper.data.draft)
   .sort((a, b) => b.data.year - a.data.year);
 ---
 
-<BaseLayout current="Research" title="Research | HJH">
+<BaseLayout
+  current="Research"
+  title="Research | HJH"
+  description="Research progress by Jianheng Hu: robotics instruction, sim-to-real generalization, cloud-edge-device scheduling, and the next robotics paradigm."
+>
   <section class="content-hero">
     <span class="eyebrow">Research</span>
-    <h1>Papers & Research Progress</h1>
-    <p>Work in scheduling, adaptive systems, and robotics-adjacent questions. Status labels are intentionally explicit: under review, preprint, published, or in preparation.</p>
+    <h1>Papers, questions, and research progress</h1>
+    <p>Public-facing research threads, paper status, PDFs, code links, and notes that make the direction easier to inspect.</p>
+    <div class="hero-actions">
+      <a class="button-primary" href="#papers">Papers</a>
+      <a class="button-secondary" href="/projects">Projects</a>
+      <a class="button-secondary" href="/library">Library</a>
+    </div>
   </section>
 
-  <section class="paper-list">
+  <ResearchRoadmap />
+
+  <section id="papers" class="paper-list">
     {papers.map((paper, index) => (
       <article class="paper-item">
         <div class="paper-index">{String(index + 1).padStart(2, "0")}</div>
@@ -24,13 +37,14 @@ const papers = (await getCollection("papers"))
             <span>{paper.data.year}</span>
             {paper.data.venue && <span>{paper.data.venue}</span>}
           </div>
-          <h2>{paper.data.title}</h2>
+          <h2><a href={paperHref(paper)}>{paper.data.title}</a></h2>
           <p class="paper-authors">{paper.data.authors.join(", ")}</p>
           <p>{paper.data.abstract}</p>
           <div class="tag-row">
             {paper.data.tags.map((tag) => <span>{tag}</span>)}
           </div>
           <div class="paper-actions">
+            <a href={paperHref(paper)}>Details</a>
             {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}
             {paper.data.code && <a href={paper.data.code} target="_blank" rel="noreferrer">Code</a>}
           </div>

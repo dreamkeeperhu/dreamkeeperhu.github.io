@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { libraryItems } from "../data/library";
+---
+
+<BaseLayout
+  current="Library"
+  title="Library | HJH"
+  description="A public reading and resource shelf for robotics, sim-to-real transfer, embodied intelligence, scheduling, and website tooling."
+>
+  <section class="content-hero">
+    <span class="eyebrow">Library</span>
+    <h1>Reading, resources, and working references</h1>
+    <p>A small public shelf for papers, topics, tools, and resources that are shaping the research direction.</p>
+  </section>
+
+  <section class="library-list">
+    {libraryItems.map((item, index) => (
+      <a class="library-row" href={item.url}>
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <div>
+          <div class="paper-meta">
+            <span>{item.status}</span>
+            <span>{item.type}</span>
+            <span>{item.year}</span>
+          </div>
+          <h2>{item.title}</h2>
+          <p>{item.note}</p>
+          <em>{item.authors.join(", ")}</em>
+          <div class="tag-row">{item.tags.map((tag) => <span>{tag}</span>)}</div>
+        </div>
+      </a>
+    ))}
+  </section>
+</BaseLayout>

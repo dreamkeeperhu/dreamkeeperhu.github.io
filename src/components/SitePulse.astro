@@ -1,8 +1,11 @@
 ---
 import { getCollection } from "astro:content";
+import { selectedProjects } from "../data/projects";
+import { milestones } from "../data/timeline";
 
 const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
 const papers = (await getCollection("papers")).filter((paper) => !paper.data.draft);
+const latestUpdate = milestones[0]?.date || "2026";
 ---
 
 <section class="site-pulse reveal" aria-label="Site pulse">
@@ -18,6 +21,14 @@ const papers = (await getCollection("papers")).filter((paper) => !paper.data.dra
     <article>
       <span>Research items</span>
       <strong>{papers.length}</strong>
+    </article>
+    <article>
+      <span>Projects</span>
+      <strong>{selectedProjects.length}</strong>
+    </article>
+    <article>
+      <span>Latest update</span>
+      <strong class="pulse-date">{latestUpdate}</strong>
     </article>
     <article>
       <span>Total visits</span>

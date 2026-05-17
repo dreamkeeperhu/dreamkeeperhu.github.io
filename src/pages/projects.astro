@@ -1,0 +1,70 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { selectedProjects } from "../data/projects";
+---
+
+<BaseLayout
+  current="Projects"
+  title="Projects | HJH"
+  description="Selected projects by Jianheng Hu: research code, tools, website infrastructure, and robotics-adjacent experiments."
+>
+  <section class="content-hero">
+    <span class="eyebrow">Projects</span>
+    <h1>Code, prototypes, and experiment traces</h1>
+    <p>Selected projects are written as small research objects: problem, method, status, links, and what they connect to.</p>
+  </section>
+
+  <section class="project-board" data-project-board>
+    {selectedProjects.map((project, index) => (
+      <article id={project.slug} class="project-item" data-repo={project.repo}>
+        <div class="project-index">{String(index + 1).padStart(2, "0")}</div>
+        <div class="project-main">
+          <div class="paper-meta">
+            <span>{project.status}</span>
+            <span data-repo-meta>GitHub metadata loading</span>
+          </div>
+          <h2>{project.name}</h2>
+          <p>{project.summary}</p>
+          <div class="project-columns">
+            <div>
+              <span class="panel-kicker">Problem</span>
+              <p>{project.problem}</p>
+            </div>
+            <div>
+              <span class="panel-kicker">Method</span>
+              <p>{project.method}</p>
+            </div>
+          </div>
+          <div class="tag-row">{project.tags.map((tag) => <span>{tag}</span>)}</div>
+          <div class="paper-actions">
+            <a href={project.url} target="_blank" rel="noreferrer">GitHub</a>
+            {project.links.map((link) => <a href={link.href}>{link.label}</a>)}
+          </div>
+        </div>
+      </article>
+    ))}
+  </section>
+
+  <script is:inline>
+    const projectRows = [...document.querySelectorAll("[data-repo]")];
+    const repos = projectRows.map((row) => row.dataset.repo).filter(Boolean);
+
+    Promise.all(
+      repos.map((repo) =>
+        fetch(`https://api.github.com/repos/dreamkeeperhu/${repo}`, { headers: { Accept: "application/vnd.github+json" } })
+          .then((response) => (response.ok ? response.json() : null))
+          .catch(() => null)
+      )
+    ).then((items) => {
+      const byName = new Map(items.filter(Boolean).map((repo) => [repo.name, repo]));
+      projectRows.forEach((row) => {
+        const meta = row.querySelector("[data-repo-meta]");
+        const repo = byName.get(row.dataset.repo);
+        if (!meta) return;
+        meta.textContent = repo
+          ? `${repo.language || "Code"} · ${repo.stargazers_count} stars · updated ${new Date(repo.updated_at).toISOString().slice(0, 10)}`
+          : "Curated project";
+      });
+    });
+  </script>
+</BaseLayout>

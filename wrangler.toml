@@ -9,3 +9,7 @@ id = "8882ca2cc8e64ec4976d358ceb32a464"
 [[kv_namespaces]]
 binding = "SITE_METRICS"
 id = "732536c262ac4443b25139b2ef3a1518"
+
+[[kv_namespaces]]
+binding = "CONTACT_MESSAGES"
+id = "166faaa4109942c8a99b406bbcfed87e"

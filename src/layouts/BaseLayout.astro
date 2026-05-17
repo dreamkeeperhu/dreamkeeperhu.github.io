@@ -7,12 +7,16 @@ interface Props {
   title?: string;
   description?: string;
   current?: string;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  ogType?: string;
 }
 
 const {
   title = "HJH | dreamkeeperhu",
   description = "Jianheng Hu's personal homepage: robotics, sim-to-real generalization, research notes, projects, and the next robotics paradigm.",
   current = "",
+  jsonLd,
+  ogType = "website",
 } = Astro.props;
 
 const navItems = [
@@ -20,11 +24,34 @@ const navItems = [
   ["About", "/about"],
   ["CV", "/cv"],
   ["Research", "/research"],
+  ["Projects", "/projects"],
   ["Notes", "/notes"],
   ["Search", "/search"],
   ["Now", "/now"],
-  ["Writing", "/writing"],
+  ["Contact", "/contact"],
 ];
+
+const personJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: profile.name,
+  alternateName: [profile.zhName, profile.shortName, profile.handle],
+  email: profile.email,
+  url: profile.site,
+  sameAs: [profile.github],
+  affiliation: {
+    "@type": "CollegeOrUniversity",
+    name: profile.university,
+  },
+  knowsAbout: [
+    "Robotics",
+    "Sim-to-real transfer",
+    "Embodied intelligence",
+    "Cloud-edge-device scheduling",
+  ],
+};
+
+const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd : [jsonLd])] : personJsonLd;
 ---
 
 <!doctype html>
@@ -37,13 +64,15 @@ const navItems = [
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={new URL(Astro.url.pathname, profile.site).toString()} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, profile.site).toString()} />
     <title>{title}</title>
     <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
     <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="alternate" type="application/rss+xml" title="HJH Notes" href="/rss.xml" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLdPayload)}></script>
     <Analytics />
     <script is:inline>
       const savedTheme = localStorage.getItem("theme");
@@ -80,6 +109,14 @@ const navItems = [
       <slot />
     </main>
 
+    <section class="quick-search" data-quick-search hidden aria-label="Quick search">
+      <div class="quick-search-panel">
+        <label for="quick-search-input">Search site</label>
+        <input id="quick-search-input" type="search" placeholder="Search notes, papers, projects..." data-quick-search-input />
+        <div class="quick-search-results" data-quick-search-results></div>
+      </div>
+    </section>
+
     <footer class="site-footer">
       <span>© 2026 HJH. Built with Astro, GitHub Pages, and Cloudflare.</span>
       <a href="/rss.xml">RSS</a>
@@ -90,6 +127,10 @@ const navItems = [
       const navLinks = document.querySelectorAll(".nav-links a");
       const themeToggle = document.querySelector(".theme-toggle");
       const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+      const quickSearch = document.querySelector("[data-quick-search]");
+      const quickSearchInput = document.querySelector("[data-quick-search-input]");
+      const quickSearchResults = document.querySelector("[data-quick-search-results]");
+      let quickSearchIndex = [];
 
       navToggle?.addEventListener("click", () => {
         document.body.classList.toggle("nav-open");
@@ -104,6 +145,89 @@ const navItems = [
         document.documentElement.dataset.theme = current;
         localStorage.setItem("theme", current);
       });
+
+      document.addEventListener("keydown", (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          openQuickSearch();
+        }
+        if (event.key === "Escape" && quickSearch && !quickSearch.hidden) closeQuickSearch();
+      });
+
+      quickSearch?.addEventListener("click", (event) => {
+        if (event.target === quickSearch) closeQuickSearch();
+      });
+
+      quickSearchInput?.addEventListener("input", () => renderQuickSearch());
+
+      function openQuickSearch() {
+        if (!quickSearch) return;
+        quickSearch.hidden = false;
+        document.body.classList.add("search-open");
+        quickSearchInput?.focus();
+        if (!quickSearchIndex.length) {
+          fetch("/search.json")
+            .then((response) => response.json())
+            .then((items) => {
+              quickSearchIndex = items.map((item) => ({
+                ...item,
+                haystack: `${item.title} ${item.description} ${(item.tags || []).join(" ")} ${item.type} ${item.status || ""}`.toLowerCase(),
+              }));
+              renderQuickSearch();
+            })
+            .catch(() => {
+              if (quickSearchResults) quickSearchResults.innerHTML = '<p class="muted">Search is unavailable.</p>';
+            });
+        } else {
+          renderQuickSearch();
+        }
+      }
+
+      function closeQuickSearch() {
+        if (!quickSearch) return;
+        quickSearch.hidden = true;
+        document.body.classList.remove("search-open");
+      }
+
+      function renderQuickSearch() {
+        if (!quickSearchResults) return;
+        const query = String(quickSearchInput?.value || "").trim().toLowerCase();
+        const matches = (query
+          ? quickSearchIndex
+              .map((item) => ({ item, score: quickScore(item.haystack, query) }))
+              .filter((row) => row.score > 0)
+              .sort((a, b) => b.score - a.score)
+              .map((row) => row.item)
+          : quickSearchIndex
+        ).slice(0, 8);
+
+        quickSearchResults.innerHTML = matches.length
+          ? matches.map((item) => `<a href="${item.url}"><span>${escapeQuick(item.type)}</span><strong>${escapeQuick(item.title)}</strong><small>${escapeQuick(item.description)}</small></a>`).join("")
+          : '<p class="muted">No results.</p>';
+      }
+
+      function quickScore(text, query) {
+        if (text.includes(query)) return 100 + query.length;
+        let score = 0;
+        let cursor = 0;
+        for (const char of query) {
+          const found = text.indexOf(char, cursor);
+          if (found === -1) return 0;
+          score += Math.max(1, 10 - (found - cursor));
+          cursor = found + 1;
+        }
+        return score;
+      }
+
+      function escapeQuick(value) {
+        return String(value || "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        }[char]));
+      }
 
       if (coarsePointer) {
         document

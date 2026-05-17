@@ -1,6 +1,6 @@
 # HJH Personal Homepage
 
-Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research, public notes, Now, dynamic GitHub data, RSS, dark mode, and privacy-friendly analytics hooks.
+Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research detail pages, projects, public notes, library, timeline, contact, RSS, dark mode, and privacy-friendly first-party analytics.
 
 ## Local Development
 
@@ -22,6 +22,7 @@ The generated site is in `dist/`.
 - Notes: `src/content/notes/*.md`, or synced from Obsidian into `src/content/notes/obsidian/`
 - Papers: `src/content/papers/*.md`, or synced from Obsidian into `src/content/papers/obsidian/`
 - Pages: `src/pages/`
+- Structured data: `src/data/projects.ts`, `src/data/roadmap.ts`, `src/data/timeline.ts`, `src/data/library.ts`
 - Shared layout: `src/layouts/BaseLayout.astro`
 - Public CV PDF: `public/cv/jianheng-hu-cv.pdf`
 - Paper PDFs: `public/papers/`
@@ -92,9 +93,12 @@ This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/N
 - GitHub repositories: fetched client-side from the GitHub REST API.
 - GitHub contribution graph: fetched client-side from a public contribution API.
 - Article search: client-side filtering on `/notes`.
-- Global search: generated at `/search.json` and used by `/search`.
+- Global fuzzy search: generated at `/search.json`, used by `/search`, and opened with `Cmd/Ctrl + K`.
 - Tags: generated from note frontmatter at `/tags`.
 - Email subscription: stored by the Cloudflare Pages Function at `/api/subscribe` in the `SUBSCRIBERS` KV namespace.
+- Unsubscribe: `/api/unsubscribe?token=...` removes a subscriber.
+- Contact intent form: `/contact` opens a mail draft and backs up submissions in `CONTACT_MESSAGES`.
+- Admin subscriber export: `/api/admin/subscribers` requires `Authorization: Bearer <ADMIN_TOKEN>`.
 - First-party analytics: `/api/visit` records anonymous aggregate page counts in the `SITE_METRICS` KV namespace, and `/api/site-stats` exposes totals for the homepage pulse.
 - Optional third-party analytics: set either Plausible or Umami environment variables:
   - `PUBLIC_PLAUSIBLE_DOMAIN`

@@ -1,0 +1,28 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { milestones } from "../data/timeline";
+---
+
+<BaseLayout
+  current="Timeline"
+  title="Timeline | HJH"
+  description="Milestones across Jianheng Hu's research, projects, writing workflow, and university path."
+>
+  <section class="content-hero">
+    <span class="eyebrow">Timeline</span>
+    <h1>Milestones and current traces</h1>
+    <p>A lightweight public chronology for research progress, site infrastructure, notes, and the path from Chengdu to Beihang.</p>
+  </section>
+
+  <section class="timeline-list">
+    {milestones.map((item, index) => (
+      <a class="timeline-row" href={item.link}>
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <time>{item.date}</time>
+        <strong>{item.title}</strong>
+        <p>{item.summary}</p>
+        <em>{item.type}</em>
+      </a>
+    ))}
+  </section>
+</BaseLayout>

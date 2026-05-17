@@ -1,0 +1,76 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { profile } from "../data/profile";
+
+const intents = [
+  ["research", "Research conversation"],
+  ["project", "Project / tool feedback"],
+  ["paper feedback", "Paper feedback"],
+  ["general chat", "General chat"],
+];
+---
+
+<BaseLayout
+  current="Contact"
+  title="Contact | HJH"
+  description="Contact Jianheng Hu for robotics, sim-to-real, research conversations, project feedback, or general collaboration."
+>
+  <section class="content-hero">
+    <span class="eyebrow">Contact</span>
+    <h1>Reach out with a clear intent</h1>
+    <p>Best for robotics, sim-to-real, research feedback, student projects, and conversations around embodied intelligence.</p>
+  </section>
+
+  <section class="contact-form-section">
+    <form class="contact-form" data-contact-form>
+      <label>
+        Intent
+        <select name="intent" required>
+          {intents.map(([value, label]) => <option value={value}>{label}</option>)}
+        </select>
+      </label>
+      <label>
+        Your email
+        <input name="email" type="email" inputmode="email" placeholder="you@example.com" required />
+      </label>
+      <label>
+        Message
+        <textarea name="message" rows="7" placeholder="A short context is enough. What are you working on, and what should I look at?" required></textarea>
+      </label>
+      <button type="submit">Open email draft</button>
+      <p data-contact-message>Messages open as email drafts and are lightly backed up for reliability.</p>
+    </form>
+    <aside class="contact-direct">
+      <span class="panel-kicker">Direct email</span>
+      <a href={`mailto:${profile.email}`}>{profile.email}</a>
+      <p>For anything sensitive, use direct email and skip the form.</p>
+    </aside>
+  </section>
+
+  <script is:inline define:vars={{ email: profile.email }}>
+    const form = document.querySelector("[data-contact-form]");
+    const message = document.querySelector("[data-contact-message]");
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const intent = String(data.get("intent") || "").trim();
+      const from = String(data.get("email") || "").trim();
+      const bodyText = String(data.get("message") || "").trim();
+      if (!intent || !from || !bodyText) return;
+
+      if (message) message.textContent = "Preparing email draft...";
+
+      fetch("/api/contact", {
+        method: "POST",
+        body: data,
+        headers: { Accept: "application/json" },
+      }).catch(() => {});
+
+      const subject = encodeURIComponent(`[${intent}] Message from ${from}`);
+      const body = encodeURIComponent(`${bodyText}\n\nFrom: ${from}`);
+      window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+      if (message) message.textContent = "Opening your email client. The message is also backed up if the API is available.";
+    });
+  </script>
+</BaseLayout>

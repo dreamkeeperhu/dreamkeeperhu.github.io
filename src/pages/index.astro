@@ -1,12 +1,14 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import GitHubPanel from "../components/GitHubPanel.astro";
 import SubscribeForm from "../components/SubscribeForm.astro";
 import SitePulse from "../components/SitePulse.astro";
+import ResearchRoadmap from "../components/ResearchRoadmap.astro";
 import { getCollection } from "astro:content";
-import { profile, publicCv } from "../data/profile";
+import { profile } from "../data/profile";
 import { asset } from "../utils/cdn";
-import { noteHref } from "../utils/content";
+import { noteHref, paperHref } from "../utils/content";
+import { selectedProjects } from "../data/projects";
+import { milestones } from "../data/timeline";
 
 const rows = Array.from({ length: 11 });
 const copies = Array.from({ length: 18 });
@@ -18,6 +20,8 @@ const latestPapers = (await getCollection("papers"))
   .filter((paper) => !paper.data.draft)
   .sort((a, b) => b.data.year - a.data.year)
   .slice(0, 1);
+const featuredProjects = selectedProjects.filter((project) => project.featured).slice(0, 3);
+const latestMilestones = milestones.slice(0, 3);
 ---
 
 <BaseLayout current="Home" title="HJH | dreamkeeperhu">
@@ -136,25 +140,21 @@ const latestPapers = (await getCollection("papers"))
     </div>
   </section>
 
-  <section class="direction-board reveal" aria-label="Homepage direction board">
-    <div class="direction-copy">
-      <span class="eyebrow">Direction</span>
-      <h2>How does intelligence become physical?</h2>
-      <p>This site collects the pieces around that question: research progress, robotics notes, project traces, and the tools I make while learning.</p>
+  <ResearchRoadmap compact />
+
+  <section class="selected-projects reveal" aria-label="Selected projects">
+    <div class="section-head compact-head">
+      <h2>Selected Projects</h2>
+      <p>Projects are shown as research traces: what problem they touch, how they are built, and where they connect to notes or papers.</p>
     </div>
-    <div class="direction-steps">
-      <a href="/research">
-        <span>Research</span>
-        <strong>Robotics generalization and adaptive scheduling</strong>
-      </a>
-      <a href="/notes">
-        <span>Writing</span>
-        <strong>Public notes, essays, and project logs</strong>
-      </a>
-      <a href="#github">
-        <span>Projects</span>
-        <strong>Code, prototypes, and experiments from GitHub</strong>
-      </a>
+    <div class="path-grid">
+      {featuredProjects.map((project) => (
+        <a href={`/projects#${project.slug}`}>
+          <span>{project.status}</span>
+          <strong>{project.name}</strong>
+          <small>{project.summary}</small>
+        </a>
+      ))}
     </div>
   </section>
 
@@ -177,7 +177,7 @@ const latestPapers = (await getCollection("papers"))
       <article>
         <span class="panel-kicker">Research</span>
         {latestPapers.map((paper) => (
-          <a class="mini-entry" href="/research">
+          <a class="mini-entry" href={paperHref(paper)}>
             <time>{paper.data.status} · {paper.data.year}</time>
             <strong>{paper.data.title}</strong>
             <p>{paper.data.abstract}</p>
@@ -187,85 +187,23 @@ const latestPapers = (await getCollection("papers"))
     </div>
   </section>
 
-  <section class="visitor-paths reveal" aria-label="Start here">
+  <section class="timeline-preview reveal" aria-label="Recent milestones">
     <div class="section-head compact-head">
-      <h2>Start Here</h2>
-      <p>不同访客可以直接走不同入口：了解背景、看研究、读笔记，或者直接联系。</p>
+      <h2>Recent Milestones</h2>
+      <p>保留最近几个公开节点，让访问者知道这个站点和研究方向正在持续推进。</p>
     </div>
-    <div class="path-grid">
-      <a href="/about">
-        <span>For first-time visitors</span>
-        <strong>Read the short personal background</strong>
-        <small>Who I am, why robotics, and what kind of work this site is trying to make visible.</small>
-      </a>
-      <a href="/research">
-        <span>For research conversations</span>
-        <strong>Check research progress</strong>
-        <small>Papers, abstracts, status labels, and the problems I am currently circling around.</small>
-      </a>
-      <a href="/cv">
-        <span>For formal review</span>
-        <strong>Open CV and resume</strong>
-        <small>A cleaner path for mentors, collaborators, applications, and anyone who needs the structured version.</small>
-      </a>
-      <a href="/notes">
-        <span>For reading</span>
-        <strong>Browse public notes</strong>
-        <small>Selected notes from Obsidian, published only when they are ready to leave the private workspace.</small>
-      </a>
+    <div class="timeline-list compact-timeline">
+      {latestMilestones.map((item, index) => (
+        <a class="timeline-row" href={item.link}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <time>{item.date}</time>
+          <strong>{item.title}</strong>
+          <p>{item.summary}</p>
+          <em>{item.type}</em>
+        </a>
+      ))}
     </div>
   </section>
-
-  <section class="split-section">
-    <div class="section-head">
-      <h2>Site Map</h2>
-      <p>主页保留简洁，更多信息放在清楚的分区里：简历、论文进展、公开 notes、当前状态和项目痕迹。</p>
-    </div>
-    <div class="row-list">
-      <a class="list-row" href="/about">
-        <span class="row-index">01</span>
-        <span class="row-copy">
-          <strong>Detailed About</strong>
-          <small>More natural biography, research direction, and what I am trying to build.</small>
-        </span>
-        <span class="row-arrow">→</span>
-      </a>
-      <a class="list-row" href={publicCv.file}>
-        <span class="row-index">02</span>
-        <span class="row-copy">
-          <strong>Download CV</strong>
-          <small>Public PDF resume with education, research, skills, and selected activities.</small>
-        </span>
-        <span class="row-arrow">→</span>
-      </a>
-      <a class="list-row" href="/notes">
-        <span class="row-index">03</span>
-        <span class="row-copy">
-          <strong>Blog / Notes</strong>
-          <small>Selected public notes rendered as Markdown pages with tags, RSS, and client-side search.</small>
-        </span>
-        <span class="row-arrow">→</span>
-      </a>
-      <a class="list-row" href="/research">
-        <span class="row-index">04</span>
-        <span class="row-copy">
-          <strong>Research Progress</strong>
-          <small>Papers, drafts, abstracts, PDFs, and status labels in one place.</small>
-        </span>
-        <span class="row-arrow">→</span>
-      </a>
-      <a class="list-row" href="#github">
-        <span class="row-index">05</span>
-        <span class="row-copy">
-          <strong>Projects</strong>
-          <small>GitHub repositories and contribution activity, refreshed from the public API.</small>
-        </span>
-        <span class="row-arrow">→</span>
-      </a>
-    </div>
-  </section>
-
-  <GitHubPanel />
 
   <SitePulse />
 
@@ -278,6 +216,7 @@ const latestPapers = (await getCollection("papers"))
       {profile.email}
       <span>→</span>
     </a>
+    <a class="button-secondary" href="/contact">Contact form</a>
   </section>
 
   <section class="subscribe-section reveal">

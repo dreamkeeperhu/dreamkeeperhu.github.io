@@ -8,6 +8,16 @@ status: "under review"
 venue: "Target: Robotics and Computer-Integrated Manufacturing / Journal of Manufacturing Systems"
 year: 2026
 pdf: "/papers/cchihh.pdf"
+code: "https://github.com/dreamkeeperhu/CCHIHH_Final"
+relatedNotes:
+  - "/notes/sim-to-real-transfer-gap"
+bibtex: |
+  @article{hu2026cchihh,
+    title = {A Cooperative Coevolution Algorithm with a Heterogeneous-Island-Based Hyper-Heuristic for Cloud-Edge-Device Collaborative Scheduling},
+    author = {Hu, Jianheng and Laili, Yuanjun and Ren, Lei},
+    year = {2026},
+    note = {Under review}
+  }
 tags:
   - "Cloud-Edge-Device"
   - "Cooperative coevolution"

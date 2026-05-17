@@ -32,10 +32,13 @@ The Cloudflare API token needs permission to deploy the Pages project. The R2 ac
 
 ## Pages Function Bindings
 
-The root `wrangler.toml` binds two KV namespaces to the Cloudflare Pages project:
+The root `wrangler.toml` binds three KV namespaces to the Cloudflare Pages project:
 
-- `SUBSCRIBERS`: stores opt-in email subscriptions from `/api/subscribe`
+- `SUBSCRIBERS`: stores opt-in email subscriptions and unsubscribe tokens from `/api/subscribe`
 - `SITE_METRICS`: stores anonymous aggregate page-view counters from `/api/visit`
+- `CONTACT_MESSAGES`: stores lightweight contact form backups from `/api/contact`
+
+The admin export endpoint `/api/admin/subscribers` requires the `ADMIN_TOKEN` Pages secret.
 
 The public API lives in `public/_worker.js`, which Astro copies into `dist/` during build.
 

@@ -1,0 +1,56 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { paperHref, paperSlug } from "../../utils/content";
+import { profile } from "../../data/profile";
+
+export async function getStaticPaths() {
+  const papers = (await getCollection("papers")).filter((paper) => !paper.data.draft);
+  return papers.map((paper) => ({ params: { slug: paperSlug(paper) }, props: { paper } }));
+}
+
+const { paper } = Astro.props;
+const { Content } = await render(paper);
+const title = `${paper.data.title} | HJH Research`;
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ScholarlyArticle",
+  headline: paper.data.title,
+  name: paper.data.title,
+  author: paper.data.authors.map((name) => ({ "@type": "Person", name })),
+  datePublished: String(paper.data.year),
+  abstract: paper.data.abstract,
+  url: new URL(paperHref(paper), profile.site).toString(),
+  ...(paper.data.pdf ? { encoding: { "@type": "MediaObject", contentUrl: new URL(paper.data.pdf, profile.site).toString() } } : {}),
+};
+---
+
+<BaseLayout current="Research" title={title} description={paper.data.abstract} jsonLd={jsonLd} ogType="article">
+  <article class="article-page research-detail">
+    <header class="article-header">
+      <a href="/research">← Research</a>
+      <time>{paper.data.status} · {paper.data.year}</time>
+      <h1>{paper.data.title}</h1>
+      <p>{paper.data.abstract}</p>
+      <div class="paper-meta">
+        <span>{paper.data.authors.join(", ")}</span>
+        {paper.data.venue && <span>{paper.data.venue}</span>}
+      </div>
+      <div class="tag-row">{paper.data.tags.map((tag) => <span>{tag}</span>)}</div>
+      <div class="paper-actions">
+        {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}
+        {paper.data.code && <a href={paper.data.code} target="_blank" rel="noreferrer">Code</a>}
+        {paper.data.relatedNotes.map((href) => <a href={href}>Related note</a>)}
+      </div>
+    </header>
+    <div class="article-body">
+      <Content />
+      {paper.data.bibtex && (
+        <section class="bibtex-block">
+          <h2>BibTeX</h2>
+          <pre><code>{paper.data.bibtex}</code></pre>
+        </section>
+      )}
+    </div>
+  </article>
+</BaseLayout>
