@@ -70,7 +70,7 @@ const tags = [...new Set(projects.flatMap((project) => project.data.tags))].slic
           <EvidenceBadges artifacts={project.data.artifacts} />
           <div class="paper-actions">
             <a href={projectHref(project)}>Details</a>
-            {project.data.url && <a href={project.data.url} target="_blank" rel="noreferrer">GitHub</a>}
+            {project.data.url && <a href={project.data.url} target="_blank" rel="noopener noreferrer">GitHub</a>}
             {project.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
           </div>
         </div>

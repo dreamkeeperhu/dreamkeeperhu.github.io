@@ -64,16 +64,31 @@ const latestWork = [
     evidence: evidenceCount(project),
   })),
 ].sort((a, b) => new Date(b.date).valueOf() - new Date(a.date).valueOf()).slice(0, 6);
+const latestFilterLabels = {
+  note: "Notes",
+  research: "Research",
+  project: "Projects",
+};
+const latestFilters = [
+  ["all", "All"],
+  ...Array.from(new Set(latestWork.map((item) => item.type))).map((type) => [type, latestFilterLabels[type] || type]),
+];
 const contactIntents = [
   ["research", "Research", "Robotics / sim-to-real discussion"],
   ["project", "Project", "Tooling or implementation feedback"],
-  ["paper feedback", "Paper Feedback", "Questions about CCHIHH or drafts"],
+  ["research feedback", "Research Feedback", "Questions about CCHIHH status or reproducibility"],
   ["general", "General", "A direct note or conversation"],
 ];
 const latestMilestones = (await getCollection("timeline"))
   .filter((item) => !item.data.draft && item.data.featured)
   .sort((a, b) => timelineSortValue(b.data.date).localeCompare(timelineSortValue(a.data.date)) || a.data.order - b.data.order)
   .slice(0, 3);
+const homeSearchSuggestions = ["robotics", "sim-to-real", "CCHIHH"];
+const visitorPaths = [
+  ["/research/map", "Research Map", "See how papers, projects, notes, and roadmap threads connect."],
+  ["/projects", "Project Index", "Inspect runnable work, experiments, and implementation traces."],
+  ["/now", "Now Page", "Check the current focus without reading the whole archive."],
+];
 ---
 
 <BaseLayout current="Home" title="HJH | dreamkeeperhu">
@@ -82,6 +97,7 @@ const latestMilestones = (await getCollection("timeline"))
       <div class="flip-inner">
         <div class="flip-front">
           <div class="hero-title" data-reveal-zone>
+            <img class="hero-media" src={asset("/assets/interface-field.png")} alt="" width="1200" height="700" decoding="async" fetchpriority="high" />
             <div class="hero-pattern pattern-base" aria-hidden="true">
               {rows.map(() => (
                 <div class="pattern-row">{copies.map(() => <span>H J H</span>)}</div>
@@ -91,7 +107,7 @@ const latestMilestones = (await getCollection("timeline"))
             <div class="hero-focus">
               <span>Research direction</span>
               <strong>General physical intelligence</strong>
-              <p>Better instructing robotics, sim-to-real generalization, and the next robotics paradigm. Public work here is organized by evidence, artifacts, and notes.</p>
+              <p>Robotics instruction, sim-to-real generalization, and the next robotics paradigm. Public work here is organized by status, evidence, code traces, and notes.</p>
               <div class="hero-actions">
                 <a class="button-primary" href="/research">Research</a>
                 <a class="button-secondary" href="/research/map">Map</a>
@@ -173,6 +189,40 @@ const latestMilestones = (await getCollection("timeline"))
     </a>
   </section>
 
+  <section class="home-tools" aria-label="Useful homepage shortcuts">
+    <form class="home-search" action="/search" method="get">
+      <label for="home-search-input">Find anything</label>
+      <div class="home-search-row">
+        <input id="home-search-input" name="q" type="search" placeholder="Search notes, projects, research..." />
+        <button type="submit">Search</button>
+      </div>
+      <p>Search the generated site index across notes, research pages, projects, tags, and library entries.</p>
+      <div class="home-search-suggestions" aria-label="Suggested searches">
+        {homeSearchSuggestions.map((query) => <a href={`/search?q=${encodeURIComponent(query)}`}>{query}</a>)}
+      </div>
+    </form>
+
+    <div class="home-contact-tool">
+      <span>Contact shortcut</span>
+      <strong>{profile.email}</strong>
+      <div class="home-copy-actions">
+        <button type="button" data-copy-value={profile.email} data-copy-success="Email copied.">Copy email</button>
+        <button type="button" data-copy-value={profile.site} data-copy-success="Homepage link copied.">Copy site link</button>
+      </div>
+      <p data-copy-status>Use direct email for anything sensitive or time-specific.</p>
+    </div>
+
+    <nav class="home-paths" aria-label="Start here">
+      <span>Start here</span>
+      {visitorPaths.map(([href, label, description]) => (
+        <a href={href}>
+          <strong>{label}</strong>
+          <small>{description}</small>
+        </a>
+      ))}
+    </nav>
+  </section>
+
   <section class="profile-snapshot reveal" aria-label="Profile snapshot">
     <div class="snapshot-lead">
       <span class="eyebrow">Snapshot</span>
@@ -202,7 +252,7 @@ const latestMilestones = (await getCollection("timeline"))
       <article>
         <span>Public artifacts</span>
         <strong>{totalArtifacts}</strong>
-        <p>PDFs, code, project traces, notes, maps, and other evidence links attached to public research items.</p>
+        <p>Code, project traces, notes, maps, and other evidence links attached to public research items. Private manuscripts stay private until release.</p>
       </article>
       <article>
         <span>Latest update</span>
@@ -237,9 +287,14 @@ const latestMilestones = (await getCollection("timeline"))
       <h2>Latest Work</h2>
       <p>最近公开的 notes、research 和 projects 放在同一条工作流里，减少首页的入口堆叠。</p>
     </div>
+    <div class="latest-controls" role="group" aria-label="Filter latest work">
+      {latestFilters.map(([filter, label]) => (
+        <button type="button" data-work-filter={filter} aria-pressed={filter === "all" ? "true" : "false"}>{label}</button>
+      ))}
+    </div>
     <div class="latest-stream">
       {latestWork.map((item, index) => (
-        <a class="timeline-row latest-row" href={item.href}>
+        <a class="timeline-row latest-row" href={item.href} data-work-type={item.type}>
           <span>{String(index + 1).padStart(2, "0")}</span>
           <time>{new Date(item.date).toISOString().slice(0, 10)}</time>
           <strong>{item.title}</strong>
@@ -330,5 +385,37 @@ const latestMilestones = (await getCollection("timeline"))
     aboutTrigger?.addEventListener("click", () => flipShell?.classList.add("is-flipped"));
     backClose?.addEventListener("click", () => flipShell?.classList.remove("is-flipped"));
     hideReveal();
+
+    document.querySelectorAll("[data-copy-value]").forEach((button) => {
+      const status = button.closest(".home-contact-tool")?.querySelector("[data-copy-status]");
+      const originalText = button.textContent;
+      const originalStatus = status?.textContent || "";
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copyValue || "");
+          button.textContent = "Copied";
+          if (status) status.textContent = button.dataset.copySuccess || "Copied to clipboard.";
+        } catch {
+          button.textContent = "Copy failed";
+          if (status) status.textContent = "Copy is unavailable in this browser.";
+        }
+        window.setTimeout(() => {
+          button.textContent = originalText;
+          if (status) status.textContent = originalStatus;
+        }, 1800);
+      });
+    });
+
+    const latestButtons = [...document.querySelectorAll("[data-work-filter]")];
+    const latestRows = [...document.querySelectorAll("[data-work-type]")];
+    latestButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.dataset.workFilter || "all";
+        latestButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        latestRows.forEach((row) => {
+          row.hidden = filter !== "all" && row.dataset.workType !== filter;
+        });
+      });
+    });
   </script>
 </BaseLayout>

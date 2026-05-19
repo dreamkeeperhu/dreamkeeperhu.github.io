@@ -25,7 +25,7 @@ const visibleArtifacts = artifacts.filter((artifact) => artifact?.label && artif
     </div>
     <div class="artifact-list">
       {visibleArtifacts.map((artifact) => (
-        <a class="artifact-card" href={artifact.href} target={artifact.href.startsWith("http") ? "_blank" : undefined} rel={artifact.href.startsWith("http") ? "noreferrer" : undefined}>
+        <a class="artifact-card" href={artifact.href} target={artifact.href.startsWith("http") ? "_blank" : undefined} rel={artifact.href.startsWith("http") ? "noopener noreferrer" : undefined}>
           <span>{artifact.type} · {artifact.status}</span>
           <strong>{artifact.label}</strong>
           <p>{artifact.description}</p>

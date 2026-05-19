@@ -20,7 +20,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
   <section class="content-hero">
     <span class="eyebrow">Research</span>
     <h1>Papers, questions, and research progress</h1>
-    <p>Public-facing research threads, paper status, PDFs, code links, and notes that make the direction easier to inspect.</p>
+    <p>Public-facing research threads, paper status, released artifacts, code links, and notes that make the direction easier to inspect.</p>
     <div class="hero-actions">
       <a class="button-primary" href="#papers">Papers</a>
       <a class="button-secondary" href="/research/map">Research map</a>
@@ -108,7 +108,7 @@ const library = (await getCollection("library")).filter((item) => !item.data.dra
           <div class="paper-actions">
             <a href={paperHref(paper)}>Details</a>
             {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}
-            {paper.data.code && <a href={paper.data.code} target="_blank" rel="noreferrer">Code</a>}
+            {paper.data.code && <a href={paper.data.code} target="_blank" rel="noopener noreferrer">Code</a>}
           </div>
         </div>
       </article>

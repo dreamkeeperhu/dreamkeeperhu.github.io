@@ -21,8 +21,6 @@ url: "https://github.com/dreamkeeperhu/CCHIHH_Final"
 links:
   - label: "Research page"
     href: "/research/cchihh"
-  - label: "PDF"
-    href: "/papers/cchihh.pdf"
 relatedNotes: []
 relatedPapers:
   - "/research/cchihh"
@@ -34,11 +32,6 @@ artifacts:
     href: "https://github.com/dreamkeeperhu/CCHIHH_Final"
     description: "Implementation and experiment traces for the CCHIHH scheduling paper."
     status: "available"
-  - label: "Paper PDF"
-    type: "pdf"
-    href: "/papers/cchihh.pdf"
-    description: "Public manuscript linked to the research code."
-    status: "available"
   - label: "Research detail"
     type: "paper"
     href: "/research/cchihh"
@@ -47,7 +40,7 @@ artifacts:
 evidence:
   - "Connects a paper, implementation, and experiment narrative in one public trace."
   - "Uses adaptive decomposition as a lens on distributed cooperation under uncertainty."
-outcome: "Keeps the scheduling paper, code, PDF, and implementation context connected as one inspectable research trace."
+outcome: "Keeps the scheduling paper, code, and implementation context connected as one inspectable research trace without exposing the private manuscript."
 lessons:
   - "Research code becomes more useful when the page states the exact problem-method-evidence chain."
   - "A non-robotics project can still clarify how distributed systems cooperate under uncertainty."

@@ -82,6 +82,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
     <script is:inline>
       const savedTheme = localStorage.getItem("theme");
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.add("js-enabled");
       document.documentElement.dataset.theme = savedTheme || (prefersDark ? "dark" : "light");
     </script>
   </head>

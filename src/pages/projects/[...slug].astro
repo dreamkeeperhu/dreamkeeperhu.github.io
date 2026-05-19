@@ -97,7 +97,7 @@ const jsonLd = {
         {project.data.updatedDate && <span>updated {project.data.updatedDate.toISOString().slice(0, 10)}</span>}
       </div>
       <div class="paper-actions">
-        {project.data.url && <a href={project.data.url} target="_blank" rel="noreferrer">GitHub</a>}
+        {project.data.url && <a href={project.data.url} target="_blank" rel="noopener noreferrer">GitHub</a>}
         {project.data.links.map((link) => <a href={link.href}>{link.label}</a>)}
       </div>
     </header>

@@ -50,6 +50,15 @@ const selectedProjects = (await getCollection("projects"))
       "'": "&#039;",
     }[char]));
 
+  const safeGitHubUrl = (value) => {
+    try {
+      const url = new URL(String(value || ""));
+      return url.protocol === "https:" && url.hostname === "github.com" ? url.toString() : "#";
+    } catch {
+      return "#";
+    }
+  };
+
   async function loadRepos() {
     if (!repoTarget) return;
     try {
@@ -64,7 +73,7 @@ const selectedProjects = (await getCollection("projects"))
         .map((repo) => ({ ...repo, fallback: fallbackByName.get(repo.name) }));
 
       repoTarget.innerHTML = repos.map((repo, index) => `
-        <a class="repo-row" href="${repo.htmlUrl}" target="_blank" rel="noreferrer">
+        <a class="repo-row" href="${safeGitHubUrl(repo.htmlUrl)}" target="_blank" rel="noopener noreferrer">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <strong>${escapeHtml(repo.name)}</strong>
           <small>${escapeHtml(repo.description || repo.fallback?.summary || "Public code and experiment notes.")}</small>
@@ -73,7 +82,7 @@ const selectedProjects = (await getCollection("projects"))
       `).join("");
     } catch {
       repoTarget.innerHTML = selectedProjects.map((repo, index) => `
-        <a class="repo-row" href="${repo.url}" target="_blank" rel="noreferrer">
+        <a class="repo-row" href="${safeGitHubUrl(repo.url)}" target="_blank" rel="noopener noreferrer">
           <span>${String(index + 1).padStart(2, "0")}</span>
           <strong>${escapeHtml(repo.name)}</strong>
           <small>${escapeHtml(repo.summary)}</small>

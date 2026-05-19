@@ -39,7 +39,7 @@ const paperArtifacts = mergeArtifacts([
     label: "Paper PDF",
     type: "pdf",
     href: paper.data.pdf,
-    description: "Public PDF attached to this research entry.",
+    description: "Released PDF attached to this research entry.",
     status: "available",
   },
   paper.data.code && {
@@ -95,7 +95,7 @@ const jsonLd = {
       <div class="tag-row">{paper.data.tags.map((tag) => <span>{tag}</span>)}</div>
       <div class="paper-actions">
         {paper.data.pdf && <a href={paper.data.pdf}>PDF</a>}
-        {paper.data.code && <a href={paper.data.code} target="_blank" rel="noreferrer">Code</a>}
+        {paper.data.code && <a href={paper.data.code} target="_blank" rel="noopener noreferrer">Code</a>}
         {paper.data.relatedProjects.map((href) => <a href={href}>Project</a>)}
         {paper.data.relatedNotes.map((href) => <a href={href}>Related note</a>)}
       </div>

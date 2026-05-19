@@ -26,16 +26,17 @@ reviewNote: "How readers should interpret the current status."
 evidence:
   - "Experiment or proof signal."
 nextStep: "What changes next?"
-pdf: "/papers/example.pdf"
+# Add a PDF only after publication, preprint release, or explicit clearance.
+# pdf: "/papers/example.pdf"
 code: "https://github.com/dreamkeeperhu/example"
 relatedProjects: ["/projects/example"]
 relatedNotes: ["/notes/example"]
 relatedLibrary: ["/library/example"]
 artifacts:
-  - label: "Paper PDF"
-    type: "pdf"
-    href: "/papers/example.pdf"
-    description: "Current public manuscript."
+  - label: "Implementation repository"
+    type: "code"
+    href: "https://github.com/dreamkeeperhu/example"
+    description: "Source code and experiment trace."
     status: "available"
 tags: ["robotics"]
 draft: false

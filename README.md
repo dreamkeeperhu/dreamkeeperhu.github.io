@@ -25,7 +25,7 @@ The generated site is in `dist/`.
 - Structured data: `src/data/projects.ts`, `src/data/roadmap.ts`, `src/data/timeline.ts`, `src/data/library.ts`
 - Shared layout: `src/layouts/BaseLayout.astro`
 - Public CV PDF: `public/cv/jianheng-hu-cv.pdf`
-- Paper PDFs: `public/papers/`
+- Paper PDFs should only go in `public/papers/` after publication, preprint release, or explicit clearance. Keep unpublished manuscript PDFs out of the public folder.
 
 ## Obsidian Sync
 

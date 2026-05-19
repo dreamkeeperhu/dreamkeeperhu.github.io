@@ -5,6 +5,7 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
 ## Worker protections
 
 - Adds browser security headers to every response: CSP, `X-Frame-Options`, `X-Content-Type-Options`, HSTS on HTTPS, referrer policy, permissions policy, and cross-origin policies.
+- Ships a `public/_headers` fallback with the same baseline browser headers for Cloudflare Pages static handling.
 - Blocks direct public access to `/content-health.json` and `/content-sync-report.json`; the hidden admin page reads them through protected admin APIs.
 - Protects admin APIs with `Authorization: Bearer <ADMIN_TOKEN>` and rate-limits admin attempts.
 - Restricts admin APIs to `GET` and rejects unknown write methods before they reach static assets.
@@ -17,8 +18,9 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
   - visit metrics
 - Rejects oversized request bodies and unexpected content types before parsing form data.
 - Requires same-origin requests for browser-write endpoints.
+- Requires same-origin `POST` requests for unsubscribe as well; public `GET` unsubscribe links still work through the token URL.
 - Marks hidden admin/API responses as `no-store` and `noindex`.
-- Keeps GitHub metadata behind `/api/github-repos`, which validates repo names, caps requests to 8 repos, and caches responses in KV for 6 hours.
+- Keeps GitHub metadata behind `/api/github-repos`, which validates repo names, limits requests to the configured GitHub owner, caps requests to 8 repos, and caches responses in KV for 6 hours.
 
 ## Content protections
 
@@ -28,8 +30,15 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
 - inline event handlers like `onclick=`
 - `javascript:` URLs
 - raw `<iframe>` or `<object>` tags
+- unsafe frontmatter or Markdown links, including `javascript:`, `data:`, `vbscript:`, non-HTTPS external links, protocol-relative URLs, and invalid relative URLs
 
 This matters because Obsidian content is synced into public Markdown. Keep any embeds as normal Markdown links unless a page intentionally implements a safe embed component.
+
+## Frontend protections
+
+- External links opened in a new tab use `rel="noopener noreferrer"`.
+- Dynamic GitHub links are constrained to `https://github.com/...` before they are written into the DOM.
+- Search and map UI still use small client-side render helpers, but content is escaped before insertion.
 
 ## Operational notes
 

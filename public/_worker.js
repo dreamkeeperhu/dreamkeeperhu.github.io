@@ -8,6 +8,7 @@ const GITHUB_CACHE_PREFIX = "github:repos:";
 const MAX_FORM_BYTES = 16 * 1024;
 const MAX_ADMIN_BYTES = 2 * 1024;
 const GITHUB_CACHE_SECONDS = 6 * 60 * 60;
+const GITHUB_ALLOWED_OWNER = "dreamkeeperhu";
 
 export default {
   async fetch(request, env, context) {
@@ -134,7 +135,8 @@ async function handleSubscribe(request, env, url) {
     return json({ ok: false, error: "Invalid origin." }, 403);
   }
 
-  const data = await readRequestData(request);
+  const data = await readRequestDataSafely(request);
+  if (!data) return json({ ok: false, error: "Invalid request body." }, 400);
   const honeypot = String(data.get("website") || "").trim();
   if (honeypot) {
     return json({ ok: true });
@@ -193,7 +195,12 @@ async function handleUnsubscribe(request, env, url) {
   const badType = request.method === "POST" ? enforceContentType(request, ["application/x-www-form-urlencoded", "multipart/form-data"]) : null;
   if (badType) return badType;
 
-  const data = request.method === "POST" ? await readRequestData(request) : new URLSearchParams(url.search);
+  if (request.method === "POST" && !isSameOrigin(request, url)) {
+    return json({ ok: false, error: "Invalid origin." }, 403);
+  }
+
+  const data = request.method === "POST" ? await readRequestDataSafely(request) : new URLSearchParams(url.search);
+  if (!data) return json({ ok: false, error: "Invalid request body." }, 400);
   const token = String(data.get("token") || "").trim();
   if (!token) {
     return htmlPage("Unsubscribe", "Missing unsubscribe token.", 400);
@@ -416,6 +423,7 @@ async function handleGitHubRepos(request, env, url) {
     .map((repo) => repo.trim())
     .filter(Boolean)
     .filter((repo) => /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo))
+    .filter((repo) => allowedGitHubRepo(repo))
     .slice(0, 8);
   if (!requested.length) {
     return json({ ok: false, error: "Provide repos=owner/name,owner/name." }, 400);
@@ -528,7 +536,8 @@ async function handleContact(request, env, url) {
     return json({ ok: false, error: "Invalid origin." }, 403);
   }
 
-  const data = await readRequestData(request);
+  const data = await readRequestDataSafely(request);
+  if (!data) return json({ ok: false, error: "Invalid request body." }, 400);
   const email = normalizeEmail(data.get("email"));
   const intent = sanitizeText(data.get("intent"), 80);
   const message = sanitizeText(data.get("message"), 2400);
@@ -568,7 +577,8 @@ async function handleFeedback(request, env, url) {
     return json({ ok: false, error: "Invalid origin." }, 403);
   }
 
-  const data = await readRequestData(request);
+  const data = await readRequestDataSafely(request);
+  if (!data) return json({ ok: false, error: "Invalid request body." }, 400);
   const honeypot = String(data.get("website") || "").trim();
   if (honeypot) return json({ ok: true });
 
@@ -688,6 +698,14 @@ async function readRequestData(request) {
   return new URLSearchParams(await request.text());
 }
 
+async function readRequestDataSafely(request) {
+  try {
+    return await readRequestData(request);
+  } catch {
+    return null;
+  }
+}
+
 async function bumpMetric(env, name) {
   if (!env.SITE_METRICS) return 0;
   const key = `${METRIC_PREFIX}${name}`;
@@ -768,8 +786,9 @@ async function clientFingerprint(request) {
 }
 
 function enforceBodyLimit(request, maxBytes) {
-  const length = Number(request.headers.get("content-length") || "0");
-  if (length && length > maxBytes) {
+  const lengthHeader = request.headers.get("content-length");
+  const length = Number(lengthHeader || "0");
+  if (!Number.isFinite(length) || length < 0 || (length && length > maxBytes)) {
     return json({ ok: false, error: "Request body is too large." }, 413);
   }
   return null;
@@ -840,6 +859,11 @@ function isPublicContentPath(path) {
   ) && !path.startsWith("/api/") && !path.startsWith("/admin") && path !== "/content-health.json" && path !== "/content-sync-report.json";
 }
 
+function allowedGitHubRepo(fullName) {
+  const [owner] = String(fullName || "").split("/");
+  return owner.toLowerCase() === GITHUB_ALLOWED_OWNER;
+}
+
 function isBlockedPublicPath(path) {
   const blockedPrefixes = [
     "/.git",
@@ -858,6 +882,8 @@ function isBlockedPublicPath(path) {
     "/wrangler.toml",
     "/astro.config.mjs",
     "/tsconfig.json",
+    "/_headers",
+    "/_redirects",
   ]);
   return blockedFiles.has(path) || blockedPrefixes.some((prefix) => path === prefix.replace(/\/$/, "") || path.startsWith(prefix));
 }
@@ -898,7 +924,10 @@ function withSecurityHeaders(response, request, url) {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), accelerometer=(), gyroscope=()");
   headers.set("Cross-Origin-Opener-Policy", "same-origin");
   headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  headers.set("Origin-Agent-Cluster", "?1");
   headers.set("X-Permitted-Cross-Domain-Policies", "none");
+  headers.set("X-DNS-Prefetch-Control", "off");
+  headers.set("X-Download-Options", "noopen");
   if (url.protocol === "https:") {
     headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
@@ -912,8 +941,14 @@ function withSecurityHeaders(response, request, url) {
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       "script-src 'self' 'unsafe-inline' https://plausible.io https://*.plausible.io https://cloud.umami.is",
+      "script-src-attr 'none'",
       "connect-src 'self' https://api.github.com https://github-contributions-api.jogruber.de https://plausible.io https://*.plausible.io https://cloud.umami.is",
+      "frame-src 'none'",
+      "worker-src 'self'",
+      "manifest-src 'self'",
+      "media-src 'self'",
       "form-action 'self' mailto:",
+      "upgrade-insecure-requests",
     ].join("; "));
   }
   if (url.pathname.startsWith("/admin") || url.pathname.startsWith("/api/admin")) {

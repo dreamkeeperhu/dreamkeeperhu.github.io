@@ -129,6 +129,7 @@ function validateCollection(collection, rule) {
     ].filter(Boolean);
 
     for (const href of [...extractLinks(file), ...related]) {
+      validateSafeHref(relative, href);
       if (isLocalMissing(href)) errors.push(`${relative} links to missing local target ${href}.`);
     }
 
@@ -181,6 +182,7 @@ function validateArtifacts(relative, artifacts) {
     for (const field of ["label", "type", "href", "description", "status"]) {
       if (!artifact?.[field]) errors.push(`${prefix} is missing "${field}".`);
     }
+    validateSafeHref(relative, artifact?.href, `${prefix} href`);
     if (artifact?.type === "pdf" && artifact?.href && artifact.href.startsWith("/")) {
       const target = path.join(root, "public", String(artifact.href).replace(/^\//, ""));
       if (!fs.existsSync(target)) errors.push(`${prefix} points to missing PDF ${artifact.href}.`);
@@ -207,6 +209,30 @@ function isLocalMissing(href) {
   if (href.startsWith("/notes/") || href.startsWith("/research/") || href.startsWith("/projects") || href.startsWith("/library") || href.startsWith("/timeline")) return false;
   const target = path.join(root, "public", clean.replace(/^\//, ""));
   return clean.startsWith("/") && !fs.existsSync(target);
+}
+
+function validateSafeHref(relative, href, label = "link") {
+  const value = String(href || "").trim();
+  if (!value) return;
+  if (/[\u0000-\u001f\u007f]/.test(value)) {
+    errors.push(`${relative} has unsafe control characters in ${label} ${value}.`);
+    return;
+  }
+  if (/^(javascript|data|vbscript):/i.test(value)) {
+    errors.push(`${relative} uses a blocked URL scheme in ${label} ${value}.`);
+    return;
+  }
+  if (value.startsWith("#")) return;
+  if (value.startsWith("/") && !value.startsWith("//")) return;
+  if (/^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(value)) return;
+  try {
+    const url = new URL(value);
+    if (url.protocol === "https:") return;
+    if (url.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(url.hostname)) return;
+    errors.push(`${relative} should use HTTPS or a local absolute path in ${label} ${value}.`);
+  } catch {
+    errors.push(`${relative} has a relative or invalid ${label} ${value}; use a root-relative path or HTTPS URL.`);
+  }
 }
 
 function isStaleDate(value) {

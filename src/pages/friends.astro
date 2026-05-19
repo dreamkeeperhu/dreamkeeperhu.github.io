@@ -12,7 +12,7 @@ import { friends } from "../data/friends";
 
   <section class="friends-list">
     {friends.map((friend, index) => (
-      <a href={friend.href} target="_blank" rel="noreferrer">
+      <a href={friend.href} target="_blank" rel="noopener noreferrer">
         <span>{String(index + 1).padStart(2, "0")}</span>
         <strong>{friend.name}</strong>
         <p>{friend.description}</p>
