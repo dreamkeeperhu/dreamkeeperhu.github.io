@@ -8,6 +8,7 @@ const intents = [
   ["paper feedback", "Paper feedback"],
   ["general chat", "General chat"],
 ];
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
 ---
 
 <BaseLayout
@@ -37,6 +38,15 @@ const intents = [
         Message
         <textarea name="message" rows="7" placeholder="A short context is enough. What are you working on, and what should I look at?" required></textarea>
       </label>
+      <label class="screen-reader-field">
+        Website
+        <input type="text" name="website" tabindex="-1" autocomplete="off" />
+      </label>
+      {turnstileSiteKey && (
+        <div class="turnstile-field">
+          <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>
+        </div>
+      )}
       <button type="submit">Open email draft</button>
       <p data-contact-message>Messages open as email drafts and are lightly backed up for reliability.</p>
     </form>
@@ -46,6 +56,8 @@ const intents = [
       <p>For anything sensitive, use direct email and skip the form.</p>
     </aside>
   </section>
+
+  {turnstileSiteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
   <script is:inline define:vars={{ email: profile.email }}>
     const form = document.querySelector("[data-contact-form]");
@@ -71,6 +83,12 @@ const intents = [
       const body = encodeURIComponent(`${bodyText}\n\nFrom: ${from}`);
       window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
       if (message) message.textContent = "Opening your email client. The message is also backed up if the API is available.";
+      resetTurnstile(form);
     });
+
+    function resetTurnstile(scope) {
+      const widget = scope?.querySelector?.(".cf-turnstile");
+      if (widget && window.turnstile?.reset) window.turnstile.reset(widget);
+    }
   </script>
 </BaseLayout>

@@ -6,6 +6,7 @@ interface Props {
 }
 
 const { targetType, targetTitle, targetUrl = Astro.url.pathname } = Astro.props;
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
 ---
 
 <section class="feedback-panel" aria-label="Page feedback">
@@ -40,9 +41,16 @@ const { targetType, targetTitle, targetUrl = Astro.url.pathname } = Astro.props;
       </label>
       <button type="submit">Send note</button>
     </div>
+    {turnstileSiteKey && (
+      <div class="turnstile-field">
+        <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>
+      </div>
+    )}
     <p data-feedback-status aria-live="polite"></p>
   </form>
 </section>
+
+{turnstileSiteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
 <script is:inline>
   document.querySelectorAll("[data-feedback-form]").forEach((form) => {
@@ -89,8 +97,15 @@ const { targetType, targetTitle, targetUrl = Astro.url.pathname } = Astro.props;
       const typeValue = form.querySelector("[data-feedback-type-value]");
       if (typeValue) typeValue.value = "useful";
       if (status) status.textContent = "Saved. Thank you.";
+      resetTurnstile(form);
     } catch (error) {
       if (status) status.textContent = error.message || "Feedback is unavailable right now.";
+      resetTurnstile(form);
     }
+  }
+
+  function resetTurnstile(scope) {
+    const widget = scope?.querySelector?.(".cf-turnstile");
+    if (widget && window.turnstile?.reset) window.turnstile.reset(widget);
   }
 </script>

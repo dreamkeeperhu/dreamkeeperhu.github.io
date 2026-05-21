@@ -2,6 +2,7 @@
 import { profile } from "../data/profile";
 
 const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "/api/subscribe";
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || "";
 ---
 
 <form class="subscribe-form" data-subscribe-form data-action={action}>
@@ -11,10 +12,17 @@ const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "/api/subscribe";
     <input id="subscribe-email" name="email" type="email" inputmode="email" placeholder="you@example.com" required />
     <button type="submit">Notify me</button>
   </div>
+  {turnstileSiteKey && (
+    <div class="turnstile-field">
+      <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>
+    </div>
+  )}
   <p data-subscribe-message>
     New notes are occasional. I will only send updates when there is something worth reading.
   </p>
 </form>
+
+{turnstileSiteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
 <script is:inline define:vars={{ action, email: profile.email }}>
   const form = document.querySelector("[data-subscribe-form]");
@@ -42,8 +50,10 @@ const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "/api/subscribe";
           : escapeHtml(status);
       }
       form.reset();
+      resetTurnstile(form);
     } catch {
       if (message) message.innerHTML = `Subscription is not responding. Email <a href="mailto:${email}">${email}</a> directly and I will add you manually.`;
+      resetTurnstile(form);
     }
   });
 
@@ -66,5 +76,10 @@ const action = import.meta.env.PUBLIC_SUBSCRIBE_ACTION || "/api/subscribe";
       '"': "&quot;",
       "'": "&#039;",
     }[char]));
+  }
+
+  function resetTurnstile(scope) {
+    const widget = scope?.querySelector?.(".cf-turnstile");
+    if (widget && window.turnstile?.reset) window.turnstile.reset(widget);
   }
 </script>

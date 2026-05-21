@@ -9,11 +9,71 @@ const MAX_FORM_BYTES = 16 * 1024;
 const MAX_ADMIN_BYTES = 2 * 1024;
 const GITHUB_CACHE_SECONDS = 6 * 60 * 60;
 const GITHUB_ALLOWED_OWNER = "dreamkeeperhu";
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+const TRUSTED_SEARCH_BOT_PATTERNS = [
+  /googlebot/i,
+  /bingbot/i,
+  /duckduckbot/i,
+  /applebot/i,
+  /slurp/i,
+  /yandexbot/i,
+  /baiduspider/i,
+];
+
+const BAD_CRAWLER_PATTERNS = [
+  /gptbot/i,
+  /chatgpt-user/i,
+  /oai-searchbot/i,
+  /google-extended/i,
+  /applebot-extended/i,
+  /duckassistbot/i,
+  /claudebot/i,
+  /anthropic-ai/i,
+  /claude-web/i,
+  /cohere-ai/i,
+  /ai2bot/i,
+  /ccbot/i,
+  /perplexitybot/i,
+  /bytespider/i,
+  /bytedance/i,
+  /amazonbot/i,
+  /facebookbot/i,
+  /meta-externalagent/i,
+  /diffbot/i,
+  /omgili/i,
+  /timpibot/i,
+  /youbot/i,
+  /petalbot/i,
+  /ahrefsbot/i,
+  /semrushbot/i,
+  /mj12bot/i,
+  /dotbot/i,
+  /serpstatbot/i,
+  /dataforseobot/i,
+  /barkrowler/i,
+  /blexbot/i,
+  /megaindex/i,
+  /seokicks/i,
+  /crawler4j/i,
+  /scrapy/i,
+  /curl/i,
+  /wget/i,
+  /python-requests/i,
+  /httpclient/i,
+  /libwww-perl/i,
+  /go-http-client/i,
+  /java\/|okhttp/i,
+];
 
 export default {
   async fetch(request, env, context) {
     const url = new URL(request.url);
     try {
+      const blocked = await guardCrawlerRequest(request, env, url);
+      if (blocked) {
+        return withSecurityHeaders(blocked, request, url);
+      }
       const response = await routeRequest(request, env, context, url);
       return withSecurityHeaders(response, request, url);
     } catch {
@@ -146,6 +206,9 @@ async function handleSubscribe(request, env, url) {
   if (!email) {
     return json({ ok: false, error: "Please enter a valid email address." }, 400);
   }
+
+  const turnstileDenied = await requireTurnstile(request, env, data);
+  if (turnstileDenied) return turnstileDenied;
 
   const key = `${SUBSCRIBER_PREFIX}${await sha256(email)}`;
   const existing = await env.SUBSCRIBERS.get(key, "json");
@@ -538,12 +601,18 @@ async function handleContact(request, env, url) {
 
   const data = await readRequestDataSafely(request);
   if (!data) return json({ ok: false, error: "Invalid request body." }, 400);
+  const honeypot = String(data.get("website") || "").trim();
+  if (honeypot) return json({ ok: true, message: "Contact backup saved." });
+
   const email = normalizeEmail(data.get("email"));
   const intent = sanitizeText(data.get("intent"), 80);
   const message = sanitizeText(data.get("message"), 2400);
   if (!email || !intent || !message) {
     return json({ ok: false, error: "Please fill in intent, email, and message." }, 400);
   }
+
+  const turnstileDenied = await requireTurnstile(request, env, data);
+  if (turnstileDenied) return turnstileDenied;
 
   if (env.CONTACT_MESSAGES) {
     const id = crypto.randomUUID();
@@ -595,6 +664,9 @@ async function handleFeedback(request, env, url) {
     return json({ ok: false, error: "Feedback is missing required fields." }, 400);
   }
 
+  const turnstileDenied = await requireTurnstile(request, env, data);
+  if (turnstileDenied) return turnstileDenied;
+
   if (env.CONTACT_MESSAGES) {
     const id = crypto.randomUUID();
     await env.CONTACT_MESSAGES.put(
@@ -641,6 +713,8 @@ async function readSubscribers(env) {
 
 async function recordVisit(request, env) {
   if (!env.SITE_METRICS) return;
+  const score = botScore(request);
+  if (isKnownBadCrawler(request) || (score > 0 && score <= 30)) return;
 
   const limited = await checkRateLimit(env, request, "visit", 120, 60);
   if (limited) return;
@@ -762,6 +836,33 @@ async function requireAdmin(request, env) {
   return null;
 }
 
+async function requireTurnstile(request, env, data) {
+  if (!env.TURNSTILE_SECRET_KEY) return null;
+  const token = String(data.get("cf-turnstile-response") || "").trim();
+  if (!token) {
+    return json({ ok: false, error: "Forbidden." }, 403);
+  }
+
+  const body = new FormData();
+  body.set("secret", env.TURNSTILE_SECRET_KEY);
+  body.set("response", token);
+  const ip = request.headers.get("cf-connecting-ip");
+  if (ip) body.set("remoteip", ip);
+
+  try {
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      body,
+    });
+    const result = await response.json();
+    if (response.ok && result?.success === true) return null;
+  } catch {
+    return json({ ok: false, error: "Forbidden." }, 403);
+  }
+
+  return json({ ok: false, error: "Forbidden." }, 403);
+}
+
 async function checkRateLimit(env, request, scope, limit, windowSeconds) {
   if (!env.SITE_METRICS) return null;
   const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
@@ -783,6 +884,99 @@ async function clientFingerprint(request) {
   const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "local";
   const ua = request.headers.get("user-agent") || "";
   return sha256(`${ip}|${ua.slice(0, 120)}`);
+}
+
+async function guardCrawlerRequest(request, env, url) {
+  if (request.method === "OPTIONS") return null;
+  if (isSuspiciousProbePath(url.pathname)) return plain("Not found.", 404);
+
+  const trustedSearchBot = isTrustedSearchBot(request);
+  const badCrawler = isKnownBadCrawler(request);
+  const score = botScore(request);
+
+  if (badCrawler && !trustedSearchBot) {
+    return plain("Forbidden.", 403);
+  }
+
+  if (!trustedSearchBot && score > 0 && score <= 10) {
+    return plain("Forbidden.", 403);
+  }
+
+  if (!isPublicCrawlSurface(request, url)) return null;
+
+  const suspicious = isSuspiciousRequest(request, url, score);
+  const limit = trustedSearchBot ? 240 : suspicious ? 24 : 90;
+  const windowSeconds = trustedSearchBot ? 60 : suspicious ? 300 : 60;
+  const limited = await checkPublicRateLimit(env, request, suspicious ? "public-suspicious" : "public", limit, windowSeconds);
+  if (limited) return limited;
+
+  return null;
+}
+
+async function checkPublicRateLimit(env, request, scope, limit, windowSeconds) {
+  if (!env.SITE_METRICS) return null;
+  const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
+  const identity = await clientFingerprint(request);
+  const key = `${RATE_LIMIT_PREFIX}${scope}:${bucket}:${identity}`;
+  const current = Number((await env.SITE_METRICS.get(key)) || "0");
+  if (current >= limit) {
+    return plain("Too many requests.", 429, { "Retry-After": String(windowSeconds) });
+  }
+  await env.SITE_METRICS.put(key, String(current + 1), { expirationTtl: windowSeconds * 2 });
+  return null;
+}
+
+function isPublicCrawlSurface(request, url) {
+  if (!["GET", "HEAD"].includes(request.method)) return false;
+  if (url.pathname.startsWith("/api/")) return true;
+  if (["/search.json", "/rss.xml", "/sitemap.xml", "/robots.txt"].includes(url.pathname)) return true;
+  if (url.pathname === "/" || url.pathname.endsWith(".html")) return true;
+  if (!url.pathname.includes(".")) return true;
+  return false;
+}
+
+function isSuspiciousProbePath(path) {
+  const lower = String(path || "").toLowerCase();
+  return [
+    "/.git",
+    "/.env",
+    "/wp-",
+    "/xmlrpc.php",
+    "/phpmyadmin",
+    "/server-status",
+    "/actuator",
+    "/vendor/",
+    "/node_modules/",
+    "/cgi-bin/",
+  ].some((needle) => lower === needle || lower.startsWith(needle));
+}
+
+function isSuspiciousRequest(request, url, score) {
+  const ua = request.headers.get("user-agent") || "";
+  if (!ua.trim()) return true;
+  if (score > 0 && score <= 30) return true;
+  if (url.pathname === "/search.json") return true;
+  const accept = request.headers.get("accept") || "";
+  if (["GET", "HEAD"].includes(request.method) && !accept) return true;
+  return false;
+}
+
+function isKnownBadCrawler(request) {
+  const ua = request.headers.get("user-agent") || "";
+  return BAD_CRAWLER_PATTERNS.some((pattern) => pattern.test(ua));
+}
+
+function isTrustedSearchBot(request) {
+  const ua = request.headers.get("user-agent") || "";
+  const cf = request.cf || {};
+  const verified = cf.clientBot === true || cf.verifiedBotCategory === "Search Engine Crawler";
+  const blockedDataUseBot = BAD_CRAWLER_PATTERNS.some((pattern) => pattern.test(ua));
+  return verified && !blockedDataUseBot && TRUSTED_SEARCH_BOT_PATTERNS.some((pattern) => pattern.test(ua));
+}
+
+function botScore(request) {
+  const value = request.cf?.botManagement?.score;
+  return typeof value === "number" ? value : 0;
 }
 
 function enforceBodyLimit(request, maxBytes) {
@@ -915,6 +1109,16 @@ function json(body, status = 200, headers = {}) {
   });
 }
 
+function plain(body, status = 200, headers = {}) {
+  return new Response(body, {
+    status,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      ...headers,
+    },
+  });
+}
+
 function withSecurityHeaders(response, request, url) {
   const headers = new Headers(response.headers);
   const isHtml = (headers.get("content-type") || "").includes("text/html");
@@ -940,10 +1144,10 @@ function withSecurityHeaders(response, request, url) {
       "img-src 'self' data: https:",
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' https://plausible.io https://*.plausible.io https://cloud.umami.is",
+      "script-src 'self' 'unsafe-inline' https://plausible.io https://*.plausible.io https://cloud.umami.is https://challenges.cloudflare.com",
       "script-src-attr 'none'",
-      "connect-src 'self' https://api.github.com https://github-contributions-api.jogruber.de https://plausible.io https://*.plausible.io https://cloud.umami.is",
-      "frame-src 'none'",
+      "connect-src 'self' https://api.github.com https://github-contributions-api.jogruber.de https://plausible.io https://*.plausible.io https://cloud.umami.is https://challenges.cloudflare.com",
+      "frame-src https://challenges.cloudflare.com",
       "worker-src 'self'",
       "manifest-src 'self'",
       "media-src 'self'",
@@ -953,9 +1157,14 @@ function withSecurityHeaders(response, request, url) {
   }
   if (url.pathname.startsWith("/admin") || url.pathname.startsWith("/api/admin")) {
     headers.set("Cache-Control", "no-store");
-    headers.set("X-Robots-Tag", "noindex, nofollow");
+    headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+  } else if (isRawMachineReadablePath(url.pathname)) {
+    headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   } else if (url.pathname.startsWith("/api/") && !["/api/site-stats", "/api/github-repos"].includes(url.pathname)) {
     headers.set("Cache-Control", "no-store");
+    headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+  } else if (url.pathname.startsWith("/api/")) {
+    headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   }
   if (request.method === "OPTIONS") {
     headers.set("Allow", "GET, HEAD, POST");
@@ -965,6 +1174,13 @@ function withSecurityHeaders(response, request, url) {
     statusText: response.statusText,
     headers,
   });
+}
+
+function isRawMachineReadablePath(path) {
+  return path === "/search.json" ||
+    path === "/rss.xml" ||
+    path === "/content-health.json" ||
+    path === "/content-sync-report.json";
 }
 
 function htmlPage(title, message, status = 200) {

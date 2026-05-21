@@ -93,7 +93,7 @@ This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/N
 - GitHub repositories: fetched client-side from the GitHub REST API.
 - GitHub contribution graph: fetched client-side from a public contribution API.
 - Article search: client-side filtering on `/notes`.
-- Global fuzzy search: generated at `/search.json`, used by `/search`, and opened with `Cmd/Ctrl + K`.
+- Global fuzzy search: generated at `/search.json`, used by `/search`, and opened with `Cmd/Ctrl + K`. The public index contains metadata and short snippets, not full Markdown bodies.
 - Tags: generated from note frontmatter at `/tags`.
 - Email subscription: stored by the Cloudflare Pages Function at `/api/subscribe` in the `SUBSCRIBERS` KV namespace.
 - Unsubscribe: `/api/unsubscribe?token=...` removes a subscriber.
@@ -105,7 +105,14 @@ This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/N
   - `PUBLIC_PLAUSIBLE_SRC`
   - `PUBLIC_UMAMI_WEBSITE_ID`
   - `PUBLIC_UMAMI_SRC`
+- Optional Cloudflare Turnstile write protection:
+  - `PUBLIC_TURNSTILE_SITE_KEY`
+  - `TURNSTILE_SECRET_KEY`
 - Image CDN/R2: set `PUBLIC_ASSET_CDN` to prefix image paths while keeping local fallback assets.
+
+## Anti-Crawler Controls
+
+Cloudflare Pages serves the site through `public/_worker.js`, which blocks known AI/data-mining crawlers, rate-limits public crawl surfaces, protects write endpoints with Turnstile when configured, and adds noindex/noarchive headers to raw feeds and APIs. Keep Cloudflare's AI Scrapers and Crawlers protection enabled, and use Bot Management WAF rules when the plan supports them.
 
 ## Deployment
 

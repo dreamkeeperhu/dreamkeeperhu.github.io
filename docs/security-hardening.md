@@ -4,6 +4,12 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
 
 ## Worker protections
 
+- Runs an early anti-crawler gate before public assets are served:
+  - Allows normal browser traffic and known search crawlers when Cloudflare marks them as verified bots.
+  - Blocks common AI crawlers, SEO scrapers, data-mining bots, and command-line fetchers by user-agent.
+  - Uses Cloudflare Bot Management score when available; very low-score traffic is denied before it reaches content.
+  - Rate-limits public HTML routes, `/search.json`, `/rss.xml`, `/sitemap.xml`, `robots.txt`, and public API reads by client fingerprint.
+  - Returns generic denial responses so blocked clients do not get tuning details.
 - Adds browser security headers to every response: CSP, `X-Frame-Options`, `X-Content-Type-Options`, HSTS on HTTPS, referrer policy, permissions policy, and cross-origin policies.
 - Ships a `public/_headers` fallback with the same baseline browser headers for Cloudflare Pages static handling.
 - Blocks direct public access to `/content-health.json` and `/content-sync-report.json`; the hidden admin page reads them through protected admin APIs.
@@ -19,10 +25,19 @@ This site is static-first, but the Cloudflare Pages Worker exposes lightweight A
 - Rejects oversized request bodies and unexpected content types before parsing form data.
 - Requires same-origin requests for browser-write endpoints.
 - Requires same-origin `POST` requests for unsubscribe as well; public `GET` unsubscribe links still work through the token URL.
-- Marks hidden admin/API responses as `no-store` and `noindex`.
+- Validates Cloudflare Turnstile for subscribe, contact, and feedback writes when `TURNSTILE_SECRET_KEY` is configured.
+- Marks hidden admin/API responses and raw machine-readable feeds as `noindex`, `nofollow`, `noarchive`, and `nosnippet`.
 - Keeps GitHub metadata behind `/api/github-repos`, which validates repo names, limits requests to the configured GitHub owner, caps requests to 8 repos, and caches responses in KV for 6 hours.
 
 ## Content protections
+
+The public search index intentionally avoids full-body export. `/search.json` keeps only titles, descriptions, URLs, tags, date/status/thread metadata, headings, and short snippets. This preserves site search while preventing one-request bulk extraction of Markdown bodies.
+
+`robots.txt` keeps general search indexing open, explicitly disallows known AI/data-mining crawlers, disallows raw internal JSON/API paths, and publishes content preference signals:
+
+```txt
+Content-Signal: search=yes, ai-train=no, ai-input=no
+```
 
 `npm run validate:content` fails the build if public Markdown contains common XSS vectors:
 
@@ -43,7 +58,8 @@ This matters because Obsidian content is synced into public Markdown. Keep any e
 ## Operational notes
 
 - Keep `ADMIN_TOKEN` only in Cloudflare Pages environment variables and local `.env.local`.
+- Set `PUBLIC_TURNSTILE_SITE_KEY` in Pages build variables and `TURNSTILE_SECRET_KEY` in Pages secrets to make write endpoints require Turnstile in production.
 - Rotate `ADMIN_TOKEN` if it is ever pasted into a public page, issue, commit, screenshot, or chat transcript.
 - The hidden `/admin` page is `noindex`, blocked in robots, and absent from sitemap, but it is not a login system. Treat the token as the actual secret.
 - The subscription endpoint does not return an old unsubscribe token for an address that is already subscribed.
-- Cloudflare WAF / Turnstile can be added later if spam grows, but the current setup avoids extra services.
+- Enable Cloudflare's AI Scrapers and Crawlers protection. If Bot Management is available, add WAF rules that allow `cf.client.bot` verified search crawlers, block AI crawler categories, and challenge low bot-score traffic outside static assets.

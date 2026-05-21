@@ -1143,6 +1143,15 @@ img {
   gap: 14px;
 }
 
+.turnstile-field {
+  min-width: 0;
+  min-height: 65px;
+}
+
+.subscribe-form .turnstile-field {
+  grid-column: 1 / -1;
+}
+
 .feedback-type-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

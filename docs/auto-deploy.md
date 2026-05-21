@@ -30,6 +30,12 @@ Add these in GitHub repository settings:
 
 The Cloudflare API token needs permission to deploy the Pages project. The R2 access keys need read access to the `obsidian-sync` bucket.
 
+## Required Pages Secrets and Variables
+
+- `ADMIN_TOKEN`: required for hidden admin export APIs.
+- `TURNSTILE_SECRET_KEY`: required to enforce Turnstile on subscribe, contact, and feedback writes.
+- `PUBLIC_TURNSTILE_SITE_KEY`: Pages build variable used to render the Turnstile widget on public forms.
+
 ## Pages Function Bindings
 
 The root `wrangler.toml` binds three KV namespaces to the Cloudflare Pages project:

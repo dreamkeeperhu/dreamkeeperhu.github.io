@@ -39,7 +39,6 @@ const personJsonLd = {
   "@type": "Person",
   name: profile.name,
   alternateName: [profile.zhName, profile.shortName, profile.handle],
-  email: profile.email,
   url: profile.site,
   sameAs: [profile.github],
   affiliation: {
@@ -198,7 +197,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
             .then((items) => {
               quickSearchIndex = items.map((item) => ({
                 ...item,
-                haystack: `${item.title} ${item.description} ${item.content || ""} ${(item.headings || []).join(" ")} ${(item.snippets || []).join(" ")} ${(item.tags || []).join(" ")} ${item.thread || ""} ${item.series || ""} ${item.type} ${item.status || ""}`.toLowerCase(),
+                haystack: `${item.title} ${item.description} ${(item.headings || []).join(" ")} ${(item.snippets || []).join(" ")} ${(item.tags || []).join(" ")} ${item.thread || ""} ${item.type} ${item.status || ""}`.toLowerCase(),
               })).sort((a, b) => quickDateRank(b.date) - quickDateRank(a.date));
               renderQuickSearch();
             })
@@ -239,7 +238,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
       }
 
       function quickSnippet(item, query) {
-        const text = [item.description, ...(item.snippets || []), item.content].filter(Boolean).join(" ");
+        const text = [item.description, ...(item.snippets || [])].filter(Boolean).join(" ");
         const needle = String(query || "").trim().toLowerCase();
         if (!needle) return item.description || text.slice(0, 120);
         const index = text.toLowerCase().indexOf(needle);

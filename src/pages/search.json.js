@@ -1,6 +1,5 @@
 import { getCollection } from "astro:content";
 import { libraryHref, noteHref, paperHref, projectHref, timelineSortValue } from "../utils/content";
-import { artifactTypes } from "../utils/artifacts";
 
 export async function GET() {
   const notes = (await getCollection("notes")).filter((note) => !note.data.draft);
@@ -21,13 +20,8 @@ export async function GET() {
       status: note.data.category,
       category: note.data.category,
       thread: note.data.thread || inferThread(note.data.tags),
-      series: note.data.series || "",
-      audience: note.data.audience || "",
-      difficulty: note.data.difficulty,
-      source: note.data.source || "markdown",
       headings: headings(note.body),
       snippets: snippets(note.body),
-      content: plainText(note.body),
     })),
     ...papers.map((paper) => ({
       type: "paper",
@@ -38,15 +32,8 @@ export async function GET() {
       date: paper.data.updatedDate ? paper.data.updatedDate.toISOString().slice(0, 10) : String(paper.data.year),
       status: paper.data.status,
       thread: paper.data.thread || inferThread(paper.data.tags),
-      series: paper.data.series || "",
-      audience: paper.data.audience || "",
-      evidenceTypes: artifactTypes(paper.data.artifacts),
-      artifacts: paper.data.artifacts.map((artifact) => ({ label: artifact.label, type: artifact.type, href: artifact.href, status: artifact.status })),
-      relations: [...paper.data.relatedProjects, ...paper.data.relatedNotes, ...paper.data.relatedLibrary],
-      source: paper.data.source || "markdown",
       headings: headings(paper.body),
-      snippets: snippets(paper.body),
-      content: plainText([
+      snippets: snippets([
         paper.body,
         paper.data.problem,
         paper.data.method,
@@ -54,8 +41,6 @@ export async function GET() {
         ...(paper.data.limitations || []),
         paper.data.reviewNote,
         paper.data.nextStep,
-        ...(paper.data.evidence || []),
-        ...(paper.data.artifacts || []).flatMap((artifact) => [artifact.label, artifact.type, artifact.description, artifact.status]),
       ].filter(Boolean).join(" ")),
     })),
     ...projects.map((project) => ({
@@ -68,15 +53,8 @@ export async function GET() {
       status: project.data.status,
       statusDetail: project.data.statusDetail,
       thread: project.data.thread || inferThread(project.data.tags),
-      series: project.data.series || "",
-      audience: project.data.audience || "",
-      evidenceTypes: artifactTypes(project.data.artifacts),
-      artifacts: project.data.artifacts.map((artifact) => ({ label: artifact.label, type: artifact.type, href: artifact.href, status: artifact.status })),
-      relations: [...project.data.relatedPapers, ...project.data.relatedNotes, ...project.data.relatedLibrary],
-      source: project.data.source || "project",
       headings: headings(project.body),
-      snippets: snippets(project.body),
-      content: plainText([
+      snippets: snippets([
         project.body,
         project.data.problem,
         project.data.method,
@@ -84,9 +62,7 @@ export async function GET() {
         project.data.outcome,
         project.data.maturityNote,
         ...(project.data.lessons || []),
-        ...(project.data.evidence || []),
         ...(project.data.techStack || []),
-        ...(project.data.artifacts || []).flatMap((artifact) => [artifact.label, artifact.type, artifact.description, artifact.status]),
       ].filter(Boolean).join(" ")),
     })),
     ...library.map((item) => ({
@@ -98,21 +74,13 @@ export async function GET() {
       date: item.data.updatedDate ? item.data.updatedDate.toISOString().slice(0, 10) : item.data.year,
       status: item.data.status,
       thread: item.data.thread || inferThread(item.data.tags),
-      series: item.data.series || "",
-      audience: item.data.audience || "",
-      evidenceTypes: artifactTypes(item.data.artifacts),
-      artifacts: item.data.artifacts.map((artifact) => ({ label: artifact.label, type: artifact.type, href: artifact.href, status: artifact.status })),
-      relations: [...item.data.relatedPapers, ...item.data.relatedProjects, ...item.data.relatedNotes],
-      source: item.data.source || "library",
       headings: headings(item.body),
-      snippets: snippets(item.body),
-      content: plainText([
+      snippets: snippets([
         item.body,
         item.data.type,
         item.data.whyItMatters,
         ...(item.data.takeaways || []),
         ...(item.data.authors || []),
-        ...(item.data.artifacts || []).flatMap((artifact) => [artifact.label, artifact.type, artifact.description, artifact.status]),
       ].filter(Boolean).join(" ")),
     })),
     ...timeline
@@ -126,11 +94,8 @@ export async function GET() {
         date: item.data.date,
         status: item.data.type,
         thread: inferThread([item.data.type, item.data.summary]),
-        series: "",
-        source: item.data.source || "timeline",
         headings: headings(item.body),
         snippets: snippets(item.body),
-        content: plainText(item.body),
       })),
     ...roadmap.map((item) => ({
       type: "page",
@@ -141,11 +106,8 @@ export async function GET() {
       date: "roadmap",
       status: "roadmap",
       thread: item.id.replace(/^obsidian\//, "").replace(/\.(md|mdx)$/i, ""),
-      series: "Research roadmap",
-      source: item.data.source || "roadmap",
       headings: headings(item.body),
-      snippets: snippets(item.body),
-      content: plainText([item.body, item.data.now, item.data.next].filter(Boolean).join(" ")),
+      snippets: snippets([item.body, item.data.now, item.data.next].filter(Boolean).join(" ")),
     })),
     {
       type: "page",
@@ -154,10 +116,10 @@ export async function GET() {
       url: "/cv",
       tags: ["cv", "resume"],
       date: "2026-05-16",
-      source: "site",
       thread: "profile",
-      series: "",
-      content: "resume cv beihang robotics scheduling",
+      status: "page",
+      headings: [],
+      snippets: ["Public resume PDF and online preview."],
     },
     {
       type: "page",
@@ -166,10 +128,10 @@ export async function GET() {
       url: "/contact",
       tags: ["contact", "email"],
       date: "2026-05-17",
-      source: "site",
       thread: "contact",
-      series: "",
-      content: "email research project paper feedback general chat",
+      status: "page",
+      headings: [],
+      snippets: ["Contact page for research, project feedback, and general conversation."],
     },
     {
       type: "page",
@@ -178,10 +140,10 @@ export async function GET() {
       url: "/research/map",
       tags: ["research", "map", "evidence"],
       date: "2026-05-17",
-      source: "site",
       thread: "research-map",
-      series: "",
-      content: "research map evidence artifacts roadmap papers projects notes library",
+      status: "page",
+      headings: [],
+      snippets: ["Research map connecting roadmap threads, papers, projects, notes, and library entries."],
     },
   ];
 
@@ -203,7 +165,8 @@ function snippets(value) {
     .split(/\n{2,}/)
     .map((chunk) => plainText(chunk))
     .filter((chunk) => chunk.length > 40)
-    .slice(0, 5);
+    .map((chunk) => chunk.slice(0, 260))
+    .slice(0, 3);
 }
 
 function inferThread(value) {
@@ -226,5 +189,5 @@ function plainText(value) {
     .replace(/[#>*_`~|-]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 4000);
+    .slice(0, 260);
 }
