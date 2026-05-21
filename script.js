@@ -6,8 +6,60 @@ const aboutTrigger = document.querySelector(".about-trigger");
 const backClose = document.querySelector(".back-close");
 const navToggle = document.querySelector(".nav-toggle");
 const navLinks = document.querySelectorAll(".nav-links a");
+const themeToggle = document.querySelector(".theme-toggle");
+const scrollProgress = document.querySelector(".scroll-progress");
+const root = document.documentElement;
 const prefersHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 const coarsePointer = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+function savedTheme() {
+  try {
+    return localStorage.getItem("theme");
+  } catch {
+    return null;
+  }
+}
+
+function persistTheme(theme) {
+  try {
+    localStorage.setItem("theme", theme);
+  } catch {}
+}
+
+function currentTheme() {
+  return root.dataset.theme === "dark" ? "dark" : "light";
+}
+
+function applyTheme(theme, persist = true) {
+  root.dataset.theme = theme;
+  themeToggle?.setAttribute("aria-pressed", String(theme === "dark"));
+  themeToggle?.setAttribute(
+    "aria-label",
+    theme === "dark" ? "切换浅色模式" : "切换深色模式"
+  );
+  if (persist) {
+    persistTheme(theme);
+  }
+}
+
+applyTheme(currentTheme(), false);
+
+themeToggle?.addEventListener("click", () => {
+  applyTheme(currentTheme() === "dark" ? "light" : "dark");
+});
+
+function handleSystemThemeChange(event) {
+  if (!savedTheme()) {
+    applyTheme(event.matches ? "dark" : "light", false);
+  }
+}
+
+if (systemTheme.addEventListener) {
+  systemTheme.addEventListener("change", handleSystemThemeChange);
+} else if (systemTheme.addListener) {
+  systemTheme.addListener(handleSystemThemeChange);
+}
 
 function buildPattern(container) {
   const rows = 11;
@@ -60,38 +112,85 @@ if (prefersHover && heroTitle) {
 if (aboutTrigger && flipShell) {
   aboutTrigger.addEventListener("click", () => {
     flipShell.classList.add("is-flipped");
+    aboutTrigger.setAttribute("aria-expanded", "true");
+    backClose?.setAttribute("aria-expanded", "true");
   });
+  aboutTrigger.setAttribute("aria-expanded", "false");
 }
 
 if (backClose && flipShell) {
   backClose.addEventListener("click", () => {
     flipShell.classList.remove("is-flipped");
+    aboutTrigger?.setAttribute("aria-expanded", "false");
+    backClose.setAttribute("aria-expanded", "false");
   });
+  backClose.setAttribute("aria-expanded", "false");
 }
 
 if (navToggle) {
   navToggle.addEventListener("click", () => {
-    document.body.classList.toggle("nav-open");
+    const open = document.body.classList.toggle("nav-open");
+    navToggle.setAttribute("aria-expanded", String(open));
   });
 }
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     document.body.classList.remove("nav-open");
+    navToggle?.setAttribute("aria-expanded", "false");
   });
 });
 
 const siteNav = document.querySelector(".site-nav");
-let lastScroll = 0;
-window.addEventListener("scroll", () => {
+function updateScrollState() {
   const y = window.scrollY;
   if (y > 40 && !siteNav.classList.contains("is-scrolled")) {
     siteNav.classList.add("is-scrolled");
   } else if (y <= 40 && siteNav.classList.contains("is-scrolled")) {
     siteNav.classList.remove("is-scrolled");
   }
-  lastScroll = y;
-}, { passive: true });
+
+  if (scrollProgress) {
+    const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    scrollProgress.style.setProperty("--progress", `${Math.min(1, y / max)}`);
+  }
+}
+
+window.addEventListener("scroll", updateScrollState, { passive: true });
+window.addEventListener("resize", updateScrollState, { passive: true });
+updateScrollState();
+
+const spyLinks = [...navLinks].filter((link) => {
+  const href = link.getAttribute("href") || "";
+  return href.startsWith("#") && document.querySelector(href);
+});
+
+if (spyLinks.length) {
+  const spyObserver = new IntersectionObserver(
+    (entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+
+      spyLinks.forEach((link) => {
+        link.classList.toggle(
+          "is-active",
+          link.getAttribute("href") === `#${visible.target.id}`
+        );
+      });
+    },
+    {
+      rootMargin: "-25% 0px -58% 0px",
+      threshold: [0.08, 0.2, 0.45],
+    }
+  );
+
+  spyLinks.forEach((link) => {
+    const section = document.querySelector(link.getAttribute("href"));
+    if (section) spyObserver.observe(section);
+  });
+}
 
 const revealObserver = new IntersectionObserver(
   (entries) => {
@@ -130,6 +229,21 @@ const rowObserver = new IntersectionObserver(
 
 document.querySelectorAll(".list-row").forEach((row) => {
   rowObserver.observe(row);
+});
+
+document.querySelectorAll("[data-copy-email]").forEach((link) => {
+  link.addEventListener("click", async (event) => {
+    const email = link.dataset.copyEmail;
+    if (!email || !navigator.clipboard) return;
+    event.preventDefault();
+    try {
+      await navigator.clipboard.writeText(email);
+      link.classList.add("is-copied");
+      window.setTimeout(() => link.classList.remove("is-copied"), 1600);
+    } catch {
+      window.location.href = `mailto:${email}`;
+    }
+  });
 });
 
 if (coarsePointer) {

@@ -7,20 +7,39 @@
       name="description"
       content="HJH 的个人主页，记录通向 general physical intelligence 的项目、机器人指令、sim-to-real 泛化和新的机器人范式探索。"
     />
-    <meta name="theme-color" content="#faf7f2" />
+    <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14130f" media="(prefers-color-scheme: dark)" />
     <meta property="og:title" content="HJH | dreamkeeperhu" />
     <meta
       property="og:description"
       content="On the way to general physical intelligence. Better instructing robotics, promoting sim-to-real generalization, and exploring the next robotics paradigm."
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://dreamkeeperhu.github.io/" />
+    <meta property="og:image" content="https://dreamkeeperhu.github.io/assets/og-cover.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://dreamkeeperhu.github.io/" />
     <title>HJH | dreamkeeperhu</title>
-    <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
-    <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+    <link rel="preload" href="assets/fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/space-grotesk-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      (() => {
+        let saved = null;
+        try {
+          saved = localStorage.getItem("theme");
+        } catch {}
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.theme = saved || (systemDark ? "dark" : "light");
+      })();
+    </script>
+    <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="scroll-progress" aria-hidden="true"></div>
     <header class="site-nav" aria-label="主导航">
       <div class="nav-inner">
         <a class="wordmark" href="#top" aria-label="HJH 首页">
@@ -32,11 +51,22 @@
           <a href="#links">Links</a>
           <a href="#contact">Contact</a>
         </nav>
-        <button class="nav-toggle" type="button" aria-label="打开菜单">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+        <div class="nav-actions">
+          <button class="theme-toggle" type="button" aria-label="切换深色模式" aria-pressed="false">
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 14.4A7.7 7.7 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            </svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8" />
+              <path d="M12 2.8v2.4M12 18.8v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </button>
+          <button class="nav-toggle" type="button" aria-label="打开菜单" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -81,13 +111,25 @@
             </div>
           </div>
         </div>
+        <a class="scroll-cue" href="#works" aria-label="继续浏览项目">
+          <span></span>
+          Scroll
+        </a>
+      </section>
+
+      <section class="now-strip reveal" aria-label="当前状态">
+        <span class="now-flag"><span class="now-dot"></span>Now</span>
+        <p class="now-text">当前在把个人主页从“能用的静态页”重塑成更完整的个人研究入口：机器人指令、sim-to-real 和工具实验都会慢慢收束到这里。</p>
+        <span class="now-date">2026 · Beihang</span>
       </section>
 
       <section class="showcase reveal" aria-label="精选方向">
         <a class="showcase-card" href="#works">
           <img src="assets/interface-field.png" alt="界面结构与流动曲线" />
           <span class="showcase-overlay"></span>
+          <span class="showcase-edge"></span>
           <span class="showcase-info">
+            <span class="showcase-index">01 / Instruction</span>
             <strong>Robotics Instruction</strong>
             <small>让机器人更好理解任务与意图</small>
           </span>
@@ -95,7 +137,9 @@
         <a class="showcase-card" href="#works">
           <img src="assets/agent-map.png" alt="节点网络与自动化工作流" />
           <span class="showcase-overlay"></span>
+          <span class="showcase-edge"></span>
           <span class="showcase-info">
+            <span class="showcase-index">02 / Transfer</span>
             <strong>Sim-to-real</strong>
             <small>让仿真经验更稳地迁移到真实世界</small>
           </span>
@@ -103,7 +147,9 @@
         <a class="showcase-card" href="#links">
           <img src="assets/signal-wave.png" alt="声音波形与记录信号" />
           <span class="showcase-overlay"></span>
+          <span class="showcase-edge"></span>
           <span class="showcase-info">
+            <span class="showcase-index">03 / Paradigm</span>
             <strong>New Robotics Paradigm</strong>
             <small>探索下一代机器人范式</small>
           </span>
@@ -215,12 +261,52 @@
         </div>
       </section>
 
+      <section class="split-section reveal" aria-label="工具与技术栈">
+        <div class="section-head compact-head">
+          <h2>Toolbox / Stack</h2>
+          <p>不是技能进度条，只是当前最常拿来搭实验、写工具和组织想法的一组工作材料。</p>
+        </div>
+        <div class="toolbox-grid">
+          <article class="tool-cell">
+            <span class="tool-kind">Language</span>
+            <strong>Python / JavaScript / C</strong>
+            <small>算法实验、自动化脚本、课程板子和网页原型的主要语言。</small>
+          </article>
+          <article class="tool-cell">
+            <span class="tool-kind">Research</span>
+            <strong>Robotics / Sim-to-real</strong>
+            <small>从任务指令、泛化评估到真实机器人落地的长期主线。</small>
+          </article>
+          <article class="tool-cell">
+            <span class="tool-kind">Systems</span>
+            <strong>Cloud-edge-device</strong>
+            <small>调度、启发式优化和资源约束下的协作系统实验。</small>
+          </article>
+          <article class="tool-cell">
+            <span class="tool-kind">Publishing</span>
+            <strong>Static sites / GitHub Pages</strong>
+            <small>把项目、笔记和研究轨迹整理成可持续维护的公开入口。</small>
+          </article>
+          <article class="tool-cell">
+            <span class="tool-kind">Workflow</span>
+            <strong>Obsidian / Git / small tools</strong>
+            <small>偏爱能直接减少摩擦的小系统，然后再把它们接到更大的问题上。</small>
+          </article>
+          <article class="tool-cell">
+            <span class="tool-kind">Direction</span>
+            <strong>General physical intelligence</strong>
+            <small>把语言、控制、记忆和世界模型组织成更可靠的物理智能。</small>
+          </article>
+        </div>
+      </section>
+
       <section id="contact" class="contact-section reveal">
         <div>
           <h2>Let's Talk Robotics</h2>
           <p>关于机器人指令、sim-to-real 泛化、新的机器人范式或合作，可以直接邮件联系我。</p>
         </div>
-        <a class="contact-link" href="mailto:dreamkeeperhu@gmail.com">
+        <a class="contact-link" href="mailto:dreamkeeperhu@gmail.com" data-copy-email="dreamkeeperhu@gmail.com">
+          <span class="copy-hint">Email copied</span>
           dreamkeeperhu@gmail.com
           <span>→</span>
         </a>
@@ -228,7 +314,29 @@
     </main>
 
     <footer class="site-footer">
-      <span>© 2026 HJH. Built for GitHub Pages.</span>
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a class="wordmark" href="#top" aria-label="回到首页顶部"><span>HJH</span></a>
+          <p>Personal homepage for robotics notes, small tools, and the long path toward general physical intelligence.</p>
+        </div>
+        <div class="footer-col">
+          <span class="footer-head">Site</span>
+          <a href="#works">Projects</a>
+          <a href="about.html">About</a>
+          <a href="#links">Links</a>
+          <a href="#contact">Contact</a>
+        </div>
+        <div class="footer-col">
+          <span class="footer-head">Elsewhere</span>
+          <a href="https://github.com/dreamkeeperhu" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="mailto:dreamkeeperhu@gmail.com">Email</a>
+          <a href="https://greasyfork.org/zh-CN/scripts/562098" target="_blank" rel="noreferrer">GreasyFork</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 HJH. Built for GitHub Pages.</span>
+        <a class="to-top" href="#top">Back to top ↑</a>
+      </div>
     </footer>
 
     <script src="script.js"></script>

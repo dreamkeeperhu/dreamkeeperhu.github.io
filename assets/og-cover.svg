@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#faf7f2"/>
+  <defs>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="rgba(20,18,12,.08)" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a6b5c"/>
+      <stop offset="1" stop-color="#74b39e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)" opacity=".9"/>
+  <circle cx="920" cy="138" r="280" fill="#e6efea" opacity=".72"/>
+  <circle cx="230" cy="548" r="220" fill="#e6efea" opacity=".48"/>
+  <g transform="translate(78 74)">
+    <rect x="0" y="0" width="1044" height="482" rx="0" fill="none" stroke="rgba(20,18,12,.22)" stroke-width="2"/>
+    <path d="M0 366H1044" stroke="rgba(20,18,12,.14)" stroke-width="2"/>
+    <path d="M688 0V482" stroke="rgba(20,18,12,.14)" stroke-width="2"/>
+    <text x="56" y="128" fill="#0c0b09" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="112" font-weight="700" letter-spacing="-4">HJH</text>
+    <text x="56" y="204" fill="#3a6b5c" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="700" letter-spacing="4">DREAMKEEPERHU</text>
+    <text x="56" y="286" fill="#2a2823" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="500">On the way to</text>
+    <text x="56" y="334" fill="#2a2823" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="500">general physical intelligence.</text>
+    <text x="56" y="405" fill="#5f5a52" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500">Robotics instruction · Sim-to-real · New robotics paradigm</text>
+    <g transform="translate(744 82)">
+      <text x="0" y="0" fill="rgba(12,11,9,.12)" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="10">H J H H J H</text>
+      <text x="-42" y="72" fill="rgba(12,11,9,.16)" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="10">H J H H J H</text>
+      <text x="0" y="144" fill="rgba(12,11,9,.12)" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="10">H J H H J H</text>
+      <text x="-42" y="216" fill="rgba(12,11,9,.16)" font-family="Space Grotesk, Inter, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="10">H J H H J H</text>
+    </g>
+    <rect x="744" y="404" width="236" height="12" rx="6" fill="url(#accent)"/>
+  </g>
+</svg>

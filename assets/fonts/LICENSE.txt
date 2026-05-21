@@ -1,0 +1,4 @@
+Inter and Space Grotesk are distributed under the SIL Open Font License 1.1.
+
+Runtime font files in this folder are self-hosted woff2 assets used only by
+the static homepage, so the page does not request fonts from an external CDN.

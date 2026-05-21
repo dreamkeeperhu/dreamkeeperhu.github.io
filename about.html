@@ -7,20 +7,39 @@
       name="description"
       content="HJH 的个人简介页，介绍通向 general physical intelligence 的目标、机器人指令、sim-to-real 泛化和新的机器人范式探索。"
     />
-    <meta name="theme-color" content="#faf7f2" />
+    <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14130f" media="(prefers-color-scheme: dark)" />
     <meta property="og:title" content="About HJH | dreamkeeperhu" />
     <meta
       property="og:description"
       content="On the way to general physical intelligence. Better instructing robotics, promoting sim-to-real robotics generalization, and exploring the next robotics paradigm."
     />
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content="https://dreamkeeperhu.github.io/about.html" />
+    <meta property="og:image" content="https://dreamkeeperhu.github.io/assets/og-cover.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://dreamkeeperhu.github.io/about.html" />
     <title>About HJH | dreamkeeperhu</title>
-    <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
-    <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+    <link rel="preload" href="assets/fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/space-grotesk-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      (() => {
+        let saved = null;
+        try {
+          saved = localStorage.getItem("theme");
+        } catch {}
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.theme = saved || (systemDark ? "dark" : "light");
+      })();
+    </script>
+    <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="scroll-progress" aria-hidden="true"></div>
     <header class="site-nav" aria-label="主导航">
       <div class="nav-inner">
         <a class="wordmark" href="index.html#top" aria-label="HJH 首页">
@@ -32,11 +51,22 @@
           <a href="index.html#links">Links</a>
           <a href="index.html#contact">Contact</a>
         </nav>
-        <button class="nav-toggle" type="button" aria-label="打开菜单">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+        <div class="nav-actions">
+          <button class="theme-toggle" type="button" aria-label="切换深色模式" aria-pressed="false">
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 14.4A7.7 7.7 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            </svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8" />
+              <path d="M12 2.8v2.4M12 18.8v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.8 12h2.4M18.8 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </button>
+          <button class="nav-toggle" type="button" aria-label="打开菜单" aria-expanded="false">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -136,7 +166,8 @@
           <h2>Keep In Touch</h2>
           <p>如果你也关心机器人指令、sim-to-real 泛化或新的机器人范式，可以直接邮件联系我。</p>
         </div>
-        <a class="contact-link" href="mailto:dreamkeeperhu@gmail.com">
+        <a class="contact-link" href="mailto:dreamkeeperhu@gmail.com" data-copy-email="dreamkeeperhu@gmail.com">
+          <span class="copy-hint">Email copied</span>
           dreamkeeperhu@gmail.com
           <span>→</span>
         </a>
@@ -144,7 +175,29 @@
     </main>
 
     <footer class="site-footer">
-      <span>© 2026 HJH. Built for GitHub Pages.</span>
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a class="wordmark" href="index.html#top" aria-label="回到首页"><span>HJH</span></a>
+          <p>Personal homepage for robotics notes, small tools, and the long path toward general physical intelligence.</p>
+        </div>
+        <div class="footer-col">
+          <span class="footer-head">Site</span>
+          <a href="index.html#works">Projects</a>
+          <a href="about.html">About</a>
+          <a href="index.html#links">Links</a>
+          <a href="index.html#contact">Contact</a>
+        </div>
+        <div class="footer-col">
+          <span class="footer-head">Elsewhere</span>
+          <a href="https://github.com/dreamkeeperhu" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="mailto:dreamkeeperhu@gmail.com">Email</a>
+          <a href="https://greasyfork.org/zh-CN/scripts/562098" target="_blank" rel="noreferrer">GreasyFork</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 HJH. Built for GitHub Pages.</span>
+        <a class="to-top" href="#">Back to top ↑</a>
+      </div>
     </footer>
 
     <script src="script.js"></script>
