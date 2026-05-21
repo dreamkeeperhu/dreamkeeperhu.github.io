@@ -3140,18 +3140,39 @@ html[data-theme="dark"] .writing-hero {
   padding: 36px;
 }
 
-.pdf-preview object {
-  width: 100%;
-  height: 760px;
-  margin-top: 18px;
-  border: 1px solid var(--hairline);
-  background: var(--paper-soft);
+.pdf-preview-note {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
 }
 
-.pdf-mobile-note {
-  display: none;
+.pdf-preview-frame {
+  display: block;
+  width: 100%;
+  max-height: min(760px, calc(100svh - 150px));
   margin-top: 18px;
-  color: var(--muted);
+  border: 1px solid var(--hairline);
+  background: white;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pdf-preview-frame img {
+  width: 100%;
+  height: auto;
+  background: white;
+}
+
+.pdf-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pdf-preview-actions a {
+  flex: 1 1 150px;
 }
 
 .now-grid {
@@ -3665,12 +3686,8 @@ html[data-theme="dark"] .writing-hero {
     min-height: 52px;
   }
 
-  .pdf-preview object {
-    display: none;
-  }
-
-  .pdf-mobile-note {
-    display: block;
+  .pdf-preview-frame {
+    max-height: none;
   }
 
   .direction-copy {
@@ -3718,8 +3735,8 @@ html[data-theme="dark"] .writing-hero {
     font-size: 21px;
   }
 
-  .pdf-preview object {
-    height: 520px;
+  .pdf-preview-actions a {
+    flex-basis: 100%;
   }
 }
 

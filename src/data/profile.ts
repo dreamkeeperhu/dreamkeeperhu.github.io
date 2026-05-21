@@ -17,6 +17,7 @@ export const profile = {
 
 export const publicCv = {
   file: "/cv/jianheng-hu-cv.pdf",
+  preview: "/cv/jianheng-hu-cv-preview.png",
   title: "Jianheng Hu - CV",
   updated: "2026-05-16",
 };

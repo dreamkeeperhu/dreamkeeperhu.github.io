@@ -68,10 +68,14 @@ const skills = [
 
     <aside class="pdf-preview">
       <div class="panel-kicker">PDF Preview</div>
-      <p class="pdf-mobile-note"><a href={publicCv.file}>Open the resume PDF</a>. The HTML resume above is the mobile preview.</p>
-      <object data={publicCv.file} type="application/pdf">
-        <p>PDF preview is not available in this browser. <a href={publicCv.file}>Open the resume PDF.</a></p>
-      </object>
+      <p class="pdf-preview-note">The preview below is rendered from the first page, so it works even when the browser blocks embedded PDFs.</p>
+      <a class="pdf-preview-frame" href={publicCv.file} target="_blank" rel="noreferrer" aria-label="Open the resume PDF">
+        <img src={publicCv.preview} alt="Preview of Jianheng Hu CV PDF" loading="lazy" decoding="async" />
+      </a>
+      <div class="pdf-preview-actions">
+        <a class="button-primary" href={publicCv.file} target="_blank" rel="noreferrer">Open PDF</a>
+        <a class="button-secondary" href={publicCv.file} download>Download</a>
+      </div>
     </aside>
   </section>
 </BaseLayout>
