@@ -1,7 +1,21 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-const panels = ["site-stats", "content-health", "content-sync-report", "subscribers", "contacts", "feedback", "newsletter-draft"];
+const panels = [
+  "site-stats",
+  "site-ops",
+  "bot-defense",
+  "content-health",
+  "content-sync-report",
+  "content-ops",
+  "open-issues",
+  "link-checks",
+  "newsletter-draft",
+  "newsletter-issues",
+  "subscribers",
+  "contacts",
+  "feedback",
+];
 ---
 
 <BaseLayout
@@ -51,6 +65,57 @@ const panels = ["site-stats", "content-health", "content-sync-report", "subscrib
           <div>
             <span>{panel}</span>
             <span data-panel-count={panel}>0</span>
+            {panel === "content-ops" && (
+              <>
+                <button type="button" data-content-ops-refresh>Refresh ops</button>
+                <button type="button" data-content-ops-link-check>Run link check</button>
+              </>
+            )}
+            {panel === "site-ops" && (
+              <>
+                <button type="button" data-site-ops-maintenance="snapshot_health">Snapshot health</button>
+                <button type="button" data-site-ops-maintenance="cleanup_bot_audit">Clean bot audit</button>
+                <button type="button" data-site-ops-maintenance="cleanup_site_ops">Clean ops audit</button>
+                <button type="button" data-site-github-cache="warm">Warm GitHub cache</button>
+                <button type="button" data-site-github-cache="clear">Clear GitHub cache</button>
+                <button type="button" data-site-ops-export="json">Export JSON</button>
+                <button type="button" data-site-ops-export="csv">Export CSV</button>
+              </>
+            )}
+            {panel === "bot-defense" && (
+              <>
+                <select data-bot-policy-kind aria-label="Bot policy kind">
+                  <option value="ua_pattern">ua_pattern</option>
+                  <option value="path_prefix">path_prefix</option>
+                  <option value="fingerprint">fingerprint</option>
+                  <option value="ip_hash">ip_hash</option>
+                </select>
+                <input type="text" data-bot-policy-value placeholder="Pattern/hash/prefix" autocomplete="off" />
+                <input type="text" data-bot-policy-id placeholder="Override id" autocomplete="off" />
+                <button type="button" data-bot-policy-action="allow">Allow</button>
+                <button type="button" data-bot-policy-action="block">Block</button>
+                <button type="button" data-bot-policy-action="rate_limit">Rate limit</button>
+                <button type="button" data-bot-policy-action="delete">Delete</button>
+                <input type="text" data-bot-deny-fingerprint placeholder="Deny fingerprint" autocomplete="off" />
+                <button type="button" data-bot-deny-action="clear">Clear deny</button>
+                <button type="button" data-bot-deny-action="extend">Extend deny</button>
+                <button type="button" data-bot-replay>Replay</button>
+                <button type="button" data-bot-export="json">Export JSON</button>
+                <button type="button" data-bot-export="csv">Export CSV</button>
+              </>
+            )}
+            {panel === "open-issues" && (
+              <>
+                <input type="text" data-issue-id placeholder="Issue id" autocomplete="off" />
+                <button type="button" data-issue-action="resolve">Resolve</button>
+                <button type="button" data-issue-action="snooze">Snooze</button>
+                <button type="button" data-issue-action="ignore">Ignore</button>
+                <button type="button" data-issue-action="reopen">Reopen</button>
+              </>
+            )}
+            {panel === "newsletter-issues" && (
+              <button type="button" data-newsletter-save>Save current draft</button>
+            )}
             <button type="button" data-copy-panel={panel} data-copy-mode="json">Copy JSON</button>
             <button type="button" data-copy-panel={panel} data-copy-mode={panel === "newsletter-draft" ? "draft" : "csv"}>{panel === "newsletter-draft" ? "Copy draft" : "Copy CSV"}</button>
           </div>
@@ -123,6 +188,32 @@ const panels = ["site-stats", "content-health", "content-sync-report", "subscrib
       });
     });
 
+    document.querySelector("[data-content-ops-refresh]")?.addEventListener("click", refreshContentOps);
+    document.querySelector("[data-content-ops-link-check]")?.addEventListener("click", runLinkCheck);
+    document.querySelector("[data-newsletter-save]")?.addEventListener("click", saveNewsletterDraft);
+    document.querySelectorAll("[data-site-ops-maintenance]").forEach((button) => {
+      button.addEventListener("click", () => runSiteOpsMaintenance(button.dataset.siteOpsMaintenance || ""));
+    });
+    document.querySelectorAll("[data-site-github-cache]").forEach((button) => {
+      button.addEventListener("click", () => actOnSiteGitHubCache(button.dataset.siteGithubCache || ""));
+    });
+    document.querySelectorAll("[data-site-ops-export]").forEach((button) => {
+      button.addEventListener("click", () => exportSiteOps(button.dataset.siteOpsExport || "json"));
+    });
+    document.querySelectorAll("[data-bot-policy-action]").forEach((button) => {
+      button.addEventListener("click", () => actOnBotPolicy(button.dataset.botPolicyAction || ""));
+    });
+    document.querySelectorAll("[data-bot-deny-action]").forEach((button) => {
+      button.addEventListener("click", () => actOnBotDenylist(button.dataset.botDenyAction || ""));
+    });
+    document.querySelector("[data-bot-replay]")?.addEventListener("click", replayBotPolicy);
+    document.querySelectorAll("[data-bot-export]").forEach((button) => {
+      button.addEventListener("click", () => exportBotDefense(button.dataset.botExport || "json"));
+    });
+    document.querySelectorAll("[data-issue-action]").forEach((button) => {
+      button.addEventListener("click", () => actOnIssue(button.dataset.issueAction || ""));
+    });
+
     if (storedToken) refreshAdmin();
 
     async function refreshAdmin() {
@@ -136,13 +227,23 @@ const panels = ["site-stats", "content-health", "content-sync-report", "subscrib
       const since = sinceInput?.value || defaultSince;
       await Promise.all([
         loadPanel("site-stats", "/api/site-stats"),
+        loadPanel("site-ops", "/api/admin/site-ops/health", token),
+        loadPanel("site-ops-events", "/api/admin/site-ops/events", token),
+        loadPanel("bot-defense", "/api/admin/bot-defense/summary", token),
+        loadPanel("bot-risk", "/api/admin/bot-defense/risk", token),
         loadPanel("content-health", "/api/admin/content-health", token),
         loadPanel("content-sync-report", "/api/admin/content-sync-report", token),
+        loadPanel("content-ops", "/api/admin/content-ops/summary", token),
+        loadPanel("open-issues", "/api/admin/content-ops/issues?status=open", token),
+        loadPanel("link-checks", "/api/admin/content-ops/link-checks", token),
         loadPanel("subscribers", "/api/admin/subscribers", token),
         loadPanel("contacts", "/api/admin/contacts", token),
         loadPanel("feedback", `/api/admin/feedback?since=${encodeURIComponent(since)}`, token),
         loadPanel("newsletter-draft", `/api/admin/newsletter-draft?since=${encodeURIComponent(since)}&thread=${encodeURIComponent(cache["content-health"]?.latestPublic?.[0]?.thread || "")}`, token),
+        loadPanel("newsletter-issues", "/api/admin/newsletter/issues", token),
       ]);
+      renderSiteOpsPanel();
+      renderBotDefensePanel();
       renderSummary();
       setStatus("Admin data loaded.");
     }
@@ -166,15 +267,238 @@ const panels = ["site-stats", "content-health", "content-sync-report", "subscrib
       }
     }
 
+    async function refreshContentOps() {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      setStatus("Refreshing content ops...");
+      const json = await postAdmin("/api/admin/content-ops/refresh", {}, token);
+      cache["content-ops-refresh"] = json;
+      await Promise.all([
+        loadPanel("content-ops", "/api/admin/content-ops/summary", token),
+        loadPanel("open-issues", "/api/admin/content-ops/issues?status=open", token),
+      ]);
+      renderSummary();
+      setStatus(json.ok ? "Content ops refreshed." : json.error || "Content ops refresh failed.");
+    }
+
+    async function runLinkCheck() {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      setStatus("Running link check...");
+      const json = await postAdmin("/api/admin/content-ops/check-links", { limit: 40 }, token);
+      cache["link-check-run"] = json;
+      await Promise.all([
+        loadPanel("content-ops", "/api/admin/content-ops/summary", token),
+        loadPanel("open-issues", "/api/admin/content-ops/issues?status=open", token),
+        loadPanel("link-checks", "/api/admin/content-ops/link-checks", token),
+      ]);
+      renderSummary();
+      setStatus(json.ok ? `Link check finished: ${json.checked || 0} checked, ${json.failed || 0} failed.` : json.error || "Link check failed.");
+    }
+
+    async function runSiteOpsMaintenance(action) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      setStatus(`Running site ops: ${action}...`);
+      const json = await postAdmin("/api/admin/site-ops/maintenance", { action }, token);
+      cache["site-ops-maintenance"] = json;
+      await Promise.all([
+        loadPanel("site-ops", "/api/admin/site-ops/health", token),
+        loadPanel("site-ops-events", "/api/admin/site-ops/events", token),
+      ]);
+      renderSiteOpsPanel();
+      renderSummary();
+      setStatus(json.ok ? `Site ops ${action} complete.` : json.error || "Site ops maintenance failed.");
+    }
+
+    async function actOnSiteGitHubCache(action) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      setStatus(`${action === "clear" ? "Clearing" : "Warming"} GitHub cache...`);
+      const json = await postAdmin("/api/admin/site-ops/github-cache/action", { action }, token);
+      cache["site-github-cache-action"] = json;
+      await Promise.all([
+        loadPanel("site-ops", "/api/admin/site-ops/health", token),
+        loadPanel("site-ops-events", "/api/admin/site-ops/events", token),
+      ]);
+      renderSiteOpsPanel();
+      renderSummary();
+      setStatus(json.ok ? `GitHub cache ${action} complete.` : json.error || "GitHub cache action failed.");
+    }
+
+    async function exportSiteOps(format) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      try {
+        const response = await fetch(`/api/admin/site-ops/export?target=events&format=${encodeURIComponent(format)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const text = await response.text();
+        await navigator.clipboard.writeText(text);
+        setStatus(response.ok ? `Site ops ${format.toUpperCase()} copied.` : "Site ops export failed.");
+      } catch (error) {
+        setStatus(error.message || "Site ops export failed.");
+      }
+    }
+
+    async function actOnBotPolicy(action) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      const id = document.querySelector("[data-bot-policy-id]")?.value?.trim() || "";
+      const kind = document.querySelector("[data-bot-policy-kind]")?.value || "ua_pattern";
+      const value = document.querySelector("[data-bot-policy-value]")?.value?.trim() || "";
+      const body = action === "delete"
+        ? { id, action }
+        : { id, kind, value, action, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), note: "admin override" };
+      const json = await postAdmin("/api/admin/bot-defense/overrides/action", body, token);
+      cache["bot-policy-action"] = json;
+      await Promise.all([
+        loadPanel("bot-defense", "/api/admin/bot-defense/summary", token),
+        loadPanel("bot-risk", "/api/admin/bot-defense/risk", token),
+      ]);
+      renderBotDefensePanel();
+      renderSummary();
+      setStatus(json.ok ? `Bot policy ${action} complete.` : json.error || "Bot policy action failed.");
+    }
+
+    async function actOnBotDenylist(action) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      const fingerprint = document.querySelector("[data-bot-deny-fingerprint]")?.value?.trim() || "";
+      if (!fingerprint) return setStatus("Paste a fingerprint from bot-defense or bot-risk JSON.");
+      const json = await postAdmin("/api/admin/bot-defense/denylist/action", {
+        fingerprint,
+        action,
+        ttlSeconds: 3600,
+        note: "admin denylist action",
+      }, token);
+      cache["bot-deny-action"] = json;
+      await Promise.all([
+        loadPanel("bot-defense", "/api/admin/bot-defense/summary", token),
+        loadPanel("bot-risk", "/api/admin/bot-defense/risk", token),
+      ]);
+      renderBotDefensePanel();
+      renderSummary();
+      setStatus(json.ok ? `Denylist ${action} complete.` : json.error || "Denylist action failed.");
+    }
+
+    async function replayBotPolicy() {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      const json = await postAdmin("/api/admin/bot-defense/replay", {
+        sampleLimit: 250,
+        thresholds: { rateLimitScore: 70, blockScore: 95 },
+      }, token);
+      cache["bot-replay"] = json;
+      const node = outputs.get("bot-defense");
+      if (node) node.textContent = JSON.stringify({ summary: cache["bot-defense"], risk: cache["bot-risk"], replay: json }, null, 2);
+      setStatus(json.ok ? "Bot policy replay complete." : json.error || "Bot replay failed.");
+    }
+
+    async function exportBotDefense(format) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      try {
+        const response = await fetch(`/api/admin/bot-defense/export?format=${encodeURIComponent(format)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const text = await response.text();
+        await navigator.clipboard.writeText(text);
+        setStatus(response.ok ? `Bot defense ${format.toUpperCase()} copied.` : "Bot defense export failed.");
+      } catch (error) {
+        setStatus(error.message || "Bot defense export failed.");
+      }
+    }
+
+    async function actOnIssue(action) {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      const id = document.querySelector("[data-issue-id]")?.value?.trim();
+      if (!id) return setStatus("Paste an issue id from the open-issues JSON.");
+      const body = { id, action };
+      if (action === "snooze") {
+        body.snoozeUntil = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      }
+      const json = await postAdmin("/api/admin/content-ops/issues/action", body, token);
+      cache["issue-action"] = json;
+      await Promise.all([
+        loadPanel("content-ops", "/api/admin/content-ops/summary", token),
+        loadPanel("open-issues", "/api/admin/content-ops/issues?status=open", token),
+      ]);
+      renderSummary();
+      setStatus(json.ok ? `Issue ${action} complete.` : json.error || "Issue action failed.");
+    }
+
+    async function saveNewsletterDraft() {
+      const token = currentToken();
+      if (!token) return setStatus("Paste ADMIN_TOKEN first.");
+      const draft = cache["newsletter-draft"];
+      if (!draft?.subject) return setStatus("Load newsletter draft first.");
+      const json = await postAdmin("/api/admin/newsletter/issues", {
+        subject: draft.subject,
+        markdown: draft.markdown,
+        text: draft.text,
+        filters: draft.filters,
+        items: draft.items,
+      }, token);
+      cache["newsletter-save"] = json;
+      await loadPanel("newsletter-issues", "/api/admin/newsletter/issues", token);
+      setStatus(json.ok ? "Newsletter draft saved." : json.error || "Newsletter save failed.");
+    }
+
+    async function postAdmin(url, body, token) {
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(body || {}),
+        });
+        return await response.json();
+      } catch (error) {
+        return { ok: false, error: error.message || "Request failed." };
+      }
+    }
+
+    function currentToken() {
+      const token = tokenInput?.value || sessionStorage.getItem("hjh_admin_token") || "";
+      if (token) sessionStorage.setItem("hjh_admin_token", token);
+      return token;
+    }
+
     function setStatus(text) {
       if (statusNode) statusNode.textContent = text;
+    }
+
+    function renderBotDefensePanel() {
+      const node = outputs.get("bot-defense");
+      if (node) node.textContent = JSON.stringify({ summary: cache["bot-defense"], risk: cache["bot-risk"], replay: cache["bot-replay"] }, null, 2);
+    }
+
+    function renderSiteOpsPanel() {
+      const node = outputs.get("site-ops");
+      if (node) node.textContent = JSON.stringify({
+        health: cache["site-ops"],
+        events: cache["site-ops-events"],
+        maintenance: cache["site-ops-maintenance"],
+        githubCacheAction: cache["site-github-cache-action"],
+      }, null, 2);
     }
 
     function panelCount(key, json) {
       if (!json) return 0;
       if (typeof json.count === "number") return json.count;
       if (key === "site-stats") return json.views || 0;
+      if (key === "site-ops") return (json.summary?.requiredFailures || 0) + (json.summary?.warnings || 0);
+      if (key === "bot-defense") return (json.actions24h || []).reduce((sum, row) => sum + Number(row.count || 0), 0);
       if (key === "newsletter-draft") return json.items?.length || 0;
+      if (key === "content-ops") return json.openIssueCount || 0;
+      if (key === "open-issues") return json.count || 0;
+      if (key === "link-checks") return json.count || 0;
+      if (key === "newsletter-issues") return json.count || 0;
       if (key === "content-health") return Object.values(json.counts || {}).reduce((sum, item) => sum + (item.public || 0), 0);
       if (key === "content-sync-report") return json.totals?.published || 0;
       return 0;
@@ -187,15 +511,23 @@ const panels = ["site-stats", "content-health", "content-sync-report", "subscrib
       const content = panelCount("content-health", cache["content-health"]);
       const missingEvidence = cache["content-health"]?.quality?.missingEvidence || 0;
       const sync = cache["content-sync-report"]?.totals?.published || 0;
-      summaryNode.innerHTML = `<span>${content} public items</span><span>${subscribers} subscribers</span><span>${feedback} recent feedback</span><span>${missingEvidence} evidence gaps</span><span>${sync} synced items</span>`;
+      const openIssues = cache["content-ops"]?.openIssueCount || 0;
+      const botBlocks = panelCount("bot-defense", cache["bot-defense"]);
+      const siteOps = cache["site-ops"]?.status || "unknown";
+      summaryNode.innerHTML = `<span>${content} public items</span><span>${openIssues} ops issues</span><span>${botBlocks} bot events</span><span>site ops ${siteOps}</span><span>${subscribers} subscribers</span><span>${feedback} recent feedback</span><span>${missingEvidence} evidence gaps</span><span>${sync} synced items</span>`;
     }
 
     function toCsv(key, json) {
       const rows = key === "subscribers" ? json?.subscribers
         : key === "contacts" ? json?.contacts
-          : key === "feedback" ? json?.feedback
+            : key === "feedback" ? json?.feedback
+            : key === "site-ops" ? cache["site-ops-events"]?.events
+            : key === "bot-defense" ? json?.recentEvents
             : key === "content-health" ? json?.missingArtifacts
               : key === "content-sync-report" ? json?.collections
+                : key === "open-issues" ? json?.issues
+                  : key === "link-checks" ? json?.links
+                    : key === "newsletter-issues" ? json?.issues
               : [];
       if (!rows?.length) return "";
       const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];

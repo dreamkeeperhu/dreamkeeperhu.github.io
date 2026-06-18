@@ -54,6 +54,7 @@ const personJsonLd = {
 };
 
 const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd : [jsonLd])] : personJsonLd;
+const primaryPreloadImage = asset(current === "Home" ? "/assets/internal-beyond-bg-canvas.png" : "/assets/interface-field.png");
 ---
 
 <!doctype html>
@@ -74,7 +75,7 @@ const jsonLdPayload = jsonLd ? [personJsonLd, ...(Array.isArray(jsonLd) ? jsonLd
     <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="preload" as="image" href={asset("/assets/interface-field.png")} />
+    <link rel="preload" as="image" href={primaryPreloadImage} />
     <link rel="alternate" type="application/rss+xml" title="HJH Notes" href="/rss.xml" />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLdPayload)}></script>
     <Analytics />

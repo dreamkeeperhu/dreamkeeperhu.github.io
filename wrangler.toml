@@ -13,3 +13,8 @@ id = "732536c262ac4443b25139b2ef3a1518"
 [[kv_namespaces]]
 binding = "CONTACT_MESSAGES"
 id = "166faaa4109942c8a99b406bbcfed87e"
+
+[[d1_databases]]
+binding = "CONTENT_OPS_DB"
+database_name = "dreamkeeperhu-content-ops"
+database_id = "dce8de83-0b49-4f80-9c7d-0a082892bfd2"

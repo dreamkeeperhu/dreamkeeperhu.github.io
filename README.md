@@ -27,6 +27,10 @@ The generated site is in `dist/`.
 - Public CV PDF: `public/cv/jianheng-hu-cv.pdf`
 - Paper PDFs should only go in `public/papers/` after publication, preprint release, or explicit clearance. Keep unpublished manuscript PDFs out of the public folder.
 
+## Asset Credits
+
+- Homepage hero background: `public/assets/internal-beyond-bg-canvas.png`, from Sui-IB/InternalBeyond `bg-canvas.png` by Sui, used for this personal non-commercial homepage.
+
 ## Obsidian Sync
 
 Obsidian is the default private writing source. Keep personal journal folders out of the publish folders; only export selected notes that should appear on the public website.
@@ -99,6 +103,8 @@ This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/N
 - Unsubscribe: `/api/unsubscribe?token=...` removes a subscriber.
 - Contact intent form: `/contact` opens a mail draft and backs up submissions in `CONTACT_MESSAGES`.
 - Admin subscriber export: `/api/admin/subscribers` requires `Authorization: Bearer <ADMIN_TOKEN>`.
+- Content operations: hidden admin APIs use `CONTENT_OPS_DB` D1 to track content inventory, quality issues, link checks, and saved newsletter drafts.
+- Site operations: hidden admin APIs under `/api/admin/site-ops/*` expose backend health checks, admin write audit logs, maintenance snapshots, GitHub metadata cache warm/clear actions, and CSV/JSON exports.
 - First-party analytics: `/api/visit` records anonymous aggregate page counts in the `SITE_METRICS` KV namespace, and `/api/site-stats` exposes totals for the homepage pulse.
 - Optional third-party analytics: set either Plausible or Umami environment variables:
   - `PUBLIC_PLAUSIBLE_DOMAIN`

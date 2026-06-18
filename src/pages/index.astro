@@ -9,8 +9,6 @@ import { profile } from "../data/profile";
 import { asset } from "../utils/cdn";
 import { entryUpdatedValue, evidenceCount, noteHref, paperHref, projectHref, sortSelectedWork, timelineSortValue } from "../utils/content";
 
-const rows = Array.from({ length: 11 });
-const copies = Array.from({ length: 18 });
 const latestNotes = (await getCollection("notes"))
   .filter((note) => !note.data.draft)
   .sort((a, b) => entryUpdatedValue(b) - entryUpdatedValue(a))
@@ -89,6 +87,7 @@ const visitorPaths = [
   ["/projects", "Project Index", "Inspect runnable work, experiments, and implementation traces."],
   ["/now", "Now Page", "Check the current focus without reading the whole archive."],
 ];
+const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
 ---
 
 <BaseLayout current="Home" title="HJH | dreamkeeperhu">
@@ -96,16 +95,14 @@ const visitorPaths = [
     <div class="flip-shell">
       <div class="flip-inner">
         <div class="flip-front">
-          <div class="hero-title" data-reveal-zone>
-            <img class="hero-media" src={asset("/assets/interface-field.png")} alt="" width="1200" height="700" decoding="async" fetchpriority="high" />
-            <div class="hero-pattern pattern-base" aria-hidden="true">
-              {rows.map(() => (
-                <div class="pattern-row">{copies.map(() => <span>H J H</span>)}</div>
-              ))}
-            </div>
+          <div class="hero-title water-hero" data-reveal-zone>
+            <img class="hero-media" src={homeHeroImage} alt="" width="2600" height="1351" decoding="async" fetchpriority="high" />
+            <div class="hero-atmosphere" aria-hidden="true"></div>
+            <canvas class="hero-fog" aria-hidden="true"></canvas>
+            <div class="hero-water-sheen" aria-hidden="true"></div>
             <h1>Jianheng Hu</h1>
             <div class="hero-focus">
-              <span>Research direction</span>
+              <span>Welcome</span>
               <strong>General physical intelligence</strong>
               <p>Robotics instruction, sim-to-real generalization, and the next robotics paradigm. Public work here is organized by status, evidence, code traces, and notes.</p>
               <div class="hero-actions">
@@ -115,16 +112,11 @@ const visitorPaths = [
               </div>
             </div>
             <div class="hero-strip" aria-label="Homepage summary">
-              <span>HJH / Beihang University</span>
+              <span>Welcome / HJH / Beihang University</span>
               <span>Robotics instruction · Sim-to-real · New robotics paradigm</span>
               <span>{profile.email}</span>
             </div>
             <div class="alt-layer" aria-hidden="true">
-              <div class="hero-pattern pattern-invert">
-                {rows.map(() => (
-                  <div class="pattern-row">{copies.map(() => <span>H J H</span>)}</div>
-                ))}
-              </div>
               <h2>你好，我是 HJH</h2>
               <span class="about-label">About Me</span>
             </div>
@@ -360,13 +352,14 @@ const visitorPaths = [
     const aboutTrigger = document.querySelector(".about-trigger");
     const backClose = document.querySelector(".back-close");
     const prefersHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const usesWaterHero = heroTitle?.classList.contains("water-hero");
 
     function setReveal(event) {
       if (!heroTitle || !altLayer) return;
       const rect = heroTitle.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      altLayer.style.clipPath = `circle(150px at ${x}px ${y}px)`;
+      altLayer.style.clipPath = `circle(86px at ${x}px ${y}px)`;
     }
 
     function hideReveal(event) {
@@ -377,7 +370,9 @@ const visitorPaths = [
       altLayer.style.clipPath = `circle(0 at ${x}px ${y}px)`;
     }
 
-    if (prefersHover && heroTitle) {
+    // The dark hover-reveal circle is only for non-water heroes; the water hero
+    // never binds it, so no black circle appears on the homepage.
+    if (!usesWaterHero && prefersHover && heroTitle) {
       heroTitle.addEventListener("pointermove", setReveal);
       heroTitle.addEventListener("pointerleave", hideReveal);
     }
@@ -385,6 +380,386 @@ const visitorPaths = [
     aboutTrigger?.addEventListener("click", () => flipShell?.classList.add("is-flipped"));
     backClose?.addEventListener("click", () => flipShell?.classList.remove("is-flipped"));
     hideReveal();
+
+    initHeroFx();
+
+    // --- Combined water + fog on ONE canvas. Stacking two canvas layers inside
+    // the hero can trip an ANGLE/Metal compositing bug that darkens the whole
+    // backdrop, so the fog haze, the decaying wipe holes, and the water glints
+    // are all composited onto this single layer.
+    //
+    // Water: a soft height-field shimmer that reads like flowing ripples on
+    // glass — no streak bands, no rings, just gentle round disturbances and
+    // organic non-grid forcing, biased to the left ("water side").
+    // Fog: a thin frost (heavier on the right "fog side") the pointer wipes
+    // away; wiped areas slowly re-condense so the glass never fully clears.
+    function initHeroFx() {
+      const canvas = document.querySelector(".hero-fog");
+      const source = document.querySelector(".hero-media");
+      if (!heroTitle || !canvas) return;
+
+      const ctx = canvas.getContext("2d", { alpha: true });
+      const simCanvas = document.createElement("canvas");
+      const simCtx = simCanvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx || !simCtx) return;
+
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let gridW = 0;
+      let gridH = 0;
+      // Two height buffers for the ripple wave equation.
+      let heightCur = null;
+      let heightPrev = null;
+      let outputData = null;
+      let lastFrame = 0;
+      let ambientTimer = 1.2;
+      let waterClock = 0; // slow clock that drifts the light for a living shimmer
+      // Previous pointer position (grid coords) so a fast move leaves a
+      // continuous ripple trail instead of isolated drops.
+      let prevGX = -1;
+      let prevGY = -1;
+
+      // Fog wipe state
+      let lastPoint = null;
+      let lastAddAt = 0;
+      const wipes = [];
+      const HOLD = 900; // ms a wipe stays fully clear before re-condensing
+      const FADE = 7200; // ms for fog to fully grow back
+      const WIPE_ALPHA = 1; // wipe fully clears the glass for an obvious reveal
+      const blotchSeeds = [
+        [0.2, 0.64, 0.5, 0.07],
+        [0.4, 0.86, 0.42, 0.055],
+        [0.08, 0.26, 0.38, 0.06],
+      ];
+
+      function resizeWater() {
+        const rect = heroTitle.getBoundingClientRect();
+        width = Math.max(1, Math.round(rect.width));
+        height = Math.max(1, Math.round(rect.height));
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Fairly fine ripple field; upscaling smoothing keeps the wavelets glassy.
+        gridW = Math.min(300, Math.max(140, Math.round(width / 4.8)));
+        gridH = Math.max(90, Math.round(gridW * height / width));
+        simCanvas.width = gridW;
+        simCanvas.height = gridH;
+        heightCur = new Float32Array(gridW * gridH);
+        heightPrev = new Float32Array(gridW * gridH);
+        outputData = simCtx.createImageData(gridW, gridH);
+        prevGX = -1;
+        prevGY = -1;
+        render(performance.now());
+      }
+
+      // A soft, gentle drop. The wave equation then spreads it into natural,
+      // expanding concentric ripples (涟漪) that fade on their own.
+      function dropAt(gx, gy, amp, radius) {
+        if (!heightPrev) return;
+        const r = Math.max(1, Math.ceil(radius));
+        const rsq = radius * radius;
+        const cx = Math.round(gx);
+        const cy = Math.round(gy);
+        for (let dy = -r; dy <= r; dy += 1) {
+          const py = cy + dy;
+          if (py < 1 || py >= gridH - 1) continue;
+          for (let dx = -r; dx <= r; dx += 1) {
+            const px = cx + dx;
+            if (px < 1 || px >= gridW - 1) continue;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > rsq) continue;
+            const fall = Math.cos((Math.sqrt(d2) / radius) * (Math.PI / 2));
+            heightPrev[py * gridW + px] += amp * fall;
+          }
+        }
+      }
+
+      // Wave propagation: every cell relaxes toward its neighbours while energy
+      // slowly bleeds away (damping), so a touch expands and fades like water.
+      function stepWater() {
+        if (!heightCur || !heightPrev) return;
+        const damping = 0.992;
+        for (let y = 1; y < gridH - 1; y += 1) {
+          let i = y * gridW + 1;
+          for (let x = 1; x < gridW - 1; x += 1, i += 1) {
+            heightPrev[i] = (
+              (heightCur[i - 1] + heightCur[i + 1] + heightCur[i - gridW] + heightCur[i + gridW]) * 0.5 -
+              heightPrev[i]
+            ) * damping;
+          }
+        }
+        const swap = heightCur;
+        heightCur = heightPrev;
+        heightPrev = swap;
+      }
+
+      // Gentle ambient drops in many scales (leaning to the right "water side")
+      // keep the glass quietly alive and varied even before it is touched: a few
+      // broad slow swells, the occasional medium ring, and lots of tiny wavelets.
+      function seedAmbient(dt) {
+        if (!gridW) return;
+        ambientTimer -= dt;
+        if (ambientTimer > 0) return;
+        ambientTimer = 0.45 + Math.random() * 1.3;
+        const gx = (0.34 + Math.random() * 0.64) * gridW;
+        const gy = (0.08 + Math.random() * 0.86) * gridH;
+        const kind = Math.random();
+        if (kind < 0.2) {
+          dropAt(gx, gy, 0.46 + Math.random() * 0.3, 4 + Math.random() * 2.6); // broad swell
+        } else if (kind < 0.62) {
+          dropAt(gx, gy, 0.32 + Math.random() * 0.24, 1.6 + Math.random() * 1.2); // tiny wavelet
+        } else {
+          dropAt(gx, gy, 0.46 + Math.random() * 0.32, 2.6 + Math.random() * 1.6); // medium ring
+        }
+      }
+
+      // Render ripples as soft glassy highlights/shadows. Calm water has no
+      // gradient, so it stays transparent and the photo reads perfectly clear;
+      // only moving wavelets catch the light.
+      function computeWater() {
+        if (!outputData || !heightCur) return;
+        const d = outputData.data;
+        // The light direction drifts slowly, so highlights gently shimmer and
+        // the surface feels alive rather than frozen.
+        const lx = 0.5 + 0.14 * Math.sin(waterClock * 0.24);
+        const ly = 0.82 + 0.07 * Math.cos(waterClock * 0.19);
+        for (let y = 0; y < gridH; y += 1) {
+          const up = y > 0 ? y - 1 : y;
+          const down = y < gridH - 1 ? y + 1 : y;
+          for (let x = 0; x < gridW; x += 1) {
+            const i = y * gridW + x;
+            const left = x > 0 ? i - 1 : i;
+            const right = x < gridW - 1 ? i + 1 : i;
+            const gx = heightCur[left] - heightCur[right];
+            const gy = heightCur[up * gridW + x] - heightCur[down * gridW + x];
+            const slope = Math.abs(gx) + Math.abs(gy);
+            const di = i * 4;
+            // Low threshold so even faint wavelets register (soft + alive).
+            if (slope < 0.04) {
+              d[di + 3] = 0;
+              continue;
+            }
+            // The rising face of each wavelet catches the drifting light and
+            // glints; the falling face sits a touch darker for depth.
+            const spec = gx * lx + gy * ly;
+            if (spec >= 0) {
+              // soft blue-white glint
+              d[di] = 230;
+              d[di + 1] = 243;
+              d[di + 2] = 255;
+              const a = spec * 310 + slope * 20;
+              d[di + 3] = a > 178 ? 178 : a;
+            } else {
+              // faint cool shadow for depth
+              d[di] = 22;
+              d[di + 1] = 46;
+              d[di + 2] = 84;
+              const a = -spec * 124;
+              d[di + 3] = a > 46 ? 46 : a;
+            }
+          }
+        }
+      }
+
+      function paintHaze() {
+        ctx.globalCompositeOperation = "source-over";
+        // Mist gathers on the left ("fog side"); the right stays lighter so the
+        // water reads as a glossy surface. A little haze everywhere keeps the
+        // whole pane wipeable, but it never becomes a flat gray veil.
+        const base = ctx.createLinearGradient(0, 0, width, 0);
+        base.addColorStop(0, "rgba(223, 236, 250, 0.2)");
+        base.addColorStop(0.45, "rgba(223, 236, 250, 0.1)");
+        base.addColorStop(1, "rgba(224, 236, 251, 0.05)");
+        ctx.fillStyle = base;
+        ctx.fillRect(0, 0, width, height);
+
+        const vert = ctx.createLinearGradient(0, 0, 0, height);
+        vert.addColorStop(0, "rgba(223, 235, 250, 0.06)");
+        vert.addColorStop(0.46, "rgba(223, 235, 250, 0)");
+        vert.addColorStop(1, "rgba(221, 233, 248, 0.11)");
+        ctx.fillStyle = vert;
+        ctx.fillRect(0, 0, width, height);
+
+        for (let i = 0; i < blotchSeeds.length; i += 1) {
+          const [bx, by, br, ba] = blotchSeeds[i];
+          const blob = ctx.createRadialGradient(width * bx, height * by, 0, width * bx, height * by, Math.max(width, height) * br);
+          blob.addColorStop(0, `rgba(225, 237, 251, ${ba})`);
+          blob.addColorStop(1, "rgba(225, 237, 251, 0)");
+          ctx.fillStyle = blob;
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+
+      function strokeWidth() {
+        return Math.max(18, Math.min(26, width * 0.016));
+      }
+
+      function drawWipe(stroke, strength) {
+        const points = stroke.points;
+        if (!points.length) return;
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        const alpha = WIPE_ALPHA * strength;
+        ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
+        ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+        ctx.lineWidth = stroke.width;
+        if (points.length === 1) {
+          ctx.beginPath();
+          ctx.arc(points[0].x * width, points[0].y * height, stroke.width / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          points.forEach((point, index) => {
+            const x = point.x * width;
+            const y = point.y * height;
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // One pass over the single canvas: fog haze, punch the decaying wipe
+      // holes, then lay the water glints on top.
+      function render(now) {
+        if (!width || !height) return;
+        ctx.globalCompositeOperation = "source-over";
+        ctx.clearRect(0, 0, width, height);
+        paintHaze();
+        for (let i = wipes.length - 1; i >= 0; i -= 1) {
+          const stroke = wipes[i];
+          let strength = 1;
+          if (!reducedMotion) {
+            const age = now - stroke.born;
+            strength = age <= HOLD ? 1 : 1 - (age - HOLD) / FADE;
+          }
+          if (strength <= 0.003) {
+            wipes.splice(i, 1);
+            continue;
+          }
+          drawWipe(stroke, strength);
+        }
+        ctx.globalCompositeOperation = "source-over";
+        computeWater();
+        if (outputData) {
+          simCtx.putImageData(outputData, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.save();
+          ctx.globalAlpha = 0.72;
+          // A little blur dissolves the low-res grid at the wavefronts so the
+          // ripples read as smooth, soft glass rather than a mesh.
+          ctx.filter = "blur(0.75px)";
+          ctx.drawImage(simCanvas, 0, 0, width, height);
+          ctx.restore();
+        }
+      }
+
+      // Gentle disturbance that follows the pointer: a soft drop at the cursor,
+      // plus drops interpolated along the path so a quick move still trails one
+      // continuous ripple wake rather than dotted impacts.
+      function disturbFromPointer(event, strong = false) {
+        if (!gridW) return;
+        const rect = heroTitle.getBoundingClientRect();
+        const gx = ((event.clientX - rect.left) / rect.width) * gridW;
+        const gy = ((event.clientY - rect.top) / rect.height) * gridH;
+        const amp = strong ? 0.9 : 1.3;
+        dropAt(gx, gy, amp, 2.6);
+        if (!strong && prevGX >= 0) {
+          const dx = gx - prevGX;
+          const dy = gy - prevGY;
+          const steps = Math.min(10, Math.floor(Math.hypot(dx, dy) / 2));
+          for (let s = 1; s < steps; s += 1) {
+            dropAt(prevGX + (dx * s) / steps, prevGY + (dy * s) / steps, amp * 0.55, 2.2);
+          }
+        }
+        prevGX = gx;
+        prevGY = gy;
+      }
+
+      function animate(time) {
+        if (!reducedMotion) requestAnimationFrame(animate);
+        if (!width || !height) resizeWater();
+        const raw = lastFrame ? Math.min(0.05, (time - lastFrame) / 1000) : 0.016;
+        lastFrame = time;
+        if (document.hidden) return;
+        waterClock += raw;
+        seedAmbient(raw);
+        stepWater();
+        render(time);
+      }
+
+      function addPoint(x, y, forceNew = false) {
+        if (!width || !height) return;
+        const point = { x: x / width, y: y / height };
+        const now = performance.now();
+        const dist = lastPoint ? Math.hypot(x - lastPoint.x, y - lastPoint.y) : Infinity;
+        if (!forceNew && dist < 3 && now - lastAddAt < 12) return;
+        let stroke = wipes[wipes.length - 1];
+        // Only break the trail on a genuine jump (pointer re-enter) or once the
+        // previous stroke has begun fading — a fast drag stays one connected
+        // stroke instead of leaving gaps.
+        if (forceNew || !stroke || dist > 260 || now - stroke.born > HOLD) {
+          stroke = { width: strokeWidth(), points: [point], born: now };
+          wipes.push(stroke);
+          if (wipes.length > 90) wipes.shift();
+        } else if (stroke.points.length > 120) {
+          // Chunk very long strokes for perf, carrying the last point so the
+          // seam stays continuous (no dash where one chunk hands off to the next).
+          const prev = stroke.points[stroke.points.length - 1];
+          stroke = { width: stroke.width, points: [prev, point], born: now };
+          wipes.push(stroke);
+          if (wipes.length > 90) wipes.shift();
+        } else {
+          stroke.points.push(point);
+          stroke.born = now; // keep the active trail fresh until the pointer stops
+        }
+        lastPoint = { x, y };
+        lastAddAt = now;
+        // When animating, the continuous loop repaints; otherwise repaint now.
+        if (reducedMotion) render(performance.now());
+      }
+
+      heroTitle.addEventListener("pointerenter", (event) => {
+        const rect = heroTitle.getBoundingClientRect();
+        lastPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        disturbFromPointer(event, true);
+      });
+      heroTitle.addEventListener("pointermove", (event) => {
+        const rect = heroTitle.getBoundingClientRect();
+        disturbFromPointer(event);
+        // getCoalescedEvents returns the intermediate positions the browser
+        // captured between frames, so a fast drag draws a continuous trail.
+        const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : null;
+        if (samples && samples.length) {
+          for (const sample of samples) addPoint(sample.clientX - rect.left, sample.clientY - rect.top);
+        } else {
+          addPoint(event.clientX - rect.left, event.clientY - rect.top);
+        }
+      });
+      heroTitle.addEventListener("pointerleave", () => {
+        lastPoint = null;
+        prevGX = -1;
+        prevGY = -1;
+      });
+
+      if (window.ResizeObserver) new ResizeObserver(resizeWater).observe(heroTitle);
+      window.addEventListener("resize", resizeWater);
+      if (source && source.complete && source.naturalWidth) resizeWater();
+      else if (source) source.addEventListener("load", resizeWater, { once: true });
+      else resizeWater();
+      if (reducedMotion) resizeWater();
+      else requestAnimationFrame(animate);
+    }
 
     document.querySelectorAll("[data-copy-value]").forEach((button) => {
       const status = button.closest(".home-contact-tool")?.querySelector("[data-copy-status]");
