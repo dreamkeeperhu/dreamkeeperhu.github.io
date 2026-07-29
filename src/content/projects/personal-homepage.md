@@ -2,7 +2,7 @@
 title: "dreamkeeperhu.github.io"
 summary: "A research-oriented personal website with Astro, Obsidian publishing, Cloudflare Pages, and first-party lightweight APIs."
 problem: "A static homepage was not enough to connect CV, research progress, public notes, projects, and deployment automation."
-method: "Use Astro for static-first pages, Obsidian/R2 for writing, GitHub Actions for deployment, and Cloudflare KV for subscriptions, contact backups, and pulse metrics."
+method: "Use Astro for static-first pages, Obsidian/R2 for writing, GitHub Actions for deployment, and Cloudflare KV only for low-frequency persistent data."
 status: "active"
 statusDetail: "usable"
 updatedDate: 2026-05-17

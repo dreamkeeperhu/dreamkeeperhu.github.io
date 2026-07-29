@@ -48,14 +48,6 @@ const latestUpdate = milestones
       <strong class="pulse-date">{latestUpdate}</strong>
     </article>
     <article>
-      <span>Total visits</span>
-      <strong data-site-views>--</strong>
-    </article>
-    <article>
-      <span>Today</span>
-      <strong data-site-views-today>--</strong>
-    </article>
-    <article>
       <span>GitHub cache</span>
       <strong class="pulse-date" data-github-signal>--</strong>
     </article>
@@ -64,19 +56,6 @@ const latestUpdate = milestones
 
 <script is:inline define:vars={{ repoNames }}>
   const githubSignal = document.querySelector("[data-github-signal]");
-  const views = document.querySelector("[data-site-views]");
-  const viewsToday = document.querySelector("[data-site-views-today]");
-
-  fetch("/api/site-stats")
-    .then((response) => response.json())
-    .then((stats) => {
-      if (!stats.ok) return;
-      const visits = new Intl.NumberFormat().format(stats.views || 0);
-      const today = new Intl.NumberFormat().format(stats.viewsToday || 0);
-      if (views) views.textContent = visits;
-      if (viewsToday) viewsToday.textContent = today;
-    })
-    .catch(() => {});
 
   const repoQuery = repoNames.map((repo) => `dreamkeeperhu/${repo}`).join(",");
   fetch(repoQuery ? `/api/github-repos?repos=${encodeURIComponent(repoQuery)}` : "/api/github-repos?repos=dreamkeeperhu/dreamkeeperhu.github.io")

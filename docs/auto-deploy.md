@@ -41,7 +41,7 @@ The Cloudflare API token needs permission to deploy the Pages project. The R2 ac
 The root `wrangler.toml` binds three KV namespaces and one D1 database to the Cloudflare Pages project:
 
 - `SUBSCRIBERS`: stores opt-in email subscriptions and unsubscribe tokens from `/api/subscribe`
-- `SITE_METRICS`: stores anonymous aggregate page-view counters from `/api/visit`
+- `SITE_METRICS`: stores historical site counters, the low-frequency GitHub metadata cache, and manually managed bot denylist entries; request-scoped rate limits and bot state stay in bounded Worker memory
 - `CONTACT_MESSAGES`: stores lightweight contact form backups from `/api/contact`
 - `CONTENT_OPS_DB`: stores hidden-admin content inventory rows, quality issues, link-check results, content ops runs, saved newsletter drafts, bot-defense audit data, and site-ops maintenance/audit records.
 

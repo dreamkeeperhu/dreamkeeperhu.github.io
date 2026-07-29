@@ -9,6 +9,7 @@
     "obsidian:sync:r2": "OBSIDIAN_SOURCE=r2 node scripts/sync-obsidian.mjs",
     "content:sync": "node scripts/sync-obsidian.mjs",
     "validate:content": "node scripts/validate-content.mjs",
+    "test:kv-budget": "node scripts/verify-kv-budget.mjs",
     "prebuild": "node scripts/sync-obsidian.mjs && node scripts/validate-content.mjs",
     "build": "astro build",
     "preview": "astro preview"

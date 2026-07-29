@@ -7,32 +7,3 @@ const umamiSrc = import.meta.env.PUBLIC_UMAMI_SRC || "";
 
 {plausibleDomain && <script defer data-domain={plausibleDomain} src={plausibleSrc}></script>}
 {umamiWebsiteId && umamiSrc && <script defer src={umamiSrc} data-website-id={umamiWebsiteId}></script>}
-
-<script is:inline>
-  const metricKey = `hjh-viewed:${location.pathname}`;
-  let shouldRecord = true;
-  try {
-    shouldRecord = !sessionStorage.getItem(metricKey);
-    if (shouldRecord) sessionStorage.setItem(metricKey, "1");
-  } catch {
-    shouldRecord = true;
-  }
-
-  if (shouldRecord) {
-    const payload = JSON.stringify({
-      path: location.pathname,
-      title: document.title,
-    });
-
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon("/api/visit", new Blob([payload], { type: "application/json" }));
-    } else {
-      fetch("/api/visit", {
-        method: "POST",
-        body: payload,
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-      }).catch(() => {});
-    }
-  }
-</script>

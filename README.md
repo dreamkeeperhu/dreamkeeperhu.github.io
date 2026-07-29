@@ -1,6 +1,6 @@
 # HJH Personal Homepage
 
-Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research detail pages, projects, public notes, library, timeline, contact, RSS, dark mode, and privacy-friendly first-party analytics.
+Astro-powered personal homepage for Jianheng Hu (HJH): About, CV, research detail pages, projects, public notes, library, timeline, contact, RSS, dark mode, and optional privacy-friendly analytics.
 
 ## Local Development
 
@@ -105,7 +105,8 @@ This machine is configured to use `/Users/hu/Documents/Obsidian Vault/Homepage/N
 - Admin subscriber export: `/api/admin/subscribers` requires `Authorization: Bearer <ADMIN_TOKEN>`.
 - Content operations: hidden admin APIs use `CONTENT_OPS_DB` D1 to track content inventory, quality issues, link checks, and saved newsletter drafts.
 - Site operations: hidden admin APIs under `/api/admin/site-ops/*` expose backend health checks, admin write audit logs, maintenance snapshots, GitHub metadata cache warm/clear actions, and CSV/JSON exports.
-- First-party analytics: `/api/visit` records anonymous aggregate page counts in the `SITE_METRICS` KV namespace, and `/api/site-stats` exposes totals for the homepage pulse.
+- Historical site metrics remain readable through `/api/site-stats`, but public page views are no longer written to Workers KV.
+- Ephemeral bot-defense and rate-limit state is kept in bounded Worker memory so public requests do not consume the daily KV write budget.
 - Optional third-party analytics: set either Plausible or Umami environment variables:
   - `PUBLIC_PLAUSIBLE_DOMAIN`
   - `PUBLIC_PLAUSIBLE_SRC`

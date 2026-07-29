@@ -10,7 +10,6 @@ const BOT_PENALTY_PREFIX = "bot-penalty:";
 const BOT_AUDIT_SAMPLE_PREFIX = "bot-audit-sample:";
 const BOT_ENUM_PREFIX = "bot-enum:";
 const BOT_NOT_FOUND_PREFIX = "bot-404:";
-const BOT_POLICY_CACHE_KEY = "bot-policy-overrides:active";
 const BOT_RISK_PREFIX = "bot-risk:";
 const BOT_BROWSER_PROOF_COOKIE = "hjh_bp";
 const BOT_CANARY_PATH = "/__robots-canary-hjh";
@@ -38,6 +37,12 @@ const BOT_POLICY_CACHE_SECONDS = 120;
 const BOT_BROWSER_PROOF_SECONDS = 24 * 60 * 60;
 const BOT_RISK_STATE_SECONDS = 24 * 60 * 60;
 const SITE_OPS_EVENT_RETENTION_DAYS = 90;
+const EDGE_STATE_MAX_ENTRIES = 5_000;
+
+// Request-scoped security state is deliberately isolate-local to keep KV off hot paths.
+const edgeState = new Map();
+let botPolicyOverrideCache = { expiresAt: 0, value: [] };
+let lastBotAuditPruneDay = "";
 
 const DEFAULT_GITHUB_REPOS = [
   "dreamkeeperhu/dreamkeeperhu.github.io",
@@ -360,8 +365,10 @@ async function routeRequest(request, env, context, url) {
       if (!isSameOrigin(request, url)) {
         return json({ ok: false, error: "Invalid origin." }, 403);
       }
-      context.waitUntil(recordVisit(request, env));
-      return json({ ok: true });
+      return new Response(null, {
+        status: 204,
+        headers: { "Cache-Control": "no-store" },
+      });
     }
 
     if (url.pathname === "/api/site-stats") {
@@ -1086,6 +1093,9 @@ async function handleBotDefenseDenylistAction(request, env, url) {
   const key = `${BOT_DENY_PREFIX}${fingerprint}`;
   const now = new Date().toISOString();
   if (action === "clear") {
+    deleteEdgeState(key);
+    deleteEdgeState(`${BOT_PENALTY_PREFIX}${fingerprint}`);
+    deleteEdgeState(`${BOT_RISK_PREFIX}${fingerprint}`);
     await Promise.all([
       env.SITE_METRICS.delete(key),
       env.SITE_METRICS.delete(`${BOT_PENALTY_PREFIX}${fingerprint}`),
@@ -1096,6 +1106,7 @@ async function handleBotDefenseDenylistAction(request, env, url) {
   }
 
   const until = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+  writeEdgeState(key, { reasons: ["admin_extend"], riskScore: 100, until, note }, ttlSeconds);
   await Promise.all([
     env.SITE_METRICS.put(key, JSON.stringify({ reasons: ["admin_extend"], riskScore: 100, until, note }), { expirationTtl: ttlSeconds }),
     env.CONTENT_OPS_DB.prepare(
@@ -1587,31 +1598,6 @@ async function readSubscribers(env) {
   } while (cursor);
   subscribers.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
   return subscribers;
-}
-
-async function recordVisit(request, env) {
-  if (!env.SITE_METRICS) return;
-  const score = botScore(request);
-  if (isKnownBadCrawler(request) || (score > 0 && score <= 30)) return;
-
-  const limited = await checkRateLimit(env, request, "visit", 120, 60);
-  if (limited) return;
-
-  const tooLarge = enforceBodyLimit(request, 1024);
-  if (tooLarge) return;
-
-  const badType = enforceContentType(request, ["application/json", "text/plain"]);
-  if (badType) return;
-
-  const data = await readRequestData(request).catch(() => new Map());
-  const path = sanitizePath(data.get("path"));
-  const today = new Date().toISOString().slice(0, 10);
-
-  await Promise.all([
-    bumpMetric(env, "views:all"),
-    bumpMetric(env, `views:day:${today}`),
-    bumpMetric(env, `views:path:${path}`),
-  ]);
 }
 
 async function handleSiteStats(request, env) {
@@ -2531,12 +2517,15 @@ function isSafeRegex(value) {
 }
 
 async function refreshBotPolicyCache(env) {
-  if (!env.SITE_METRICS || !env.CONTENT_OPS_DB) return;
+  if (!env.CONTENT_OPS_DB) return;
   const now = new Date().toISOString();
   const rows = await env.CONTENT_OPS_DB.prepare(
     "SELECT id, kind, value, action, note, expires_at, created_at, updated_at FROM bot_policy_overrides WHERE expires_at = '' OR expires_at > ? ORDER BY updated_at DESC LIMIT 200"
   ).bind(now).all().catch(() => ({ results: [] }));
-  await env.SITE_METRICS.put(BOT_POLICY_CACHE_KEY, JSON.stringify(rows.results || []), { expirationTtl: BOT_POLICY_CACHE_SECONDS });
+  botPolicyOverrideCache = {
+    expiresAt: Date.now() + BOT_POLICY_CACHE_SECONDS * 1000,
+    value: rows.results || [],
+  };
 }
 
 async function readBotDenylistSamples(env) {
@@ -2673,11 +2662,10 @@ async function requireTurnstile(request, env, data) {
 }
 
 async function checkRateLimit(env, request, scope, limit, windowSeconds) {
-  if (!env.SITE_METRICS) return null;
   const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
   const identity = await clientFingerprint(request);
   const key = `${RATE_LIMIT_PREFIX}${scope}:${bucket}:${identity}`;
-  const current = Number((await env.SITE_METRICS.get(key)) || "0");
+  const current = Number(readEdgeState(key) || 0);
   if (current >= limit) {
     return json(
       { ok: false, error: "Too many requests. Please try again later." },
@@ -2685,8 +2673,44 @@ async function checkRateLimit(env, request, scope, limit, windowSeconds) {
       { "Retry-After": String(windowSeconds) }
     );
   }
-  await env.SITE_METRICS.put(key, String(current + 1), { expirationTtl: windowSeconds * 2 });
+  writeEdgeState(key, current + 1, windowSeconds * 2);
   return null;
+}
+
+function readEdgeState(key) {
+  const entry = edgeState.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    edgeState.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function writeEdgeState(key, value, ttlSeconds) {
+  const now = Date.now();
+  if (edgeState.size >= EDGE_STATE_MAX_ENTRIES) {
+    pruneEdgeState(now);
+  }
+  edgeState.set(key, {
+    expiresAt: now + Math.max(1, ttlSeconds) * 1000,
+    value,
+  });
+}
+
+function deleteEdgeState(key) {
+  edgeState.delete(key);
+}
+
+function pruneEdgeState(now = Date.now()) {
+  for (const [key, entry] of edgeState) {
+    if (entry.expiresAt <= now) edgeState.delete(key);
+  }
+  while (edgeState.size >= EDGE_STATE_MAX_ENTRIES) {
+    const oldestKey = edgeState.keys().next().value;
+    if (oldestKey === undefined) break;
+    edgeState.delete(oldestKey);
+  }
 }
 
 async function clientFingerprint(request) {
@@ -2871,7 +2895,6 @@ async function classifyBotRequest(request, env, url, profile) {
 }
 
 async function enforcePublicRatePolicy(env, request, profile, policy) {
-  if (!env.SITE_METRICS) return null;
   for (const window of policy.windows || [policy]) {
     const limited = await checkPublicRateWindow(env, request, profile, window);
     if (limited) return limited;
@@ -2888,7 +2911,7 @@ async function checkPublicRateWindow(env, request, profile, { scope, limit, wind
     { dimension: "ua", key: `${RATE_LIMIT_PREFIX}${scope}:ua:${bucket}:${profile.uaHash}`, limit: Math.max(limit * 8, 120) },
   ];
   for (const item of checks) {
-    const current = Number((await env.SITE_METRICS.get(item.key)) || "0");
+    const current = Number(readEdgeState(item.key) || 0);
     if (current >= item.limit) {
       return botDecision("rate_limit", 429, 85, ["rate_limited"], profile, {
         scope,
@@ -2896,7 +2919,7 @@ async function checkPublicRateWindow(env, request, profile, { scope, limit, wind
         retryAfter: windowSeconds,
       });
     }
-    await env.SITE_METRICS.put(item.key, String(current + 1), { expirationTtl: windowSeconds * 2 });
+    writeEdgeState(item.key, current + 1, windowSeconds * 2);
   }
   return null;
 }
@@ -3201,19 +3224,17 @@ async function findBotPolicyOverride(env, profile, url) {
 }
 
 async function readActiveBotPolicyOverrides(env) {
-  if (env.SITE_METRICS) {
-    const cached = await env.SITE_METRICS.get(BOT_POLICY_CACHE_KEY, "json").catch(() => null);
-    if (Array.isArray(cached)) return cached;
-  }
+  if (botPolicyOverrideCache.expiresAt > Date.now()) return botPolicyOverrideCache.value;
   if (!env.CONTENT_OPS_DB) return [];
   const now = new Date().toISOString();
   const rows = await env.CONTENT_OPS_DB.prepare(
     "SELECT id, kind, value, action, note, expires_at, created_at, updated_at FROM bot_policy_overrides WHERE expires_at = '' OR expires_at > ? ORDER BY updated_at DESC LIMIT 200"
   ).bind(now).all().catch(() => ({ results: [] }));
   const overrides = rows.results || [];
-  if (env.SITE_METRICS) {
-    await env.SITE_METRICS.put(BOT_POLICY_CACHE_KEY, JSON.stringify(overrides), { expirationTtl: BOT_POLICY_CACHE_SECONDS });
-  }
+  botPolicyOverrideCache = {
+    expiresAt: Date.now() + BOT_POLICY_CACHE_SECONDS * 1000,
+    value: overrides,
+  };
   return overrides;
 }
 
@@ -3226,19 +3247,20 @@ function safePatternTest(patternText, value) {
 }
 
 async function readDenylist(env, profile) {
+  const edgeDenied = readEdgeState(`${BOT_DENY_PREFIX}${profile.fingerprint}`);
+  if (edgeDenied) return edgeDenied;
   if (!env.SITE_METRICS) return null;
   return env.SITE_METRICS.get(`${BOT_DENY_PREFIX}${profile.fingerprint}`, "json").catch(() => null);
 }
 
 async function readBotRiskState(env, profile) {
-  if (!env.SITE_METRICS) return null;
-  return env.SITE_METRICS.get(`${BOT_RISK_PREFIX}${profile.fingerprint}`, "json").catch(() => null);
+  return readEdgeState(`${BOT_RISK_PREFIX}${profile.fingerprint}`);
 }
 
 async function updateBotRiskState(env, profile, decision) {
-  if (!env.SITE_METRICS || decision.action === "allow") return null;
+  if (decision.action === "allow") return null;
   const key = `${BOT_RISK_PREFIX}${profile.fingerprint}`;
-  const existing = await env.SITE_METRICS.get(key, "json").catch(() => null) || {};
+  const existing = readEdgeState(key) || {};
   const failureCount = Number(existing.failureCount || 0) + (decision.action === "rate_limit" ? 0.5 : 1);
   const riskScore = Math.max(Number(existing.riskScore || 0) * 0.7, Number(decision.riskScore || 0));
   const state = {
@@ -3258,39 +3280,39 @@ async function updateBotRiskState(env, profile, decision) {
     denyUntil: existing.denyUntil || "",
     updatedAt: new Date().toISOString(),
   };
-  await env.SITE_METRICS.put(key, JSON.stringify(state), { expirationTtl: BOT_RISK_STATE_SECONDS });
+  writeEdgeState(key, state, BOT_RISK_STATE_SECONDS);
   return state;
 }
 
 async function applyBotPenalty(env, profile, decision) {
-  if (!env.SITE_METRICS || !["block", "not_found"].includes(decision.action) || decision.riskScore < 90) return;
+  if (!["block", "not_found"].includes(decision.action) || decision.riskScore < 90) return;
   const strikeKey = `${BOT_PENALTY_PREFIX}${profile.fingerprint}`;
-  const strikes = Number((await env.SITE_METRICS.get(strikeKey)) || "0") + 1;
-  await env.SITE_METRICS.put(strikeKey, String(strikes), { expirationTtl: BOT_DENY_LONG_SECONDS });
+  const strikes = Number(readEdgeState(strikeKey) || 0) + 1;
+  writeEdgeState(strikeKey, strikes, BOT_DENY_LONG_SECONDS);
   if (strikes < 3) return;
   const ttl = strikes >= 4 ? BOT_DENY_LONG_SECONDS : BOT_DENY_SHORT_SECONDS;
   const until = new Date(Date.now() + ttl * 1000).toISOString();
-  await env.SITE_METRICS.put(
+  writeEdgeState(
     `${BOT_DENY_PREFIX}${profile.fingerprint}`,
-    JSON.stringify({ reasons: decision.reasons, riskScore: decision.riskScore, until }),
-    { expirationTtl: ttl }
+    { reasons: decision.reasons, riskScore: decision.riskScore, until },
+    ttl
   );
   const state = await readBotRiskState(env, profile);
   if (state) {
-    await env.SITE_METRICS.put(`${BOT_RISK_PREFIX}${profile.fingerprint}`, JSON.stringify({ ...state, denyUntil: until }), { expirationTtl: BOT_RISK_STATE_SECONDS });
+    writeEdgeState(`${BOT_RISK_PREFIX}${profile.fingerprint}`, { ...state, denyUntil: until }, BOT_RISK_STATE_SECONDS);
   }
 }
 
 async function checkEnumerationPattern(env, profile, url, suspicious) {
-  if (!env.SITE_METRICS || !isPublicContentPath(url.pathname)) return null;
+  if (!isPublicContentPath(url.pathname)) return null;
   const bucket = Math.floor(Date.now() / (BOT_ENUM_WINDOW_SECONDS * 1000));
   const key = `${BOT_ENUM_PREFIX}${bucket}:${profile.fingerprint}`;
-  const state = await env.SITE_METRICS.get(key, "json").catch(() => null) || { paths: [] };
+  const state = readEdgeState(key) || { paths: [] };
   const pathHash = await sha256(url.pathname);
   const paths = Array.isArray(state.paths) ? state.paths : [];
   if (!paths.includes(pathHash)) paths.push(pathHash);
   const threshold = suspicious ? 24 : 60;
-  await env.SITE_METRICS.put(key, JSON.stringify({ paths: paths.slice(-100), updatedAt: new Date().toISOString() }), { expirationTtl: BOT_ENUM_WINDOW_SECONDS * 2 });
+  writeEdgeState(key, { paths: paths.slice(-100), updatedAt: new Date().toISOString() }, BOT_ENUM_WINDOW_SECONDS * 2);
   if (paths.length >= threshold) {
     return botDecision(paths.length >= threshold * 2 ? "block" : "rate_limit", paths.length >= threshold * 2 ? 403 : 429, 90, ["enumeration"], profile, {
       retryAfter: BOT_ENUM_WINDOW_SECONDS,
@@ -3301,11 +3323,10 @@ async function checkEnumerationPattern(env, profile, url, suspicious) {
 }
 
 async function checkNotFoundScan(env, profile, url) {
-  if (!env.SITE_METRICS) return null;
   const bucket = Math.floor(Date.now() / (BOT_NOT_FOUND_WINDOW_SECONDS * 1000));
   const key = `${BOT_NOT_FOUND_PREFIX}${bucket}:${profile.fingerprint}`;
-  const count = Number((await env.SITE_METRICS.get(key)) || "0") + 1;
-  await env.SITE_METRICS.put(key, String(count), { expirationTtl: BOT_NOT_FOUND_WINDOW_SECONDS * 2 });
+  const count = Number(readEdgeState(key) || 0) + 1;
+  writeEdgeState(key, count, BOT_NOT_FOUND_WINDOW_SECONDS * 2);
   if (count >= 18) {
     return botDecision("block", 403, 90, ["not_found_scan"], profile, { pathGroup: pathGroupForAudit(url.pathname) });
   }
@@ -3387,11 +3408,9 @@ async function writeBotAuditEvent(env, request, url, profile, decision) {
 }
 
 async function maybePruneBotAuditEvents(env, now) {
-  if (!env.SITE_METRICS) return;
-  const key = `${BOT_AUDIT_SAMPLE_PREFIX}prune:${now.slice(0, 10)}`;
-  const seen = await env.SITE_METRICS.get(key);
-  if (seen) return;
-  await env.SITE_METRICS.put(key, "1", { expirationTtl: 24 * 60 * 60 });
+  const day = now.slice(0, 10);
+  if (lastBotAuditPruneDay === day) return;
+  lastBotAuditPruneDay = day;
   const cutoff = new Date(Date.now() - BOT_AUDIT_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   await env.CONTENT_OPS_DB.prepare("DELETE FROM bot_audit_events WHERE event_at < ?").bind(cutoff).run();
 }
@@ -3455,12 +3474,11 @@ function botCanaryHitStatement(env, url, profile, now) {
 }
 
 async function shouldWriteBotAuditSample(env, profile, decision) {
-  if (!env.SITE_METRICS) return true;
   const reason = decision.reasons?.[0] || "unknown";
   const key = `${BOT_AUDIT_SAMPLE_PREFIX}${profile.fingerprint}:${decision.action}:${decision.status}:${reason}:${decision.pathGroup || profile.pathGroup}`;
-  const seen = await env.SITE_METRICS.get(key);
+  const seen = readEdgeState(key);
   if (seen) return false;
-  await env.SITE_METRICS.put(key, "1", { expirationTtl: BOT_AUDIT_SAMPLE_SECONDS });
+  writeEdgeState(key, true, BOT_AUDIT_SAMPLE_SECONDS);
   return true;
 }
 
