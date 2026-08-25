@@ -97,9 +97,7 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
         <div class="flip-front">
           <div class="hero-title water-hero" data-reveal-zone>
             <img class="hero-media" src={homeHeroImage} alt="" width="2600" height="1351" decoding="async" fetchpriority="high" />
-            <div class="hero-atmosphere" aria-hidden="true"></div>
             <canvas class="hero-fog" aria-hidden="true"></canvas>
-            <div class="hero-water-sheen" aria-hidden="true"></div>
             <h1>Jianheng Hu</h1>
             <div class="hero-focus">
               <span>Welcome</span>
@@ -383,16 +381,27 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
 
     initHeroFx();
 
-    // --- Combined water + fog on ONE canvas. Stacking two canvas layers inside
-    // the hero can trip an ANGLE/Metal compositing bug that darkens the whole
-    // backdrop, so the fog haze, the decaying wipe holes, and the water glints
-    // are all composited onto this single layer.
+    // --- One pane of water, two faces (一体两面) ----------------------------
+    // The hero is a single body of water shown in its two states:
     //
-    // Water: a soft height-field shimmer that reads like flowing ripples on
-    // glass — no streak bands, no rings, just gentle round disturbances and
-    // organic non-grid forcing, biased to the left ("water side").
-    // Fog: a thin frost (heavier on the right "fog side") the pointer wipes
-    // away; wiped areas slowly re-condense so the glass never fully clears.
+    //   水 — the left face is liquid: the poster is seen THROUGH the water
+    //        surface. Rain falls on its own, and the pointer bends the
+    //        surface into true refractive ripples (涟漪) that expand,
+    //        interfere and fade on a real wave equation.
+    //   雾 — the right face is vapour: layered banks of mist drift across the
+    //        poster on a slow gusting wind and breathe in and out
+    //        (忽隐忽现), so the butterflies ghost in and out of view. The
+    //        pointer parts the mist, and it silently closes back.
+    //
+    //   The middle is a living blend — thin mist over calm water — where one
+    //   touch raises ripples AND parts fog at the same time.
+    //
+    // Everything (refraction, crest light, fog banks, the parting field) is
+    // composed into one offscreen ImageData and painted onto this single
+    // canvas: stacking two canvases inside the hero trips an ANGLE/Metal
+    // compositing bug that darkens the whole backdrop. The canvas sits UNDER
+    // the CSS grade gradients (z-index 1 vs. 2), so pixels where nothing
+    // happens stay fully transparent — calm water is the untouched poster.
     function initHeroFx() {
       const canvas = document.querySelector(".hero-fog");
       const source = document.querySelector(".hero-media");
@@ -401,7 +410,9 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
       const ctx = canvas.getContext("2d", { alpha: true });
       const simCanvas = document.createElement("canvas");
       const simCtx = simCanvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx || !simCtx) return;
+      const srcCanvas = document.createElement("canvas");
+      const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx || !simCtx || !srcCtx) return;
 
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       let width = 0;
@@ -412,29 +423,170 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
       // Two height buffers for the ripple wave equation.
       let heightCur = null;
       let heightPrev = null;
+      // Fog parting field: pointer-carved clearings that diffuse and close.
+      let clearField = null;
+      let clearTmp = null;
+      // The two faces as per-pixel strength maps.
+      let waterMask = null;
+      let fogMask = null;
+      // Poster pixels at grid resolution, for the refraction lookups.
+      let srcData = null;
+      // Heavily softened poster: the world as seen THROUGH mist. Fog doesn't
+      // just whiten the poster — it silences its detail first.
+      let blurData = null;
       let outputData = null;
       let lastFrame = 0;
-      let ambientTimer = 1.2;
-      let waterClock = 0; // slow clock that drifts the light for a living shimmer
+      let ambientTimer = 1.1;
+      let drizzleTimer = 0.4;
+      let clock = 0; // drifts the light across the water
+      let fogTime = 14; // starts mid-cycle so the first paint already has banks
+      let heroVisible = true;
       // Previous pointer position (grid coords) so a fast move leaves a
       // continuous ripple trail instead of isolated drops.
       let prevGX = -1;
       let prevGY = -1;
 
-      // Fog wipe state
-      let lastPoint = null;
-      let lastAddAt = 0;
-      const wipes = [];
-      const HOLD = 900; // ms a wipe stays fully clear before re-condensing
-      const FADE = 7200; // ms for fog to fully grow back
-      const WIPE_ALPHA = 1; // wipe fully clears the glass for an obvious reveal
-      const blotchSeeds = [
-        [0.2, 0.64, 0.5, 0.07],
-        [0.4, 0.86, 0.42, 0.055],
-        [0.08, 0.26, 0.38, 0.06],
-      ];
+      // -- Tileable value-noise fBm textures for the fog, generated once ------
+      function makeFogTexture(seed) {
+        const SIZE = 256;
+        const out = new Float32Array(SIZE * SIZE);
+        let state = seed >>> 0;
+        const rand = () => {
+          state |= 0;
+          state = (state + 0x6d2b79f5) | 0;
+          let t = Math.imul(state ^ (state >>> 15), 1 | state);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+        // Wrapped lattices keep every octave seamless when the texture scrolls.
+        const octaves = [
+          [6, 0.52],
+          [12, 0.26],
+          [24, 0.14],
+          [48, 0.08],
+        ];
+        for (const [period, weight] of octaves) {
+          const lattice = new Float32Array(period * period);
+          for (let i = 0; i < lattice.length; i += 1) lattice[i] = rand();
+          for (let y = 0; y < SIZE; y += 1) {
+            const fy = (y / SIZE) * period;
+            const y0 = Math.floor(fy) % period;
+            const y1 = (y0 + 1) % period;
+            let ty = fy - Math.floor(fy);
+            ty = ty * ty * (3 - 2 * ty);
+            for (let x = 0; x < SIZE; x += 1) {
+              const fx = (x / SIZE) * period;
+              const x0 = Math.floor(fx) % period;
+              const x1 = (x0 + 1) % period;
+              let tx = fx - Math.floor(fx);
+              tx = tx * tx * (3 - 2 * tx);
+              const a = lattice[y0 * period + x0];
+              const b = lattice[y0 * period + x1];
+              const c = lattice[y1 * period + x0];
+              const d = lattice[y1 * period + x1];
+              out[y * SIZE + x] += weight * ((a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty);
+            }
+          }
+        }
+        return out;
+      }
 
-      function resizeWater() {
+      const fogTexA = makeFogTexture(20260617); // large slow banks
+      const fogTexB = makeFogTexture(90417); // finer counter-drifting detail
+
+      function sampleFog(tex, u, v) {
+        const fu = u - Math.floor(u);
+        const fv = v - Math.floor(v);
+        const fx = fu * 256;
+        const fy = fv * 256;
+        const x0 = Math.floor(fx) & 255;
+        const y0 = Math.floor(fy) & 255;
+        const x1 = (x0 + 1) & 255;
+        const y1 = (y0 + 1) & 255;
+        const tx = fx - Math.floor(fx);
+        const ty = fy - Math.floor(fy);
+        const a = tex[y0 * 256 + x0];
+        const b = tex[y0 * 256 + x1];
+        const c = tex[y1 * 256 + x0];
+        const d = tex[y1 * 256 + x1];
+        return (a + (b - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty;
+      }
+
+      function smooth01(edge0, edge1, x) {
+        const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+      }
+
+      // Three separable box passes ≈ a wide gaussian — the poster as it looks
+      // through real mist, with all its busy streaks dissolved.
+      function buildMistPixels(pixels) {
+        const n = gridW * gridH;
+        let cur = new Float32Array(n * 3);
+        let tmp = new Float32Array(n * 3);
+        for (let i = 0; i < n; i += 1) {
+          cur[i * 3] = pixels[i * 4];
+          cur[i * 3 + 1] = pixels[i * 4 + 1];
+          cur[i * 3 + 2] = pixels[i * 4 + 2];
+        }
+        const radius = Math.max(4, Math.round(gridW / 52));
+        const win = radius * 2 + 1;
+        for (let pass = 0; pass < 3; pass += 1) {
+          for (let y = 0; y < gridH; y += 1) {
+            const row = y * gridW;
+            let sr = 0;
+            let sg = 0;
+            let sb = 0;
+            for (let x = -radius; x <= radius; x += 1) {
+              const cx = x < 0 ? 0 : x > gridW - 1 ? gridW - 1 : x;
+              const j = (row + cx) * 3;
+              sr += cur[j];
+              sg += cur[j + 1];
+              sb += cur[j + 2];
+            }
+            for (let x = 0; x < gridW; x += 1) {
+              const j = (row + x) * 3;
+              tmp[j] = sr / win;
+              tmp[j + 1] = sg / win;
+              tmp[j + 2] = sb / win;
+              const xa = x - radius < 0 ? 0 : x - radius;
+              const xr = x + radius + 1 > gridW - 1 ? gridW - 1 : x + radius + 1;
+              const ja = (row + xa) * 3;
+              const jr = (row + xr) * 3;
+              sr += cur[jr] - cur[ja];
+              sg += cur[jr + 1] - cur[ja + 1];
+              sb += cur[jr + 2] - cur[ja + 2];
+            }
+          }
+          for (let x = 0; x < gridW; x += 1) {
+            let sr = 0;
+            let sg = 0;
+            let sb = 0;
+            for (let y = -radius; y <= radius; y += 1) {
+              const cy = y < 0 ? 0 : y > gridH - 1 ? gridH - 1 : y;
+              const j = (cy * gridW + x) * 3;
+              sr += tmp[j];
+              sg += tmp[j + 1];
+              sb += tmp[j + 2];
+            }
+            for (let y = 0; y < gridH; y += 1) {
+              const j = (y * gridW + x) * 3;
+              cur[j] = sr / win;
+              cur[j + 1] = sg / win;
+              cur[j + 2] = sb / win;
+              const ya = y - radius < 0 ? 0 : y - radius;
+              const yr = y + radius + 1 > gridH - 1 ? gridH - 1 : y + radius + 1;
+              const ja = (ya * gridW + x) * 3;
+              const jr = (yr * gridW + x) * 3;
+              sr += tmp[jr] - tmp[ja];
+              sg += tmp[jr + 1] - tmp[ja + 1];
+              sb += tmp[jr + 2] - tmp[ja + 2];
+            }
+          }
+        }
+        return cur;
+      }
+
+      function rebuild() {
         const rect = heroTitle.getBoundingClientRect();
         width = Math.max(1, Math.round(rect.width));
         height = Math.max(1, Math.round(rect.height));
@@ -445,21 +597,68 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
         canvas.style.height = `${height}px`;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        // Fairly fine ripple field; upscaling smoothing keeps the wavelets glassy.
-        gridW = Math.min(300, Math.max(140, Math.round(width / 4.8)));
-        gridH = Math.max(90, Math.round(gridW * height / width));
+        // Grid ≈ 1/3.6 of CSS pixels: fine enough for rings, coarse enough
+        // that the fog reads as soft banks once upscaled.
+        gridW = Math.min(400, Math.max(180, Math.round(width / 3.6)));
+        gridH = Math.max(100, Math.round((gridW * height) / width));
+        const gridN = gridW * gridH;
         simCanvas.width = gridW;
         simCanvas.height = gridH;
-        heightCur = new Float32Array(gridW * gridH);
-        heightPrev = new Float32Array(gridW * gridH);
+        heightCur = new Float32Array(gridN);
+        heightPrev = new Float32Array(gridN);
+        clearField = new Float32Array(gridN);
+        clearTmp = new Float32Array(gridN);
         outputData = simCtx.createImageData(gridW, gridH);
+
+        // The face map: liquid on the left, vapour on the right, a wide
+        // breathing blend between them. Mist also gathers low over the water
+        // and pools in the top-right corner. On narrow (portrait) panes the
+        // side-by-side split has no room to breathe, so the mist withdraws
+        // to the far right edge and the lower bank instead.
+        const narrow = width < 700;
+        waterMask = new Float32Array(gridN);
+        fogMask = new Float32Array(gridN);
+        for (let y = 0; y < gridH; y += 1) {
+          const ny = y / gridH;
+          for (let x = 0; x < gridW; x += 1) {
+            const nx = x / gridW;
+            const i = y * gridW + x;
+            waterMask[i] = narrow ? 1 - smooth01(0.3, 0.9, nx) : 1 - smooth01(0.24, 0.68, nx);
+            const side = narrow ? smooth01(0.52, 0.98, nx) : smooth01(0.26, 0.72, nx);
+            const low = narrow
+              ? 0.3 + 0.7 * smooth01(0.28, 0.98, ny)
+              : 0.62 + 0.38 * smooth01(0.02, 0.85, ny);
+            const cornerDx = (nx - 0.88) / 0.22;
+            const cornerDy = (ny - 0.16) / 0.3;
+            const corner = Math.exp(-(cornerDx * cornerDx + cornerDy * cornerDy));
+            fogMask[i] = Math.min(1, side * low + (narrow ? 0.3 : 0.65) * corner) * (narrow ? 0.72 : 1);
+          }
+        }
+
+        // Poster pixels at grid res, cropped exactly like object-fit: cover at
+        // object-position: center 46%, so at rest the refraction is identical
+        // to the untouched poster and quietly disappears.
+        srcData = null;
+        if (source && source.complete && source.naturalWidth) {
+          const iw = source.naturalWidth;
+          const ih = source.naturalHeight;
+          const scale = Math.max(gridW / iw, gridH / ih);
+          const dw = iw * scale;
+          const dh = ih * scale;
+          srcCanvas.width = gridW;
+          srcCanvas.height = gridH;
+          srcCtx.clearRect(0, 0, gridW, gridH);
+          srcCtx.drawImage(source, (gridW - dw) / 2, (gridH - dh) * 0.46, dw, dh);
+          srcData = srcCtx.getImageData(0, 0, gridW, gridH).data;
+          blurData = buildMistPixels(srcData);
+        }
         prevGX = -1;
         prevGY = -1;
-        render(performance.now());
+        render();
       }
 
-      // A soft, gentle drop. The wave equation then spreads it into natural,
-      // expanding concentric ripples (涟漪) that fade on their own.
+      // -- 水: the wave field -------------------------------------------------
+      // A soft drop; the wave equation spreads it into expanding rings.
       function dropAt(gx, gy, amp, radius) {
         if (!heightPrev) return;
         const r = Math.max(1, Math.ceil(radius));
@@ -474,17 +673,16 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
             if (px < 1 || px >= gridW - 1) continue;
             const d2 = dx * dx + dy * dy;
             if (d2 > rsq) continue;
-            const fall = Math.cos((Math.sqrt(d2) / radius) * (Math.PI / 2));
-            heightPrev[py * gridW + px] += amp * fall;
+            heightPrev[py * gridW + px] += amp * Math.cos((Math.sqrt(d2) / radius) * Math.PI * 0.5);
           }
         }
       }
 
-      // Wave propagation: every cell relaxes toward its neighbours while energy
-      // slowly bleeds away (damping), so a touch expands and fades like water.
+      // Every cell relaxes toward its neighbours while energy slowly bleeds
+      // away, so a touch expands and fades the way still water does.
       function stepWater() {
         if (!heightCur || !heightPrev) return;
-        const damping = 0.992;
+        const damping = 0.991;
         for (let y = 1; y < gridH - 1; y += 1) {
           let i = y * gridW + 1;
           for (let x = 1; x < gridW - 1; x += 1, i += 1) {
@@ -499,266 +697,312 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
         heightPrev = swap;
       }
 
-      // Gentle ambient drops in many scales (leaning to the right "water side")
-      // keep the glass quietly alive and varied even before it is touched: a few
-      // broad slow swells, the occasional medium ring, and lots of tiny wavelets.
+      // Rain on the liquid face, on two channels: a steady drizzle of tiny
+      // drops whose overlapping rings keep the surface shimmering even at
+      // rest, and the occasional heavier drop or slow broad swell.
       function seedAmbient(dt) {
         if (!gridW) return;
         ambientTimer -= dt;
+        drizzleTimer -= dt;
+        if (drizzleTimer <= 0) {
+          drizzleTimer = 0.14 + Math.random() * 0.3;
+          dropAt(
+            (0.05 + Math.random() * 0.52) * gridW,
+            (0.08 + Math.random() * 0.84) * gridH,
+            0.5 + Math.random() * 0.4,
+            2.6 + Math.random() * 1.6,
+          );
+        }
         if (ambientTimer > 0) return;
-        ambientTimer = 0.45 + Math.random() * 1.3;
-        const gx = (0.34 + Math.random() * 0.64) * gridW;
-        const gy = (0.08 + Math.random() * 0.86) * gridH;
-        const kind = Math.random();
-        if (kind < 0.2) {
-          dropAt(gx, gy, 0.46 + Math.random() * 0.3, 4 + Math.random() * 2.6); // broad swell
-        } else if (kind < 0.62) {
-          dropAt(gx, gy, 0.32 + Math.random() * 0.24, 1.6 + Math.random() * 1.2); // tiny wavelet
+        ambientTimer = 1.6 + Math.random() * 2.2;
+        const gx = (0.05 + Math.random() * 0.52) * gridW;
+        const gy = (0.08 + Math.random() * 0.84) * gridH;
+        if (Math.random() < 0.2) {
+          dropAt(gx, gy, 0.6 + Math.random() * 0.25, 7 + Math.random() * 4);
         } else {
-          dropAt(gx, gy, 0.46 + Math.random() * 0.32, 2.6 + Math.random() * 1.6); // medium ring
+          dropAt(gx, gy, 0.85 + Math.random() * 0.3, 3.5 + Math.random() * 1.8);
         }
       }
 
-      // Render ripples as soft glassy highlights/shadows. Calm water has no
-      // gradient, so it stays transparent and the photo reads perfectly clear;
-      // only moving wavelets catch the light.
-      function computeWater() {
-        if (!outputData || !heightCur) return;
-        const d = outputData.data;
-        // The light direction drifts slowly, so highlights gently shimmer and
-        // the surface feels alive rather than frozen.
-        const lx = 0.5 + 0.14 * Math.sin(waterClock * 0.24);
-        const ly = 0.82 + 0.07 * Math.cos(waterClock * 0.19);
+      // -- 雾: the parting field ----------------------------------------------
+      // Carved clearings decay back and bleed outward a little, so parted fog
+      // closes in softly instead of popping back. The pass is skipped entirely
+      // while the field is clear, which is most of the time.
+      let clearActive = false;
+
+      function stepFogField(dt) {
+        if (!clearField || !clearActive) return;
+        const decay = Math.exp(-dt / 6.5);
+        let peak = 0;
         for (let y = 0; y < gridH; y += 1) {
-          const up = y > 0 ? y - 1 : y;
-          const down = y < gridH - 1 ? y + 1 : y;
           for (let x = 0; x < gridW; x += 1) {
             const i = y * gridW + x;
-            const left = x > 0 ? i - 1 : i;
-            const right = x < gridW - 1 ? i + 1 : i;
-            const gx = heightCur[left] - heightCur[right];
-            const gy = heightCur[up * gridW + x] - heightCur[down * gridW + x];
-            const slope = Math.abs(gx) + Math.abs(gy);
+            const l = clearField[x > 0 ? i - 1 : i];
+            const r = clearField[x < gridW - 1 ? i + 1 : i];
+            const u = clearField[y > 0 ? i - gridW : i];
+            const b = clearField[y < gridH - 1 ? i + gridW : i];
+            clearTmp[i] = clearField[i] * decay + ((l + r + u + b) * 0.25 - clearField[i]) * 0.22;
+            if (clearTmp[i] > peak) peak = clearTmp[i];
+          }
+        }
+        const swap = clearField;
+        clearField = clearTmp;
+        clearTmp = swap;
+        if (peak < 0.004) {
+          clearField.fill(0);
+          clearActive = false;
+        }
+      }
+
+      function partFogAt(nx, ny, radiusN, strength) {
+        if (!clearField || !gridW) return;
+        clearActive = true;
+        const gx = nx * gridW;
+        const gy = ny * gridH;
+        const r = Math.max(2, radiusN * gridW);
+        const rsq = r * r;
+        const x0 = Math.max(0, Math.floor(gx - r));
+        const x1 = Math.min(gridW - 1, Math.ceil(gx + r));
+        const y0 = Math.max(0, Math.floor(gy - r));
+        const y1 = Math.min(gridH - 1, Math.ceil(gy + r));
+        for (let y = y0; y <= y1; y += 1) {
+          for (let x = x0; x <= x1; x += 1) {
+            const dx = x - gx;
+            const dy = y - gy;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > rsq) continue;
+            // smoothstep shoulder: the clearing melts into the surrounding
+            // mist with no visible edge
+            const t = Math.sqrt(d2) / r;
+            const fall = 1 - t * t * (3 - 2 * t);
+            const i = y * gridW + x;
+            const v = clearField[i] + strength * fall;
+            clearField[i] = v > 1 ? 1 : v;
+          }
+        }
+      }
+
+      // -- compose both faces into one ImageData ------------------------------
+      function compose() {
+        if (!outputData || !heightCur || !waterMask) return;
+        const d = outputData.data;
+        // The light drifts slowly, so crests shimmer instead of sitting still.
+        const lx = 0.42 + 0.18 * Math.sin(clock * 0.21);
+        const ly = 0.86 + 0.1 * Math.cos(clock * 0.16);
+        // The mist breathes and the wind gusts on slow incommensurate periods,
+        // so the banks thicken and thin without ever repeating.
+        const breath = 0.58 + 0.42 * (0.62 * Math.sin(fogTime * 0.32) + 0.38 * Math.sin(fogTime * 0.115 + 1.7));
+        const gust = 1 + 0.7 * Math.sin(fogTime * 0.14 + 0.8) + 0.35 * Math.sin(fogTime * 0.041);
+        const driftU1 = fogTime * 0.0075 * gust;
+        const driftV1 = fogTime * 0.0018;
+        const driftU2 = -fogTime * 0.017 * gust;
+        const driftV2 = fogTime * 0.004;
+        // Banks are stretched horizontally — mist lies in layers.
+        const su1 = 1.9 / gridW;
+        const sv1 = (3.4 * (height / width)) / gridH;
+        const su2 = 4.6 / gridW;
+        const sv2 = (7.4 * (height / width)) / gridH;
+        const REFRACT = 5.0;
+        for (let y = 0; y < gridH; y += 1) {
+          const fogV1 = y * sv1 + driftV1;
+          const fogV2 = y * sv2 + driftV2;
+          for (let x = 0; x < gridW; x += 1) {
+            const i = y * gridW + x;
             const di = i * 4;
-            // Low threshold so even faint wavelets register (soft + alive).
-            if (slope < 0.04) {
+            const wa = waterMask[i];
+
+            // liquid: a displaced poster sample plus drifting crest light
+            let lr = 0;
+            let lg = 0;
+            let lb = 0;
+            let la = 0;
+            if (wa > 0.001 && srcData) {
+              const gx = heightCur[x > 0 ? i - 1 : i] - heightCur[x < gridW - 1 ? i + 1 : i];
+              const gy = heightCur[y > 0 ? i - gridW : i] - heightCur[y < gridH - 1 ? i + gridW : i];
+              const slope = Math.abs(gx) + Math.abs(gy);
+              // Calm water is invisible — the untouched poster shows through.
+              if (slope > 0.018) {
+                let ox = gx * REFRACT;
+                let oy = gy * REFRACT;
+                if (ox > 6) ox = 6;
+                else if (ox < -6) ox = -6;
+                if (oy > 6) oy = 6;
+                else if (oy < -6) oy = -6;
+                let sx = x + Math.round(ox);
+                let sy = y + Math.round(oy);
+                if (sx < 0) sx = 0;
+                else if (sx >= gridW) sx = gridW - 1;
+                if (sy < 0) sy = 0;
+                else if (sy >= gridH) sy = gridH - 1;
+                const si = (sy * gridW + sx) * 4;
+                lr = srcData[si];
+                lg = srcData[si + 1];
+                lb = srcData[si + 2];
+                // Water takes colour out of what it refracts — a touch of
+                // deep teal in the displaced poster.
+                lr = lr * 0.94;
+                lb = lb * 1.03 + 2;
+                // The rising face catches the light, the falling face cools.
+                // tanh keeps fresh impacts bright without blowing out, while
+                // giving faint old rings enough edge light to stay visible.
+                const spec = gx * lx + gy * ly;
+                const s = Math.tanh(spec * 1.9);
+                if (s > 0) {
+                  lr += s * 44;
+                  lg += s * 58;
+                  lb += s * 80;
+                } else {
+                  lr += s * 21;
+                  lg += s * 27;
+                  lb += s * 38;
+                }
+                const lens = slope * 3.6;
+                la = wa * (lens > 0.95 ? 0.95 : lens);
+              }
+            }
+
+            // vapour: two counter-drifting fBm banks, breathing, parted.
+            // Dense banks don't tint the poster — they REPLACE its busy
+            // detail with the silenced, milky world-behind-mist.
+            let fa = 0;
+            const fm = fogMask[i];
+            if (fm > 0.004) {
+              const n1 = sampleFog(fogTexA, x * su1 + driftU1, fogV1);
+              const n2 = sampleFog(fogTexB, x * su2 + driftU2, fogV2);
+              const density = smooth01(0.26, 0.86, n1 * 0.62 + n2 * 0.38);
+              const cl = clearField[i];
+              fa = density * fm * breath * (1 - cl) * 0.95;
+              if (fa > 0.003) {
+                let fr = 238;
+                let fg = 246;
+                let fb = 253;
+                if (blurData) {
+                  const milk = 0.4 + 0.55 * density;
+                  const mi = i * 3;
+                  fr = blurData[mi] * (1 - milk) + 238 * milk;
+                  fg = blurData[mi + 1] * (1 - milk) + 246 * milk;
+                  fb = blurData[mi + 2] * (1 - milk) + 253 * milk;
+                }
+                // A wiped swipe gathers a fine bead of water along its edge,
+                // which catches the light before the mist closes back over it.
+                const cg =
+                  Math.abs(clearField[x > 0 ? i - 1 : i] - clearField[x < gridW - 1 ? i + 1 : i]) +
+                  Math.abs(clearField[y > 0 ? i - gridW : i] - clearField[y < gridH - 1 ? i + gridW : i]);
+                const rim = Math.min(1, cg * 4) * (cl * (1 - cl)) * 4;
+                if (rim > 0.01) {
+                  fr += rim * 38;
+                  fg += rim * 44;
+                  fb += rim * 50;
+                }
+                // fog over water over (transparent → the untouched poster)
+                const outA = fa + la * (1 - fa);
+                const lw = (la * (1 - fa)) / outA;
+                d[di] = lr * lw + fr * (1 - lw);
+                d[di + 1] = lg * lw + fg * (1 - lw);
+                d[di + 2] = lb * lw + fb * (1 - lw);
+                d[di + 3] = outA * 255;
+                continue;
+              }
+            }
+            if (la <= 0.003) {
               d[di + 3] = 0;
               continue;
             }
-            // The rising face of each wavelet catches the drifting light and
-            // glints; the falling face sits a touch darker for depth.
-            const spec = gx * lx + gy * ly;
-            if (spec >= 0) {
-              // soft blue-white glint
-              d[di] = 230;
-              d[di + 1] = 243;
-              d[di + 2] = 255;
-              const a = spec * 310 + slope * 20;
-              d[di + 3] = a > 178 ? 178 : a;
-            } else {
-              // faint cool shadow for depth
-              d[di] = 22;
-              d[di + 1] = 46;
-              d[di + 2] = 84;
-              const a = -spec * 124;
-              d[di + 3] = a > 46 ? 46 : a;
-            }
+            d[di] = lr;
+            d[di + 1] = lg;
+            d[di + 2] = lb;
+            d[di + 3] = la * 255;
           }
         }
       }
 
-      function paintHaze() {
-        ctx.globalCompositeOperation = "source-over";
-        // Mist gathers on the left ("fog side"); the right stays lighter so the
-        // water reads as a glossy surface. A little haze everywhere keeps the
-        // whole pane wipeable, but it never becomes a flat gray veil.
-        const base = ctx.createLinearGradient(0, 0, width, 0);
-        base.addColorStop(0, "rgba(223, 236, 250, 0.2)");
-        base.addColorStop(0.45, "rgba(223, 236, 250, 0.1)");
-        base.addColorStop(1, "rgba(224, 236, 251, 0.05)");
-        ctx.fillStyle = base;
-        ctx.fillRect(0, 0, width, height);
-
-        const vert = ctx.createLinearGradient(0, 0, 0, height);
-        vert.addColorStop(0, "rgba(223, 235, 250, 0.06)");
-        vert.addColorStop(0.46, "rgba(223, 235, 250, 0)");
-        vert.addColorStop(1, "rgba(221, 233, 248, 0.11)");
-        ctx.fillStyle = vert;
-        ctx.fillRect(0, 0, width, height);
-
-        for (let i = 0; i < blotchSeeds.length; i += 1) {
-          const [bx, by, br, ba] = blotchSeeds[i];
-          const blob = ctx.createRadialGradient(width * bx, height * by, 0, width * bx, height * by, Math.max(width, height) * br);
-          blob.addColorStop(0, `rgba(225, 237, 251, ${ba})`);
-          blob.addColorStop(1, "rgba(225, 237, 251, 0)");
-          ctx.fillStyle = blob;
-          ctx.fillRect(0, 0, width, height);
-        }
-      }
-
-      function strokeWidth() {
-        return Math.max(18, Math.min(26, width * 0.016));
-      }
-
-      function drawWipe(stroke, strength) {
-        const points = stroke.points;
-        if (!points.length) return;
+      function render() {
+        if (!width || !height) return;
+        compose();
+        if (!outputData) return;
+        simCtx.putImageData(outputData, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.save();
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        const alpha = WIPE_ALPHA * strength;
-        ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
-        ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
-        ctx.lineWidth = stroke.width;
-        if (points.length === 1) {
-          ctx.beginPath();
-          ctx.arc(points[0].x * width, points[0].y * height, stroke.width / 2, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.beginPath();
-          points.forEach((point, index) => {
-            const x = point.x * width;
-            const y = point.y * height;
-            if (index === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          ctx.stroke();
-        }
+        // A whisper of blur dissolves the grid so rings and banks read as
+        // continuous water and mist, never as pixels.
+        ctx.filter = "blur(0.6px)";
+        ctx.drawImage(simCanvas, 0, 0, width, height);
         ctx.restore();
       }
 
-      // One pass over the single canvas: fog haze, punch the decaying wipe
-      // holes, then lay the water glints on top.
-      function render(now) {
-        if (!width || !height) return;
-        ctx.globalCompositeOperation = "source-over";
-        ctx.clearRect(0, 0, width, height);
-        paintHaze();
-        for (let i = wipes.length - 1; i >= 0; i -= 1) {
-          const stroke = wipes[i];
-          let strength = 1;
-          if (!reducedMotion) {
-            const age = now - stroke.born;
-            strength = age <= HOLD ? 1 : 1 - (age - HOLD) / FADE;
-          }
-          if (strength <= 0.003) {
-            wipes.splice(i, 1);
-            continue;
-          }
-          drawWipe(stroke, strength);
-        }
-        ctx.globalCompositeOperation = "source-over";
-        computeWater();
-        if (outputData) {
-          simCtx.putImageData(outputData, 0, 0);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = "high";
-          ctx.save();
-          ctx.globalAlpha = 0.72;
-          // A little blur dissolves the low-res grid at the wavefronts so the
-          // ripples read as smooth, soft glass rather than a mesh.
-          ctx.filter = "blur(0.75px)";
-          ctx.drawImage(simCanvas, 0, 0, width, height);
-          ctx.restore();
+      // One touch, two answers — but each face answers the way it really would:
+      //   tap  = a raindrop: one ring that rings out on its own;
+      //   drag = a finger through water: it pushes a continuous FURROW into
+      //          the surface (negative height along the path), and the wave
+      //          equation radiates that trench outward as a wake that trails
+      //          and closes behind the pointer. Not a string of circles.
+      function furrowAlong(x0, y0, x1, y1, amp, radius) {
+        const dist = Math.hypot(x1 - x0, y1 - y0);
+        const steps = Math.max(1, Math.ceil(dist / (radius * 0.55)));
+        for (let s = 0; s <= steps; s += 1) {
+          const t = s / steps;
+          dropAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, -amp, radius);
         }
       }
 
-      // Gentle disturbance that follows the pointer: a soft drop at the cursor,
-      // plus drops interpolated along the path so a quick move still trails one
-      // continuous ripple wake rather than dotted impacts.
       function disturbFromPointer(event, strong = false) {
         if (!gridW) return;
         const rect = heroTitle.getBoundingClientRect();
-        const gx = ((event.clientX - rect.left) / rect.width) * gridW;
-        const gy = ((event.clientY - rect.top) / rect.height) * gridH;
-        const amp = strong ? 0.9 : 1.3;
-        dropAt(gx, gy, amp, 2.6);
-        if (!strong && prevGX >= 0) {
+        const nx = (event.clientX - rect.left) / rect.width;
+        const ny = (event.clientY - rect.top) / rect.height;
+        const gx = nx * gridW;
+        const gy = ny * gridH;
+        if (strong || prevGX < 0) {
+          // first contact: a fingertip touching the surface — one soft dimple
+          dropAt(gx, gy, strong ? 0.8 : 0.5, strong ? 2.8 : 2.3);
+        } else {
           const dx = gx - prevGX;
           const dy = gy - prevGY;
-          const steps = Math.min(10, Math.floor(Math.hypot(dx, dy) / 2));
-          for (let s = 1; s < steps; s += 1) {
-            dropAt(prevGX + (dx * s) / steps, prevGY + (dy * s) / steps, amp * 0.55, 2.2);
+          const dist = Math.hypot(dx, dy);
+          if (dist >= 0.6) {
+            const amp = Math.min(0.4, Math.max(0.09, dist * 0.028));
+            furrowAlong(prevGX, prevGY, gx, gy, amp, 2.3);
           }
         }
         prevGX = gx;
         prevGY = gy;
+        partFogAt(nx, ny, 0.095, strong ? 0.55 : 0.38);
+        if (reducedMotion) render();
       }
 
       function animate(time) {
-        if (!reducedMotion) requestAnimationFrame(animate);
-        if (!width || !height) resizeWater();
+        requestAnimationFrame(animate);
         const raw = lastFrame ? Math.min(0.05, (time - lastFrame) / 1000) : 0.016;
         lastFrame = time;
-        if (document.hidden) return;
-        waterClock += raw;
+        if (document.hidden || !heroVisible) return;
+        clock += raw;
+        fogTime += raw;
         seedAmbient(raw);
         stepWater();
-        render(time);
+        stepFogField(raw);
+        render();
       }
 
-      function addPoint(x, y, forceNew = false) {
-        if (!width || !height) return;
-        const point = { x: x / width, y: y / height };
-        const now = performance.now();
-        const dist = lastPoint ? Math.hypot(x - lastPoint.x, y - lastPoint.y) : Infinity;
-        if (!forceNew && dist < 3 && now - lastAddAt < 12) return;
-        let stroke = wipes[wipes.length - 1];
-        // Only break the trail on a genuine jump (pointer re-enter) or once the
-        // previous stroke has begun fading — a fast drag stays one connected
-        // stroke instead of leaving gaps.
-        if (forceNew || !stroke || dist > 260 || now - stroke.born > HOLD) {
-          stroke = { width: strokeWidth(), points: [point], born: now };
-          wipes.push(stroke);
-          if (wipes.length > 90) wipes.shift();
-        } else if (stroke.points.length > 120) {
-          // Chunk very long strokes for perf, carrying the last point so the
-          // seam stays continuous (no dash where one chunk hands off to the next).
-          const prev = stroke.points[stroke.points.length - 1];
-          stroke = { width: stroke.width, points: [prev, point], born: now };
-          wipes.push(stroke);
-          if (wipes.length > 90) wipes.shift();
-        } else {
-          stroke.points.push(point);
-          stroke.born = now; // keep the active trail fresh until the pointer stops
-        }
-        lastPoint = { x, y };
-        lastAddAt = now;
-        // When animating, the continuous loop repaints; otherwise repaint now.
-        if (reducedMotion) render(performance.now());
-      }
-
-      heroTitle.addEventListener("pointerenter", (event) => {
-        const rect = heroTitle.getBoundingClientRect();
-        lastPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-        disturbFromPointer(event, true);
-      });
-      heroTitle.addEventListener("pointermove", (event) => {
-        const rect = heroTitle.getBoundingClientRect();
-        disturbFromPointer(event);
-        // getCoalescedEvents returns the intermediate positions the browser
-        // captured between frames, so a fast drag draws a continuous trail.
-        const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : null;
-        if (samples && samples.length) {
-          for (const sample of samples) addPoint(sample.clientX - rect.left, sample.clientY - rect.top);
-        } else {
-          addPoint(event.clientX - rect.left, event.clientY - rect.top);
-        }
-      });
+      heroTitle.addEventListener("pointerenter", (event) => disturbFromPointer(event, true));
+      heroTitle.addEventListener("pointermove", (event) => disturbFromPointer(event));
       heroTitle.addEventListener("pointerleave", () => {
-        lastPoint = null;
         prevGX = -1;
         prevGY = -1;
       });
 
-      if (window.ResizeObserver) new ResizeObserver(resizeWater).observe(heroTitle);
-      window.addEventListener("resize", resizeWater);
-      if (source && source.complete && source.naturalWidth) resizeWater();
-      else if (source) source.addEventListener("load", resizeWater, { once: true });
-      else resizeWater();
-      if (reducedMotion) resizeWater();
-      else requestAnimationFrame(animate);
+      if (window.IntersectionObserver) {
+        new IntersectionObserver(([entry]) => {
+          heroVisible = entry.isIntersecting;
+        }).observe(heroTitle);
+      }
+      if (window.ResizeObserver) new ResizeObserver(rebuild).observe(heroTitle);
+      window.addEventListener("resize", rebuild);
+      if (source && source.complete && source.naturalWidth) rebuild();
+      else if (source) source.addEventListener("load", rebuild, { once: true });
+      else rebuild();
+      if (!reducedMotion) requestAnimationFrame(animate);
     }
 
     document.querySelectorAll("[data-copy-value]").forEach((button) => {
