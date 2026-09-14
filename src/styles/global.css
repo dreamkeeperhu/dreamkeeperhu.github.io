@@ -1,11 +1,12 @@
 :root {
   --paper: #faf7f2;
   --paper-soft: #f3f0ea;
-  --ink: #050505;
+  --ink: #0b1320;
   --muted: #69645d;
-  --hairline: #050505;
-  --accent: #23d8bd;
-  --accent-soft: #dff9f3;
+  --hairline: #101a2b;
+  --accent: #2f6db5;
+  --accent-soft: #e2edf8;
+  --seal: #b4453a;
   --nav-height: 64px;
 }
 
@@ -352,6 +353,130 @@ html[data-theme="dark"] .water-hero.hero-title::after {
 
 .water-hero .pattern-base {
   display: none;
+}
+
+/* --- The hero dissolves into the page (水雾入纸) ------------------------- */
+
+.water-hero.hero-title {
+  border-bottom: 0;
+}
+
+/* A feathered veil at the hero's foot: the artwork lifts off into the paper
+   like mist rising off water, instead of ending on a hard hairline. Sits
+   above the fx canvas and grade (z1–2), below the text (z7–8). */
+.hero-veil {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 150px;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--paper) 44%, transparent) 58%,
+    var(--paper) 100%
+  );
+}
+
+/* 题款与印章 — the inscription and the vermillion seal, the finishing
+   touches of a Chinese painting: 一体两面, water and mist as one pane. */
+.hero-inscription {
+  position: absolute;
+  z-index: 9;
+  right: 58px;
+  top: 47%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.inscription-text {
+  writing-mode: vertical-rl;
+  color: rgba(233, 243, 253, 0.62);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.52em;
+  text-shadow: 0 2px 18px rgba(4, 14, 30, 0.5);
+}
+
+.hero-seal {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--seal);
+  color: rgba(255, 246, 240, 0.96);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transform: rotate(-3deg);
+  box-shadow: 0 4px 16px rgba(4, 14, 30, 0.35);
+  opacity: 0.92;
+}
+
+/* The opening composes itself: title rises, focus follows, strip fades in,
+   the inscription arrives last — like a signature. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-title h1 {
+    animation: heroTitleIn 1100ms cubic-bezier(0.22, 0.7, 0.2, 1) 120ms both;
+  }
+
+  .hero-focus {
+    animation: heroTitleIn 1100ms cubic-bezier(0.22, 0.7, 0.2, 1) 380ms both;
+  }
+
+  .hero-strip {
+    animation: heroFadeIn 1200ms ease 550ms both;
+  }
+
+  .hero-inscription {
+    opacity: 0;
+    animation: heroFadeIn 1700ms ease 850ms forwards;
+  }
+}
+
+@keyframes heroTitleIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero-inscription {
+    right: 16px;
+    top: 20px;
+    gap: 10px;
+  }
+
+  .inscription-text {
+    font-size: 13px;
+  }
+
+  .hero-seal {
+    width: 26px;
+    height: 26px;
+    font-size: 9px;
+  }
 }
 
 .hero-pattern {
@@ -821,12 +946,35 @@ html[data-theme="dark"] .water-hero.hero-title::after {
 }
 
 .snapshot-lead {
+  position: relative;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 48px;
   align-items: end;
   padding: 54px 80px;
   border-bottom: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+/* A whisper of the hero's water inside the first statement of the page —
+   the character 水 set huge and nearly invisible, like a watermark on
+   xuan paper. */
+.snapshot-lead::after {
+  content: var(--watermark-glyph, "水");
+  position: absolute;
+  right: 3%;
+  top: 52%;
+  transform: translateY(-50%);
+  color: rgba(47, 109, 181, 0.055);
+  font-family: "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  font-size: min(42vh, 330px);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+html[data-theme="dark"] .snapshot-lead::after {
+  color: rgba(110, 163, 220, 0.06);
 }
 
 .snapshot-lead h2 {
@@ -1829,7 +1977,7 @@ mark {
 
 .showcase-card:hover .showcase-overlay,
 .showcase-card:focus-visible .showcase-overlay {
-  background: rgba(0, 0, 0, 0.68);
+  background: rgba(6, 16, 34, 0.7);
 }
 
 .showcase-card:hover .showcase-info strong,
@@ -2797,8 +2945,8 @@ html[data-theme="dark"] {
   --ink: #f5f2ea;
   --muted: #aaa49a;
   --hairline: #f5f2ea;
-  --accent: #55e3cf;
-  --accent-soft: #183a35;
+  --accent: #6ea3dc;
+  --accent-soft: #15273c;
 }
 
 html[data-theme="dark"] img {
@@ -4074,5 +4222,1329 @@ html[data-theme="dark"] .writing-hero {
 
   .map-table-fallback {
     overflow-x: auto;
+  }
+}
+
+/* ==========================================================================
+   烟雨国风 · the homepage below the hero (main[data-page="Home"])
+   The hero's water and mist flow down into the page: the MiMo hairline cage
+   is gone, 留白 carries the rhythm, ink comes in three depths, and every
+   section is signed with one small vermillion diamond — 斗方印章.
+   ========================================================================== */
+
+main[data-page="Home"] {
+  --ink-deep: #16202e;
+  --ink-mid: #3d4a5c;
+  --mist-line: rgba(29, 39, 51, 0.12);
+  --mist-wash: rgba(47, 109, 181, 0.05);
+  --card: rgba(255, 255, 255, 0.55);
+  --card-solid: #fff;
+  --card-hover: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(180deg, rgba(213, 229, 243, 0.55) 0, rgba(213, 229, 243, 0) 460px);
+}
+
+/* --- out of the cage: no hairline frames, sections breathe on their own -- */
+
+main[data-page="Home"] :is(
+  .showcase,
+  .signal-band,
+  .home-tools,
+  .profile-snapshot,
+  .selected-projects,
+  .latest-board,
+  .timeline-preview,
+  .roadmap-section,
+  .site-pulse,
+  .contact-section,
+  .subscribe-section
+) {
+  border: 0;
+  background: transparent;
+}
+
+main[data-page="Home"] :is(
+  .showcase,
+  .signal-band,
+  .home-tools,
+  .profile-snapshot,
+  .roadmap-section,
+  .selected-projects,
+  .latest-board,
+  .timeline-preview,
+  .site-pulse,
+  .contact-section,
+  .subscribe-section
+) {
+  width: min(1240px, calc(100% - 48px));
+  margin-inline: auto;
+}
+
+main[data-page="Home"] :is(
+  .signal-band,
+  .home-tools,
+  .profile-snapshot,
+  .roadmap-section,
+  .selected-projects,
+  .latest-board,
+  .timeline-preview,
+  .site-pulse,
+  .contact-section,
+  .subscribe-section
+) {
+  margin-top: 72px;
+}
+
+/* --- the section seal: one small vermillion diamond above each title ----- */
+
+main[data-page="Home"] .section-head h2,
+main[data-page="Home"] .contact-section h2 {
+  font-size: clamp(32px, 4.4vw, 50px);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+main[data-page="Home"] .section-head h2::before,
+main[data-page="Home"] .contact-section h2::before {
+  content: "";
+  display: block;
+  width: 11px;
+  height: 11px;
+  margin-bottom: 22px;
+  background: var(--seal);
+  border-radius: 1.5px;
+  transform: rotate(45deg);
+  opacity: 0.92;
+}
+
+main[data-page="Home"] .section-head {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  padding: 0 32px 40px;
+  border-bottom: 0;
+}
+
+main[data-page="Home"] .section-head p {
+  max-width: 720px;
+  color: var(--ink-mid);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+main[data-page="Home"] .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+main[data-page="Home"] .eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--seal);
+  border-radius: 1px;
+  transform: rotate(45deg);
+  opacity: 0.9;
+}
+
+/* --- showcase: album leaves — ink-masked art with a caption beneath ------- */
+
+main[data-page="Home"] .showcase {
+  gap: 44px;
+  margin-top: 22px;
+}
+
+main[data-page="Home"] .showcase-card,
+main[data-page="Home"] .showcase-card + .showcase-card {
+  min-height: 0;
+  display: grid;
+  gap: 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* the image bleeds into the painting like ink into wet xuan paper */
+main[data-page="Home"] .showcase-art {
+  display: block;
+  overflow: visible;
+}
+
+main[data-page="Home"] .showcase-art img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 12 / 7;
+  object-fit: cover;
+  filter: saturate(0.82) contrast(0.98) brightness(1.02);
+  -webkit-mask-image: radial-gradient(115% 120% at 50% 38%, #000 68%, transparent 96%);
+  mask-image: radial-gradient(115% 120% at 50% 38%, #000 68%, transparent 96%);
+  transition: filter 500ms ease, transform 900ms ease;
+}
+
+/* the caption sits under the picture like a 题跋 under a painting */
+main[data-page="Home"] .showcase-info {
+  position: static;
+  width: 100%;
+  padding: 0 6px;
+}
+
+main[data-page="Home"] .showcase-info strong {
+  font-size: 22px;
+  letter-spacing: 0.01em;
+}
+
+main[data-page="Home"] .showcase-info small {
+  color: var(--muted);
+}
+
+main[data-page="Home"] .showcase-card:hover,
+main[data-page="Home"] .showcase-card:focus-visible {
+  transform: none;
+  box-shadow: none;
+}
+
+main[data-page="Home"] .showcase-card:hover img,
+main[data-page="Home"] .showcase-card:focus-visible img {
+  filter: saturate(1) contrast(1.02);
+  transform: scale(1.03);
+}
+
+main[data-page="Home"] .showcase-card:hover .showcase-info strong,
+main[data-page="Home"] .showcase-card:focus-visible .showcase-info strong {
+  color: var(--accent);
+}
+
+/* --- signal band: a quiet row of waymarks -------------------------------- */
+
+main[data-page="Home"] .signal-band a {
+  background: transparent;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+main[data-page="Home"] .signal-band a + a {
+  border-left: 0;
+}
+
+main[data-page="Home"] .signal-band a:hover,
+main[data-page="Home"] .signal-band a:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+}
+
+main[data-page="Home"] .signal-band a:hover span,
+main[data-page="Home"] .signal-band a:focus-visible span {
+  color: var(--muted);
+}
+
+/* --- home tools: brush, ink and a quiet desk ----------------------------- */
+
+main[data-page="Home"] .home-tools {
+  border: 0;
+}
+
+main[data-page="Home"] .home-search,
+main[data-page="Home"] .home-contact-tool,
+main[data-page="Home"] .home-paths {
+  min-height: 0;
+  padding: 36px 32px;
+}
+
+main[data-page="Home"] .home-contact-tool,
+main[data-page="Home"] .home-paths {
+  border-left: 0;
+}
+
+main[data-page="Home"] .home-search input,
+main[data-page="Home"] .home-search button,
+main[data-page="Home"] .home-contact-tool button {
+  border: 1px solid var(--mist-line);
+  border-radius: 3px;
+}
+
+main[data-page="Home"] .home-search input {
+  background: var(--card);
+}
+
+main[data-page="Home"] .home-search input:focus {
+  border-color: rgba(47, 109, 181, 0.45);
+  outline: none;
+}
+
+main[data-page="Home"] .home-search button,
+main[data-page="Home"] .home-contact-tool button {
+  border-color: transparent;
+  color: #f7fbff;
+  background: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+main[data-page="Home"] .home-search button:hover,
+main[data-page="Home"] .home-contact-tool button:hover {
+  background: color-mix(in srgb, var(--accent) 86%, #0d1b2e 14%);
+}
+
+main[data-page="Home"] .home-search-suggestions a {
+  border: 1px solid var(--mist-line);
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+main[data-page="Home"] .home-search-suggestions a:hover,
+main[data-page="Home"] .home-search-suggestions a:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+  border-color: rgba(47, 109, 181, 0.4);
+}
+
+main[data-page="Home"] .home-paths a {
+  border-top: 0;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+main[data-page="Home"] .home-paths a + a {
+  margin-top: 10px;
+}
+
+main[data-page="Home"] .home-paths a:hover,
+main[data-page="Home"] .home-paths a:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+}
+
+main[data-page="Home"] .home-paths a:hover small,
+main[data-page="Home"] .home-paths a:focus-visible small {
+  color: var(--muted);
+}
+
+/* --- snapshot: the statement scroll -------------------------------------- */
+
+main[data-page="Home"] .snapshot-lead {
+  padding: 16px 32px 56px;
+  border-bottom: 0;
+}
+
+main[data-page="Home"] .snapshot-lead h2 {
+  color: var(--ink-deep);
+}
+
+main[data-page="Home"] .snapshot-grid {
+  border-top: 0;
+}
+
+main[data-page="Home"] .snapshot-grid article {
+  min-height: 0;
+  padding: 34px 30px 42px;
+  border-left: 0;
+}
+
+main[data-page="Home"] .snapshot-grid strong {
+  font-size: clamp(22px, 2.4vw, 30px);
+}
+
+/* --- roadmap: three threads floating in the mist --------------------------- */
+
+main[data-page="Home"] .roadmap-grid article {
+  min-height: 0;
+  padding: 40px 32px 48px;
+  border-top: 0;
+}
+
+main[data-page="Home"] .roadmap-grid article + article {
+  border-left: 0;
+}
+
+main[data-page="Home"] .roadmap-grid article > span {
+  color: var(--accent);
+}
+
+main[data-page="Home"] .roadmap-grid h3 {
+  margin: 30px 0 14px;
+  font-size: clamp(24px, 2.6vw, 34px);
+}
+
+/* the open question is a wash of mist behind the words, not a box */
+main[data-page="Home"] .roadmap-open-question {
+  border-left: 0;
+  background: var(--mist-wash);
+  border-radius: 3px;
+  padding: 12px 16px;
+}
+
+main[data-page="Home"] .roadmap-evidence a,
+main[data-page="Home"] .roadmap-evidence small {
+  border-bottom: 1px solid var(--mist-line);
+}
+
+main[data-page="Home"] .inline-links a {
+  border: 1px solid var(--mist-line);
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+main[data-page="Home"] .inline-links a:hover,
+main[data-page="Home"] .inline-links a:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+  border-color: rgba(47, 109, 181, 0.4);
+}
+
+/* --- selected projects: plain words standing on the painting ---------------- */
+
+main[data-page="Home"] .path-grid {
+  gap: 40px 48px;
+}
+
+main[data-page="Home"] .path-grid a,
+main[data-page="Home"] .path-grid a:first-child {
+  min-height: 0;
+  padding: 0 4px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  transition: transform 260ms ease;
+}
+
+main[data-page="Home"] .path-grid a:hover,
+main[data-page="Home"] .path-grid a:focus-visible {
+  color: var(--ink);
+  background: transparent;
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: none;
+}
+
+main[data-page="Home"] .path-grid a:hover strong,
+main[data-page="Home"] .path-grid a:focus-visible strong {
+  color: var(--accent);
+}
+
+main[data-page="Home"] .path-grid a:hover span,
+main[data-page="Home"] .path-grid a:focus-visible span,
+main[data-page="Home"] .path-grid a:hover small,
+main[data-page="Home"] .path-grid a:focus-visible small {
+  color: var(--muted);
+}
+
+/* --- latest work + milestones: brush-stroke dividers, fading at both ends --- */
+
+main[data-page="Home"] .latest-controls {
+  padding: 0 32px 22px;
+  border-bottom: 0;
+}
+
+main[data-page="Home"] .latest-controls button {
+  border: 1px solid var(--mist-line);
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+main[data-page="Home"] .latest-controls button[aria-pressed="true"] {
+  color: #f7fbff;
+  background: var(--accent);
+  border-color: transparent;
+}
+
+main[data-page="Home"] .latest-controls button:hover,
+main[data-page="Home"] .latest-controls button:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+  border-color: rgba(47, 109, 181, 0.4);
+}
+
+main[data-page="Home"] .latest-controls button[aria-pressed="true"]:hover {
+  color: #f7fbff;
+  background: var(--accent);
+}
+
+main[data-page="Home"] .latest-stream,
+main[data-page="Home"] .compact-timeline {
+  border-top: 0;
+}
+
+main[data-page="Home"] .latest-row,
+main[data-page="Home"] .compact-timeline .timeline-row {
+  position: relative;
+  padding: 26px 32px;
+  border-top: 0;
+  transition: background 200ms ease;
+}
+
+/* a single brush stroke between rows, thinning to nothing at the edges */
+main[data-page="Home"] .latest-row::before,
+main[data-page="Home"] .compact-timeline .timeline-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 32px;
+  right: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mist-line) 22%, var(--mist-line) 78%, transparent);
+}
+
+main[data-page="Home"] .latest-row:first-child::before,
+main[data-page="Home"] .compact-timeline .timeline-row:first-child::before {
+  content: none;
+}
+
+main[data-page="Home"] .latest-row:hover,
+main[data-page="Home"] .compact-timeline .timeline-row:hover {
+  background: var(--mist-wash);
+}
+
+main[data-page="Home"] .latest-row strong,
+main[data-page="Home"] .compact-timeline .timeline-row strong {
+  font-size: clamp(19px, 2vw, 26px);
+  line-height: 1.2;
+  transition: color 200ms ease;
+}
+
+main[data-page="Home"] .latest-row:hover strong,
+main[data-page="Home"] .compact-timeline .timeline-row:hover strong {
+  color: var(--accent);
+}
+
+/* --- site pulse: quiet numbers -------------------------------------------- */
+
+main[data-page="Home"] .site-pulse > div:first-child {
+  min-height: 0;
+  padding: 8px 32px;
+}
+
+main[data-page="Home"] .site-pulse h2 {
+  color: var(--ink-deep);
+}
+
+main[data-page="Home"] .pulse-grid {
+  border-left: 0;
+}
+
+main[data-page="Home"] .pulse-grid article {
+  border-top: 0;
+}
+
+main[data-page="Home"] .pulse-grid article:nth-child(2n) {
+  border-left: 0;
+}
+
+/* --- contact: the closing letter ------------------------------------------ */
+
+main[data-page="Home"] .contact-section {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 26px;
+  padding: 16px 32px 40px;
+}
+
+main[data-page="Home"] .contact-section p {
+  color: var(--ink-mid);
+}
+
+main[data-page="Home"] .contact-link {
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+}
+
+main[data-page="Home"] .contact-intents {
+  width: 100%;
+  margin-top: 10px;
+  border-top: 0;
+}
+
+main[data-page="Home"] .contact-section .button-secondary {
+  border: 1px solid var(--mist-line);
+  border-radius: 3px;
+  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+}
+
+main[data-page="Home"] .contact-section .button-secondary:hover,
+main[data-page="Home"] .contact-section .button-secondary:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+  border-color: rgba(47, 109, 181, 0.4);
+}
+
+main[data-page="Home"] .contact-intents a {
+  border-right: 0;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+main[data-page="Home"] .contact-intents a:hover,
+main[data-page="Home"] .contact-intents a:focus-visible {
+  color: var(--accent);
+  background: var(--mist-wash);
+}
+
+/* --- subscribe: a small promise, softly kept ------------------------------ */
+
+main[data-page="Home"] .subscribe-form {
+  max-width: 660px;
+  padding: 0 32px 8px;
+}
+
+main[data-page="Home"] .subscribe-form input {
+  border: 1px solid var(--mist-line);
+  border-radius: 3px;
+  background: var(--card);
+}
+
+main[data-page="Home"] .subscribe-form input:focus {
+  border-color: rgba(47, 109, 181, 0.45);
+  outline: none;
+}
+
+main[data-page="Home"] .subscribe-form button {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #f7fbff;
+  background: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+main[data-page="Home"] .subscribe-form button:hover {
+  background: color-mix(in srgb, var(--accent) 86%, #0d1b2e 14%);
+}
+
+/* --- dark: the same rain, at night ---------------------------------------- */
+
+html[data-theme="dark"] main[data-page="Home"] {
+  --ink-deep: #f2eee6;
+  --ink-mid: #c6cdd9;
+  --mist-line: rgba(245, 242, 234, 0.13);
+  --mist-wash: rgba(110, 163, 220, 0.08);
+  --card: rgba(255, 255, 255, 0.045);
+  --card-solid: rgba(255, 255, 255, 0.05);
+  --card-hover: rgba(255, 255, 255, 0.09);
+  background: linear-gradient(180deg, rgba(21, 39, 60, 0.5) 0, rgba(21, 39, 60, 0) 460px);
+}
+
+html[data-theme="dark"] main[data-page="Home"] .snapshot-grid p,
+html[data-theme="dark"] main[data-page="Home"] .section-head p,
+html[data-theme="dark"] main[data-page="Home"] .contact-section p {
+  color: var(--ink-mid);
+}
+
+/* --- smaller panes ---------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  main[data-page="Home"] .section-head,
+  main[data-page="Home"] .home-search,
+  main[data-page="Home"] .home-contact-tool,
+  main[data-page="Home"] .home-paths,
+  main[data-page="Home"] .snapshot-lead,
+  main[data-page="Home"] .latest-controls,
+  main[data-page="Home"] .latest-row,
+  main[data-page="Home"] .compact-timeline .timeline-row,
+  main[data-page="Home"] .subscribe-form,
+  main[data-page="Home"] .contact-section,
+  main[data-page="Home"] .site-pulse > div:first-child {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+/* ==========================================================================
+   The frame around the painting: a quieter nav for every page.
+   ========================================================================== */
+
+.site-nav {
+  border-bottom-color: rgba(16, 26, 43, 0.14);
+}
+
+html[data-theme="dark"] .site-nav {
+  border-bottom-color: rgba(245, 242, 234, 0.14);
+}
+
+.nav-links {
+  gap: 30px;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.nav-links a::after {
+  height: 1.5px;
+  background: var(--accent);
+}
+
+/* ==========================================================================
+   烟雨国风 · round 2 — weather, gradients and natural transitions
+   The page is no longer one flat paper: drizzle follows you out of the
+   hero, a dark ink band crosses the scroll, the roadmap sits in a misted
+   hollow, and the visit ends in deep water — where it began.
+   ========================================================================== */
+
+/* --- 雨丝: drizzle threads over the first stretch of the page ------------ */
+
+.rain-veil {
+  position: relative;
+  z-index: 2;
+  height: 0;
+  pointer-events: none;
+}
+
+.rain-veil::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -60px;
+  width: 100vw;
+  height: 640px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    var(--rain-angle, -74deg),
+    rgba(38, 62, 96, 0) 0,
+    rgba(38, 62, 96, 0.05) 1px,
+    rgba(38, 62, 96, 0) 3px,
+    rgba(38, 62, 96, 0) 9px
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 90px, #000 400px, transparent 620px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 90px, #000 400px, transparent 620px);
+  animation: rainThreads 1.15s linear infinite;
+}
+
+html[data-theme="dark"] .rain-veil::before {
+  background: repeating-linear-gradient(
+    var(--rain-angle, -74deg),
+    rgba(190, 214, 240, 0) 0,
+    rgba(190, 214, 240, 0.055) 1px,
+    rgba(190, 214, 240, 0) 3px,
+    rgba(190, 214, 240, 0) 9px
+  );
+}
+
+@keyframes rainThreads {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 0 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rain-veil::before {
+    animation: none;
+  }
+}
+
+/* --- sections materialize out of the mist, not just fade in --------------- */
+
+html.js-enabled main[data-page="Home"] .reveal {
+  filter: blur(6px);
+  transition: opacity 700ms ease, transform 700ms ease, filter 700ms ease;
+}
+
+html.js-enabled main[data-page="Home"] .reveal.is-visible {
+  filter: blur(0);
+}
+
+/* --- 墨色带: the signal band becomes a floating stripe of deep ink -------- */
+
+main[data-page="Home"] .signal-band {
+  margin-top: 84px;
+  padding-block: 130px;
+  background:
+    linear-gradient(180deg, transparent 0, #101e33 130px, #101e33 calc(100% - 130px), transparent 100%);
+}
+
+main[data-page="Home"] .signal-band a {
+  color: rgba(243, 239, 231, 0.94);
+}
+
+main[data-page="Home"] .signal-band a + a {
+  border-left: 1px solid rgba(243, 239, 231, 0.14);
+}
+
+main[data-page="Home"] .signal-band a span {
+  color: rgba(243, 239, 231, 0.5);
+}
+
+main[data-page="Home"] .signal-band a:hover,
+main[data-page="Home"] .signal-band a:focus-visible {
+  color: #a8c8ea;
+  background: rgba(168, 200, 234, 0.07);
+}
+
+main[data-page="Home"] .signal-band a:hover span,
+main[data-page="Home"] .signal-band a:focus-visible span {
+  color: rgba(243, 239, 231, 0.5);
+}
+
+/* --- 山色雾: the roadmap sits inside a misted hollow ---------------------- */
+
+/* the roadmap floats in a hollow of mist — a wash with no walls, no frame */
+main[data-page="Home"] .roadmap-section {
+  margin-top: 84px;
+  padding: 64px 40px 70px;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(75% 90% at calc(50% + var(--mist-drift-x, 0%)) 55%, rgba(214, 232, 242, 0.62), rgba(214, 232, 242, 0.26) 55%, transparent 78%);
+  box-shadow: none;
+}
+
+main[data-page="Home"] .roadmap-section .section-head {
+  padding: 0 0 34px;
+}
+
+main[data-page="Home"] .roadmap-grid article {
+  background: transparent;
+  border-radius: 0;
+}
+
+/* --- lacquered buttons: a breath of light across the accent --------------- */
+
+main[data-page="Home"] :is(.home-search button, .home-contact-tool button, .subscribe-form button, .latest-controls button[aria-pressed="true"]) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 100%, #ffffff 12%), color-mix(in srgb, var(--accent) 88%, #0d1b2e 12%));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 18px rgba(47, 109, 181, 0.26);
+}
+
+/* --- 墨韵: the two big statements carry an ink-gradient sheen -------------- */
+
+main[data-page="Home"] .snapshot-lead h2,
+main[data-page="Home"] .site-pulse h2 {
+  background: linear-gradient(118deg, #101b2c 28%, #2f4a6e 72%, #4a6f9e 96%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- 深水收束: the contact section sinks back into the water --------------- */
+
+main[data-page="Home"] .contact-section {
+  width: 100vw;
+  margin-top: 110px;
+  margin-left: calc(50% - 50vw);
+  padding: 150px 32px 90px;
+  background:
+    radial-gradient(70% 50% at calc(78% + var(--mist-drift-x, 0%)) 8%, rgba(110, 164, 220, 0.2), transparent 60%),
+    radial-gradient(60% 45% at calc(12% - var(--mist-drift-x, 0%)) 90%, rgba(58, 102, 160, 0.16), transparent 62%),
+    linear-gradient(180deg, transparent 0, #0d1a2e 150px, #0f2240 55%, #0b1626 100%);
+  color: rgba(240, 246, 253, 0.95);
+}
+
+main[data-page="Home"] .contact-section > * {
+  width: min(1176px, 100%);
+  margin-inline: auto;
+}
+
+main[data-page="Home"] .contact-section h2 {
+  color: rgba(243, 248, 255, 0.97);
+}
+
+main[data-page="Home"] .contact-section p {
+  color: rgba(208, 224, 242, 0.72);
+}
+
+main[data-page="Home"] .contact-link {
+  border-bottom-color: #9cc0ea;
+  color: #b9d4f2;
+}
+
+main[data-page="Home"] .contact-section .button-secondary {
+  border-color: rgba(185, 212, 242, 0.4);
+  color: rgba(224, 236, 250, 0.9);
+}
+
+main[data-page="Home"] .contact-section .button-secondary:hover,
+main[data-page="Home"] .contact-section .button-secondary:focus-visible {
+  color: #dcebf9;
+  background: rgba(156, 192, 234, 0.1);
+  border-color: rgba(185, 212, 242, 0.7);
+}
+
+main[data-page="Home"] .contact-intents {
+  border-top: 0;
+}
+
+main[data-page="Home"] .contact-intents a {
+  border-right: 0;
+  color: rgba(230, 240, 252, 0.92);
+}
+
+main[data-page="Home"] .contact-intents small {
+  color: rgba(185, 204, 228, 0.55);
+}
+
+main[data-page="Home"] .contact-intents a:hover,
+main[data-page="Home"] .contact-intents a:focus-visible {
+  color: #cfe2f6;
+  background: rgba(156, 192, 234, 0.08);
+}
+
+/* --- the footer keeps the same depth on this page -------------------------- */
+
+body:has(main[data-page="Home"]) .site-footer {
+  border-top: 0;
+  color: rgba(185, 204, 228, 0.6);
+  background: #0b1626;
+}
+
+body:has(main[data-page="Home"]) .site-footer a {
+  color: rgba(185, 212, 242, 0.8);
+}
+
+/* --- the same weather, at night ------------------------------------------- */
+
+html[data-theme="dark"] main[data-page="Home"] .signal-band {
+  background:
+    linear-gradient(180deg, transparent 0, #0c1526 130px, #0c1526 calc(100% - 130px), transparent 100%);
+}
+
+html[data-theme="dark"] main[data-page="Home"] .roadmap-section {
+  border-color: transparent;
+  background:
+    radial-gradient(75% 90% at calc(50% + var(--mist-drift-x, 0%)) 55%, rgba(24, 40, 62, 0.55), rgba(24, 40, 62, 0.24) 55%, transparent 78%);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] main[data-page="Home"] .roadmap-grid article {
+  background: transparent;
+}
+
+html[data-theme="dark"] main[data-page="Home"] .snapshot-lead h2,
+html[data-theme="dark"] main[data-page="Home"] .site-pulse h2 {
+  background: linear-gradient(118deg, #f2eee6 28%, #b9cfe8 72%, #7ea6d6 96%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="dark"] main[data-page="Home"] .contact-section {
+  background:
+    radial-gradient(70% 50% at calc(78% + var(--mist-drift-x, 0%)) 8%, rgba(110, 164, 220, 0.14), transparent 60%),
+    radial-gradient(60% 45% at calc(12% - var(--mist-drift-x, 0%)) 90%, rgba(58, 102, 160, 0.12), transparent 62%),
+    linear-gradient(180deg, transparent 0, #08111f 150px, #0a1930 55%, #060d18 100%);
+}
+
+html[data-theme="dark"] body:has(main[data-page="Home"]) .site-footer {
+  background: #060d18;
+}
+
+/* --- smaller panes ---------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  .rain-veil::before {
+    height: 460px;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 70px, #000 300px, transparent 440px);
+    mask-image: linear-gradient(180deg, transparent 0, #000 70px, #000 300px, transparent 440px);
+  }
+
+  main[data-page="Home"] .signal-band {
+    padding-block: 84px;
+    background:
+      linear-gradient(180deg, transparent 0, #101e33 84px, #101e33 calc(100% - 84px), transparent 100%);
+  }
+
+  main[data-page="Home"] .roadmap-section {
+    padding: 44px 22px 54px;
+  }
+
+  main[data-page="Home"] .contact-section {
+    margin-top: 84px;
+    padding: 120px 22px 70px;
+  }
+}
+
+/* ==========================================================================
+   烟雨江南 · round 3 — full immersion
+   The whole scroll is the painting: a blue-grey water sky for ground,
+   distant ridges behind the hero's mist, drizzle at both ends of the day,
+   and cards of xuan paper floating over the fog.
+   ========================================================================== */
+
+/* --- the water sky: the page ground itself -------------------------------- */
+
+body:has(main[data-page="Home"]) {
+  background: #c9d8e4;
+}
+
+main[data-page="Home"] {
+  --muted: #5d6a78;
+  background:
+    radial-gradient(52% 30% at calc(12% + var(--mist-drift-x, 0%)) 9%, rgba(150, 180, 205, 0.18), transparent 62%),
+    radial-gradient(46% 26% at calc(86% - var(--mist-drift-x, 0%)) 22%, rgba(120, 155, 185, 0.14), transparent 60%),
+    radial-gradient(40% 24% at calc(70% + var(--mist-drift-x, 0%)) 58%, rgba(140, 170, 195, 0.1), transparent 60%),
+    linear-gradient(
+      180deg,
+      #c9d8e4 0,
+      #d8e2ea 460px,
+      #e4eaee 1100px,
+      #e9edf0 2200px,
+      #e6ebee 60%,
+      #dde6eb 100%
+    );
+}
+
+/* the hero dissolves into the water sky, not into cream paper */
+main[data-page="Home"] .hero-veil {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, #c9d8e4 44%, transparent) 58%,
+    #c9d8e4 100%
+  );
+}
+
+/* the frame takes on the weather too */
+body:has(main[data-page="Home"]) .site-nav {
+  border-bottom-color: rgba(38, 62, 96, 0.14);
+  background: rgba(219, 229, 237, 0.72);
+  backdrop-filter: blur(18px) saturate(1.05);
+}
+
+/* --- 远山如黛: the ridges -------------------------------------------------- */
+
+.jiangnan-ridge {
+  display: block;
+  width: 100vw;
+  height: clamp(120px, 15vw, 210px);
+  margin: -34px 0 -18px calc(50% - 50vw);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 20%, #000 76%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 20%, #000 76%, transparent 100%);
+}
+
+.jiangnan-ridge .ridge-far {
+  fill: rgba(96, 128, 158, 0.13);
+  filter: blur(3px);
+}
+
+.jiangnan-ridge .ridge-mid {
+  fill: rgba(80, 112, 142, 0.19);
+  filter: blur(1.4px);
+}
+
+.jiangnan-ridge .ridge-near {
+  fill: rgba(64, 94, 124, 0.23);
+  filter: blur(0.4px);
+}
+
+/* A second, fainter ridge sinking into the deep water before the contact
+   section — 山随平野尽,江入大荒流. */
+.jiangnan-ridge-late {
+  margin: 30px 0 -40px calc(50% - 50vw);
+  transform: scaleX(-1);
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 10%, #000 82%, transparent 100%);
+}
+
+.jiangnan-ridge-late path {
+  fill-opacity: 1.5;
+}
+
+/* inner list wrappers keep no paper of their own — the water sky shows */
+main[data-page="Home"] .compact-timeline {
+  border: 0;
+  background: transparent;
+}
+
+/* --- nothing is framed; text and images stand directly on the painting ---- */
+
+main[data-page="Home"] .home-search input,
+main[data-page="Home"] .subscribe-form input {
+  background: rgba(252, 251, 247, 0.6);
+}
+
+main[data-page="Home"] .roadmap-section {
+  backdrop-filter: blur(8px);
+}
+
+main[data-page="Home"] .signal-band {
+  background:
+    linear-gradient(180deg, transparent 0, #122336 130px, #122336 calc(100% - 130px), transparent 100%);
+}
+
+/* --- rain at both ends of the day: drizzle over the deep water too --------- */
+
+main[data-page="Home"] .contact-section {
+  position: relative;
+  overflow: hidden;
+}
+
+main[data-page="Home"] .contact-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    var(--rain-angle, -74deg),
+    rgba(190, 214, 240, 0) 0,
+    rgba(190, 214, 240, 0.05) 1px,
+    rgba(190, 214, 240, 0) 3px,
+    rgba(190, 214, 240, 0) 10px
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 200px, #000 70%, transparent 98%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 200px, #000 70%, transparent 98%);
+  animation: rainThreads 1.3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main[data-page="Home"] .contact-section::before {
+    animation: none;
+  }
+}
+
+/* --- the same rain, at night ------------------------------------------------ */
+
+html[data-theme="dark"] body:has(main[data-page="Home"]) {
+  background: #0a1420;
+}
+
+html[data-theme="dark"] main[data-page="Home"] {
+  --muted: #93a0b2;
+  background:
+    radial-gradient(52% 30% at calc(12% + var(--mist-drift-x, 0%)) 9%, rgba(90, 130, 175, 0.14), transparent 62%),
+    radial-gradient(46% 26% at calc(86% - var(--mist-drift-x, 0%)) 22%, rgba(80, 120, 165, 0.12), transparent 60%),
+    radial-gradient(40% 24% at calc(70% + var(--mist-drift-x, 0%)) 58%, rgba(70, 110, 150, 0.1), transparent 60%),
+    linear-gradient(
+      180deg,
+      #0a1420 0,
+      #0c1826 460px,
+      #0e1a28 1200px,
+      #101c2a 60%,
+      #0c1622 100%
+    );
+}
+
+html[data-theme="dark"] main[data-page="Home"] .hero-veil {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, #0a1420 44%, transparent) 58%,
+    #0a1420 100%
+  );
+}
+
+html[data-theme="dark"] body:has(main[data-page="Home"]) .site-nav {
+  border-bottom-color: rgba(185, 212, 242, 0.12);
+  background: rgba(10, 20, 32, 0.68);
+}
+
+html[data-theme="dark"] .jiangnan-ridge .ridge-far {
+  fill: rgba(120, 160, 200, 0.07);
+}
+
+html[data-theme="dark"] .jiangnan-ridge .ridge-mid {
+  fill: rgba(130, 170, 208, 0.1);
+}
+
+html[data-theme="dark"] .jiangnan-ridge .ridge-near {
+  fill: rgba(140, 178, 214, 0.13);
+}
+
+html[data-theme="dark"] main[data-page="Home"] .showcase-card,
+html[data-theme="dark"] main[data-page="Home"] .path-grid a,
+html[data-theme="dark"] main[data-page="Home"] .path-grid a:first-child {
+  background: rgba(16, 28, 44, 0.55);
+}
+
+html[data-theme="dark"] main[data-page="Home"] .path-grid a:hover,
+html[data-theme="dark"] main[data-page="Home"] .path-grid a:focus-visible {
+  background: rgba(24, 40, 62, 0.8);
+}
+
+html[data-theme="dark"] main[data-page="Home"] .signal-band {
+  background:
+    linear-gradient(180deg, transparent 0, #0a1524 130px, #0a1524 calc(100% - 130px), transparent 100%);
+}
+
+/* ==========================================================================
+   烟雨江南 · round 4 — the living background
+   The whole page is a video now: a fixed weather canvas drifts mist behind
+   every section, drizzle falls over the full viewport, and the ridges
+   breathe in the fog.
+   ========================================================================== */
+
+/* the weather canvas sits under everything that follows it in the main */
+.jiangnan-weather {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* content floats above the moving mist; the mist shows through the gaps */
+main[data-page="Home"] :is(
+  .showcase,
+  .signal-band,
+  .home-tools,
+  .profile-snapshot,
+  .roadmap-section,
+  .selected-projects,
+  .latest-board,
+  .timeline-preview,
+  .site-pulse,
+  .contact-section,
+  .subscribe-section
+) {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- drizzle over the whole viewport, in front of the paper --------------- */
+
+.rain-veil {
+  position: relative;
+  z-index: 3;
+  height: 0;
+  pointer-events: none;
+}
+
+.rain-veil::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    var(--rain-angle, -74deg),
+    rgba(38, 62, 96, 0) 0,
+    rgba(38, 62, 96, 0.05) 1px,
+    rgba(38, 62, 96, 0) 3px,
+    rgba(38, 62, 96, 0) 9px
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 80px, #000 calc(100% - 120px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 80px, #000 calc(100% - 120px), transparent 100%);
+  animation: rainThreads 1.15s linear infinite;
+}
+
+/* --- the ridges breathe in the fog ------------------------------------------ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .jiangnan-ridge {
+    animation: ridgeSway 46s ease-in-out infinite alternate;
+  }
+
+  .jiangnan-ridge-late {
+    animation: ridgeSwayLate 58s ease-in-out -20s infinite alternate;
+  }
+}
+
+@keyframes ridgeSway {
+  from {
+    transform: translateX(-10px);
+  }
+
+  to {
+    transform: translateX(10px);
+  }
+}
+
+@keyframes ridgeSwayLate {
+  from {
+    transform: scaleX(-1) translateX(-8px);
+  }
+
+  to {
+    transform: scaleX(-1) translateX(8px);
+  }
+}
+
+/* ==========================================================================
+   点点飞鸿 · birds drifting across the statement sky
+   ========================================================================== */
+
+main[data-page="Home"] .profile-snapshot {
+  position: relative;
+}
+
+.jiangnan-birds {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.profile-snapshot > *:not(.jiangnan-birds) {
+  position: relative;
+  z-index: 1;
+}
+
+.jiangnan-birds .bird {
+  position: absolute;
+  left: 100%;
+  width: 22px;
+  stroke: rgba(38, 62, 96, 0.32);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  animation: birdDrift 96s linear infinite;
+}
+
+.jiangnan-birds .bird:nth-child(1) {
+  top: 14%;
+  animation-delay: -12s;
+}
+
+.jiangnan-birds .bird:nth-child(2) {
+  top: 26%;
+  width: 15px;
+  opacity: 0.65;
+  animation-duration: 118s;
+  animation-delay: -52s;
+}
+
+.jiangnan-birds .bird:nth-child(3) {
+  top: 7%;
+  width: 27px;
+  opacity: 0.85;
+  animation-duration: 84s;
+  animation-delay: -68s;
+}
+
+.jiangnan-birds .bird:nth-child(4) {
+  top: 36%;
+  width: 12px;
+  opacity: 0.5;
+  animation-duration: 128s;
+  animation-delay: -34s;
+}
+
+@keyframes birdDrift {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+
+  50% {
+    transform: translateX(-56vw) translateY(-10px);
+  }
+
+  100% {
+    transform: translateX(calc(-100vw - 60px)) translateY(0);
+  }
+}
+
+html[data-theme="dark"] .jiangnan-birds .bird {
+  stroke: rgba(190, 214, 240, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jiangnan-birds {
+    display: none;
+  }
+}
+
+/* small panes: no ruled boxes either — the scroll stays a painting */
+@media (max-width: 1024px) {
+  main[data-page="Home"] .snapshot-grid article,
+  main[data-page="Home"] .snapshot-grid article:nth-child(odd),
+  main[data-page="Home"] .snapshot-grid article:nth-child(-n + 2),
+  main[data-page="Home"] .path-grid a,
+  main[data-page="Home"] .path-grid a:nth-child(odd),
+  main[data-page="Home"] .path-grid a:nth-child(-n + 2) {
+    border-top: 0;
+    border-left: 0;
   }
 }
