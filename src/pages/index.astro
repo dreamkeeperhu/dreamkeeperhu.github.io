@@ -152,14 +152,6 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
        page, so the hero's weather follows you a little way into the paper. -->
   <div class="rain-veil" aria-hidden="true"></div>
 
-  <!-- 远山如黛: layered Jiangnan ridges rising out of the mist between the
-       hero's water and the page's paper — far peaks blurred by distance. -->
-  <svg class="jiangnan-ridge" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
-    <path class="ridge-far" d="M0,148 C150,96 290,138 450,112 C610,86 730,132 900,108 C1070,84 1210,124 1440,96 L1440,220 L0,220 Z" />
-    <path class="ridge-mid" d="M0,182 C170,142 330,176 510,158 C690,140 850,172 1030,154 C1210,136 1330,166 1440,150 L1440,220 L0,220 Z" />
-    <path class="ridge-near" d="M0,208 C200,180 380,202 560,190 C740,178 920,198 1100,186 C1260,176 1360,194 1440,184 L1440,220 L0,220 Z" />
-  </svg>
-
   <script is:inline>
     // 每扇窗上的雾都不一样 — every visit draws a slightly different pane:
     // a different watermark character, different mist offsets, different rain.
@@ -173,6 +165,7 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
   </script>
 
   <section class="showcase" aria-label="Selected directions">
+    <div class="jiangnan-band jiangnan-band-1" aria-hidden="true"></div>
     <a class="showcase-card" href="/research">
       <span class="showcase-art">
         <img src={asset("/assets/interface-field.png")} alt="Interface structure and flowing curves" width="1200" height="700" decoding="async" fetchpriority="high" />
@@ -252,6 +245,7 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
   </section>
 
   <section class="profile-snapshot reveal" aria-label="Profile snapshot">
+    <div class="jiangnan-band jiangnan-band-2" aria-hidden="true"></div>
     <div class="jiangnan-birds" aria-hidden="true">
       <svg class="bird" viewBox="0 0 24 10"><path d="M1,7 Q6,1 12,6 Q18,1 23,7" fill="none" /></svg>
       <svg class="bird" viewBox="0 0 24 10"><path d="M1,7 Q6,1 12,6 Q18,1 23,7" fill="none" /></svg>
@@ -317,6 +311,7 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
   </section>
 
   <section class="latest-board latest-work-stream reveal" aria-label="Latest public work">
+    <div class="jiangnan-band jiangnan-band-3" aria-hidden="true"></div>
     <div class="section-head compact-head">
       <h2>Latest Work</h2>
       <p>最近公开的 notes、research 和 projects 放在同一条工作流里，减少首页的入口堆叠。</p>
@@ -358,12 +353,6 @@ const homeHeroImage = asset("/assets/internal-beyond-bg-canvas.png");
   </section>
 
   <SitePulse />
-
-  <svg class="jiangnan-ridge jiangnan-ridge-late" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true">
-    <path class="ridge-far" d="M0,148 C150,96 290,138 450,112 C610,86 730,132 900,108 C1070,84 1210,124 1440,96 L1440,220 L0,220 Z" />
-    <path class="ridge-mid" d="M0,182 C170,142 330,176 510,158 C690,140 850,172 1030,154 C1210,136 1330,166 1440,150 L1440,220 L0,220 Z" />
-    <path class="ridge-near" d="M0,208 C200,180 380,202 560,190 C740,178 920,198 1100,186 C1260,176 1360,194 1440,184 L1440,220 L0,220 Z" />
-  </svg>
 
   <section id="contact" class="contact-section reveal">
     <div>

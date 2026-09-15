@@ -4378,9 +4378,10 @@ main[data-page="Home"] .showcase-art img {
   height: auto;
   aspect-ratio: 12 / 7;
   object-fit: cover;
-  filter: saturate(0.82) contrast(0.98) brightness(1.02);
-  -webkit-mask-image: radial-gradient(115% 120% at 50% 38%, #000 68%, transparent 96%);
-  mask-image: radial-gradient(115% 120% at 50% 38%, #000 68%, transparent 96%);
+  filter: saturate(0.85) contrast(1.06) brightness(1.0);
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(115% 120% at 50% 38%, #000 78%, transparent 97%);
+  mask-image: radial-gradient(115% 120% at 50% 38%, #000 78%, transparent 97%);
   transition: filter 500ms ease, transform 900ms ease;
 }
 
@@ -4949,14 +4950,20 @@ html.js-enabled main[data-page="Home"] .reveal.is-visible {
 /* --- 墨色带: the signal band becomes a floating stripe of deep ink -------- */
 
 main[data-page="Home"] .signal-band {
+  width: 100vw;
   margin-top: 84px;
-  padding-block: 130px;
+  margin-left: calc(50% - 50vw);
+  padding: 130px max(24px, calc((100vw - 1176px) / 2));
   background:
     linear-gradient(180deg, transparent 0, #101e33 130px, #101e33 calc(100% - 130px), transparent 100%);
 }
 
 main[data-page="Home"] .signal-band a {
   color: rgba(243, 239, 231, 0.94);
+}
+
+main[data-page="Home"] .signal-band strong {
+  font-size: clamp(17px, 1.5vw, 21px);
 }
 
 main[data-page="Home"] .signal-band a + a {
@@ -5164,33 +5171,118 @@ html[data-theme="dark"] body:has(main[data-page="Home"]) .site-footer {
 /* --- the water sky: the page ground itself -------------------------------- */
 
 body:has(main[data-page="Home"]) {
-  background: #c9d8e4;
+  background: #cedce8;
 }
 
 main[data-page="Home"] {
   --muted: #5d6a78;
-  background:
-    radial-gradient(52% 30% at calc(12% + var(--mist-drift-x, 0%)) 9%, rgba(150, 180, 205, 0.18), transparent 62%),
-    radial-gradient(46% 26% at calc(86% - var(--mist-drift-x, 0%)) 22%, rgba(120, 155, 185, 0.14), transparent 60%),
-    radial-gradient(40% 24% at calc(70% + var(--mist-drift-x, 0%)) 58%, rgba(140, 170, 195, 0.1), transparent 60%),
-    linear-gradient(
-      180deg,
-      #c9d8e4 0,
-      #d8e2ea 460px,
-      #e4eaee 1100px,
-      #e9edf0 2200px,
-      #e6ebee 60%,
-      #dde6eb 100%
-    );
+  background: linear-gradient(180deg, #cfdce7 0, #dde5ea 30%, #e0e7ea 62%, #d2dfe7 100%);
 }
 
-/* the hero dissolves into the water sky, not into cream paper */
+/* 画带: bands of the real 潇湘奇观图 (Mi Youren, d. 1151 — public domain)
+   unroll behind the scroll's zones, feathered into the sky and slowly
+   panning like a handscroll being unrolled. */
+main[data-page="Home"] :is(.showcase, .profile-snapshot, .latest-board) {
+  position: relative;
+}
+
+.jiangnan-band {
+  position: absolute;
+  inset: -10% -4%;
+  z-index: 0;
+  pointer-events: none;
+  background: center 55% / auto 100% no-repeat;
+  opacity: 0.94;
+  filter: brightness(1.05) saturate(0.92);
+  -webkit-mask-image:
+    linear-gradient(180deg, transparent 0, #000 14%, #000 86%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  mask-image:
+    linear-gradient(180deg, transparent 0, #000 14%, #000 86%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  -webkit-mask-composite: destination-in;
+  mask-composite: intersect;
+}
+
+.jiangnan-band-1 {
+  background-image: url("/assets/jiangnan-band-1.webp");
+}
+
+.jiangnan-band-2 {
+  background-image: url("/assets/jiangnan-band-2.webp");
+}
+
+.jiangnan-band-3 {
+  background-image: url("/assets/jiangnan-band-3.webp");
+}
+
+html[data-theme="dark"] :is(.jiangnan-band-1, .jiangnan-band-2, .jiangnan-band-3) {
+  background-image: url("/assets/jiangnan-band-night.webp");
+}
+
+main[data-page="Home"] :is(.showcase, .profile-snapshot, .latest-board) > *:not(.jiangnan-band) {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .jiangnan-band-1 {
+    animation: bandDriftA 64s ease-in-out infinite alternate;
+  }
+
+  .jiangnan-band-2 {
+    animation: bandDriftB 78s ease-in-out infinite alternate;
+  }
+
+  .jiangnan-band-3 {
+    animation: bandDriftA 92s ease-in-out -30s infinite alternate;
+  }
+}
+
+@keyframes bandDriftA {
+  from {
+    background-position-x: 42%;
+  }
+
+  to {
+    background-position-x: 58%;
+  }
+}
+
+@keyframes bandDriftB {
+  from {
+    background-position-x: 60%;
+  }
+
+  to {
+    background-position-x: 40%;
+  }
+}
+
+/* the hero dissolves into the painting's sky, not into cream paper */
 main[data-page="Home"] .hero-veil {
   background: linear-gradient(
     180deg,
     transparent 0%,
-    color-mix(in srgb, #c9d8e4 44%, transparent) 58%,
-    #c9d8e4 100%
+    color-mix(in srgb, #cedce8 44%, transparent) 58%,
+    #cedce8 100%
+  );
+}
+
+html[data-theme="dark"] body:has(main[data-page="Home"]) {
+  background: #0a1420;
+}
+
+html[data-theme="dark"] main[data-page="Home"] {
+  background: #0a1420;
+}
+
+html[data-theme="dark"] main[data-page="Home"] .hero-veil {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, #0a1420 44%, transparent) 58%,
+    #0a1420 100%
   );
 }
 
@@ -5199,47 +5291,6 @@ body:has(main[data-page="Home"]) .site-nav {
   border-bottom-color: rgba(38, 62, 96, 0.14);
   background: rgba(219, 229, 237, 0.72);
   backdrop-filter: blur(18px) saturate(1.05);
-}
-
-/* --- 远山如黛: the ridges -------------------------------------------------- */
-
-.jiangnan-ridge {
-  display: block;
-  width: 100vw;
-  height: clamp(120px, 15vw, 210px);
-  margin: -34px 0 -18px calc(50% - 50vw);
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 20%, #000 76%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 20%, #000 76%, transparent 100%);
-}
-
-.jiangnan-ridge .ridge-far {
-  fill: rgba(96, 128, 158, 0.13);
-  filter: blur(3px);
-}
-
-.jiangnan-ridge .ridge-mid {
-  fill: rgba(80, 112, 142, 0.19);
-  filter: blur(1.4px);
-}
-
-.jiangnan-ridge .ridge-near {
-  fill: rgba(64, 94, 124, 0.23);
-  filter: blur(0.4px);
-}
-
-/* A second, fainter ridge sinking into the deep water before the contact
-   section — 山随平野尽,江入大荒流. */
-.jiangnan-ridge-late {
-  margin: 30px 0 -40px calc(50% - 50vw);
-  transform: scaleX(-1);
-  opacity: 1;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10%, #000 82%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 10%, #000 82%, transparent 100%);
-}
-
-.jiangnan-ridge-late path {
-  fill-opacity: 1.5;
 }
 
 /* inner list wrappers keep no paper of their own — the water sky shows */
@@ -5330,18 +5381,6 @@ html[data-theme="dark"] body:has(main[data-page="Home"]) .site-nav {
   background: rgba(10, 20, 32, 0.68);
 }
 
-html[data-theme="dark"] .jiangnan-ridge .ridge-far {
-  fill: rgba(120, 160, 200, 0.07);
-}
-
-html[data-theme="dark"] .jiangnan-ridge .ridge-mid {
-  fill: rgba(130, 170, 208, 0.1);
-}
-
-html[data-theme="dark"] .jiangnan-ridge .ridge-near {
-  fill: rgba(140, 178, 214, 0.13);
-}
-
 html[data-theme="dark"] main[data-page="Home"] .showcase-card,
 html[data-theme="dark"] main[data-page="Home"] .path-grid a,
 html[data-theme="dark"] main[data-page="Home"] .path-grid a:first-child {
@@ -5418,38 +5457,6 @@ main[data-page="Home"] :is(
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 80px, #000 calc(100% - 120px), transparent 100%);
   mask-image: linear-gradient(180deg, transparent 0, #000 80px, #000 calc(100% - 120px), transparent 100%);
   animation: rainThreads 1.15s linear infinite;
-}
-
-/* --- the ridges breathe in the fog ------------------------------------------ */
-
-@media (prefers-reduced-motion: no-preference) {
-  .jiangnan-ridge {
-    animation: ridgeSway 46s ease-in-out infinite alternate;
-  }
-
-  .jiangnan-ridge-late {
-    animation: ridgeSwayLate 58s ease-in-out -20s infinite alternate;
-  }
-}
-
-@keyframes ridgeSway {
-  from {
-    transform: translateX(-10px);
-  }
-
-  to {
-    transform: translateX(10px);
-  }
-}
-
-@keyframes ridgeSwayLate {
-  from {
-    transform: scaleX(-1) translateX(-8px);
-  }
-
-  to {
-    transform: scaleX(-1) translateX(8px);
-  }
 }
 
 /* ==========================================================================
@@ -5547,4 +5554,14 @@ html[data-theme="dark"] .jiangnan-birds .bird {
     border-top: 0;
     border-left: 0;
   }
+}
+
+/* a breath of paper light under small text, so words stay readable
+   even where a ridge passes beneath them */
+main[data-page="Home"] :is(.snapshot-grid p, .latest-row p, .compact-timeline .timeline-row p, .section-head p, .path-grid small, .path-grid em, .showcase-info small) {
+  text-shadow: 0 1px 14px rgba(233, 240, 247, 0.85), 0 0 4px rgba(233, 240, 247, 0.6);
+}
+
+html[data-theme="dark"] main[data-page="Home"] :is(.snapshot-grid p, .latest-row p, .compact-timeline .timeline-row p, .section-head p, .path-grid small, .path-grid em, .showcase-info small) {
+  text-shadow: 0 1px 14px rgba(6, 13, 24, 0.7), 0 0 4px rgba(6, 13, 24, 0.5);
 }
