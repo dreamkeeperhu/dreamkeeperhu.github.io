@@ -5210,6 +5210,7 @@ main[data-page="Home"] :is(.showcase, .profile-snapshot, .latest-board) {
 
 .jiangnan-band-2 {
   background-image: url("/assets/jiangnan-band-2.webp");
+  background-position-x: 32%;
 }
 
 .jiangnan-band-3 {
@@ -5251,11 +5252,11 @@ main[data-page="Home"] :is(.showcase, .profile-snapshot, .latest-board) > *:not(
 
 @keyframes bandDriftB {
   from {
-    background-position-x: 60%;
+    background-position-x: 34%;
   }
 
   to {
-    background-position-x: 40%;
+    background-position-x: 16%;
   }
 }
 
